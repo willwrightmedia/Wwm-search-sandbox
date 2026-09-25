@@ -10,10 +10,10 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WWM BRANDING & RESPONSIVE DASHBOARD CSS) ---
+# --- UI CONFIGURATION (WWM BRANDING & SINGLE-WORD RESPONSIVE METRICS) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
-# CUSTOM CSS - RESPONSIVE MOBILE/TABLET GRID & HIGH-CONTRAST INK PALETTE
+# CUSTOM CSS - SINGLE-WORD CARD PADDING & HIGH-CONTRAST INK PALETTE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -22,10 +22,10 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #1A1814 !important; border-right: 1px solid #2C2822 !important; }
     [data-testid="stSidebar"] * { color: #C6BCA9 !important; }
 
-    .brand-header { background-color: #1A1814; border: 1px solid #2C2822; padding: 28px 32px; border-radius: 2px; margin-bottom: 24px; }
-    .brand-tagline { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 12px; }
-    .brand-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.0rem, 4vw, 2.8rem); font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
-    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.0rem, 2vw, 1.2rem); font-style: italic; color: #C6BCA9; margin-top: 8px; }
+    .brand-header { background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 28px; border-radius: 2px; margin-bottom: 20px; }
+    .brand-tagline { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 8px; }
+    .brand-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
+    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: clamp(0.95rem, 1.8vw, 1.15rem); font-style: italic; color: #C6BCA9; margin-top: 6px; }
 
     /* HIGH-CONTRAST BONE INPUT FIELDS */
     div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
@@ -39,11 +39,11 @@ st.markdown("""
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
-    /* DYNAMIC DASHBOARD METRIC CARDS (RESPONSIVE NO-WRAP GRID) */
+    /* RESPONSIVE METRIC CARDS - STRICT SINGLE-WORD OVERFLOW PROTECTION */
     .metric-card {
         background-color: #1A1814;
         border: 1px solid #2C2822;
-        padding: 18px 12px;
+        padding: 16px 8px;
         border-radius: 2px;
         text-align: center;
         height: 100%;
@@ -51,63 +51,58 @@ st.markdown("""
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        min-height: 120px;
+        min-height: 110px;
+        overflow: hidden;
     }
     .metric-card h4 {
         font-family: 'Inter', sans-serif;
-        font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+        font-size: clamp(0.65rem, 1vw, 0.75rem);
         letter-spacing: 0.12em;
         text-transform: uppercase;
         color: #C6BCA9;
-        margin: 0 0 6px 0;
+        margin: 0 0 4px 0;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
     .metric-card h2 {
         font-family: 'Inter', sans-serif;
-        font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+        font-size: clamp(1.1rem, 2vw, 1.5rem);
         font-weight: 600;
         color: #F2EDE3;
         margin: 0 0 4px 0;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
     .metric-card caption {
-        font-size: clamp(0.65rem, 1vw, 0.75rem);
+        font-size: clamp(0.6rem, 0.85vw, 0.7rem);
         color: #6B6B6B;
         margin: 0;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     .stButton>button {
         background-color: transparent !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
-        border-radius: 2px !important; padding: 0.75rem 1.8rem !important; font-family: 'Inter', sans-serif !important;
-        font-size: 0.8rem !important; letter-spacing: 0.18em !important; text-transform: uppercase !important;
+        border-radius: 2px !important; padding: 0.65rem 1.4rem !important; font-family: 'Inter', sans-serif !important;
+        font-size: 0.75rem !important; letter-spacing: 0.15em !important; text-transform: uppercase !important;
     }
     .stDownloadButton>button {
         background-color: #C6BCA9 !important; color: #14120F !important; font-weight: 600 !important;
-        padding: 0.8rem 1.8rem !important; border-radius: 2px !important; border: none !important;
+        padding: 0.75rem 1.4rem !important; border-radius: 2px !important; border: none !important;
     }
     .reset-btn>button {
         background-color: #2C2822 !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
-        font-weight: 600 !important; padding: 0.6rem 1.2rem !important;
+        font-weight: 600 !important; padding: 0.5rem 1rem !important;
     }
-    .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 32px; border-radius: 2px; }
-    .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 12px 16px; font-size: 0.82rem; color: #6B6B6B; margin-top: 24px; }
-    .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 10px 14px; font-size: 0.8rem; color: #C6BCA9; margin-bottom: 16px; }
-
-    /* MOBILE & TABLET AUTO-REFLOW BREAKPOINTS */
-    @media (max-width: 992px) {
-        div[data-testid="column"] {
-            flex: 1 1 45% !important;
-            min-width: 45% !important;
-            margin-bottom: 12px;
-        }
-    }
-    @media (max-width: 576px) {
-        div[data-testid="column"] {
-            flex: 1 1 100% !important;
-            min-width: 100% !important;
-        }
-    }
+    .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 28px; border-radius: 2px; }
+    .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #6B6B6B; margin-top: 20px; }
+    .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -117,15 +112,15 @@ if "cumulative_brief" not in st.session_state:
 if "executed_query" not in st.session_state:
     st.session_state.executed_query = ""
 if "user_plan" not in st.session_state:
-    st.session_state.user_plan = "Pro Tier ($29.99/mo)"
+    st.session_state.user_plan = "Pro tier ($29.99/mo)"
 if "search_balance" not in st.session_state:
     st.session_state.search_balance = 84
 if "saved_queries" not in st.session_state:
     st.session_state.saved_queries = [
         "\"Rajeev Roychand\" AND RMIT",
-        "Spent Coffee Biochar Concrete Infrastructure",
-        "Victoria Big Build Sustainable Materials",
-        "Standards Australia Biochar Aggregate"
+        "Spent coffee biochar concrete infrastructure",
+        "Victoria Big Build sustainable materials",
+        "Standards Australia biochar aggregate"
     ]
 if "report_library" not in st.session_state:
     st.session_state.report_library = []
@@ -135,10 +130,10 @@ def clear_all_searches():
     st.session_state.executed_query = ""
     st.rerun()
 
-# --- NAVIGATION CONTROLLER ---
+# --- NAVIGATION CONTROLLER (SINGLE-WORD TABS) ---
 main_mode = st.radio(
-    "Select System Mode:",
-    ["📊 Live Dashboard & Tracking", "📄 Strategic Executive Briefs", "📚 Report Library & Account Deck"],
+    "Select mode:",
+    ["📊 Dashboard", "📄 Brief", "📚 Library"],
     horizontal=True
 )
 
@@ -152,9 +147,9 @@ with st.sidebar:
     api_provider = st.selectbox(
         "AI engine provider",
         [
-            "Google Gemini 3 (Native Search Grounding)",
-            "OpenAI GPT-4o (Web Grounded)",
-            "Tavily Search + Gemini Intelligence"
+            "Google Gemini 3 (Native search grounding)",
+            "OpenAI GPT-4o (Web grounded)",
+            "Tavily Search + Gemini intelligence"
         ],
         index=0
     )
@@ -162,7 +157,7 @@ with st.sidebar:
     gemini_key = st.text_input("Gemini API key", type="password", placeholder="AIzaSy...")
 
     st.divider()
-    st.subheader("2. Strategic objective & scope")
+    st.subheader("2. Objective and scope")
     
     report_purpose_selected = st.selectbox(
         "Primary objective",
@@ -200,7 +195,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.subheader("3. Media channels and time horizon")
+    st.subheader("3. Media channels and horizon")
     
     date_window = st.selectbox(
         "Recency scope",
@@ -236,18 +231,18 @@ with st.sidebar:
     )
 
     st.divider()
-    st.button("Reset Brief Buffer & Clear All", on_click=clear_all_searches, key="sidebar_reset")
+    st.button("Reset brief buffer and clear all", on_click=clear_all_searches, key="sidebar_reset")
 
 # --- BRANDED EXECUTIVE HEADER ---
 st.markdown("""
     <div class="brand-header">
         <div class="brand-tagline">GLOBAL MEDIA INSIGHTS</div>
         <div class="brand-title">World Wide Monitor</div>
-        <div class="brand-subtitle">Strategic media intelligence, live dashboard tracking, and cross-lingual reporting for leadership.</div>
+        <div class="brand-subtitle">Strategic media intelligence, audience reach analytics, and cross-lingual reporting for leadership.</div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- PROMINENT CONTROL & CLEAR TOOLBAR ---
+# --- PROMINENT CONTROL TOOLBAR ---
 control_col1, control_col2 = st.columns([3, 1])
 with control_col1:
     st.info(
@@ -257,7 +252,7 @@ with control_col1:
     )
 with control_col2:
     st.markdown("<div class='reset-btn'>", unsafe_allow_html=True)
-    st.button("🔄 Start New Search / Clear Buffer", on_click=clear_all_searches, key="header_reset", use_container_width=True)
+    st.button("🔄 Start new search / Clear buffer", on_click=clear_all_searches, key="header_reset", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
@@ -290,7 +285,7 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE WITH FULL SCOPE HEADER ---
+# --- BRANDED PDF ENGINE ---
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
@@ -446,11 +441,11 @@ def generate_pdf_brief(brief, query, lang, purpose_text, time_scope, channels_st
 # --- MARKDOWN & WORD EXPORTS ---
 def generate_markdown_brief(brief, query, lang, purpose_text, time_scope, channels_str):
     md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n\n"
-    md += f"**Strategic Objective:** `{purpose_text}`  \n"
-    md += f"**Query Scope:** `{query}`  \n"
-    md += f"**Time Horizon:** `{time_scope}` | **Channels:** `{channels_str}`  \n"
-    md += f"**Coverage Index:** {brief.get('verified_coverage_metric', 'Verified Scope')}  \n"
-    md += f"**Reach Metric:** {brief.get('total_combined_audience_reach', '')}\n\n"
+    md += f"**Strategic objective:** `{purpose_text}`  \n"
+    md += f"**Query scope:** `{query}`  \n"
+    md += f"**Time horizon:** `{time_scope}` | **Channels:** `{channels_str}`  \n"
+    md += f"**Coverage index:** {brief.get('verified_coverage_metric', 'Verified scope')}  \n"
+    md += f"**Reach metric:** {brief.get('total_combined_audience_reach', '')}\n\n"
     md += f"## 1. Executive summary and strategic read\n"
     md += f"**Overview:** {brief['headline_synthesis']}\n\n"
     md += f"**Positioning and reputation:** {brief['sentiment_framing_read']}\n\n"
@@ -477,17 +472,17 @@ def generate_docx_brief(brief, query, lang, purpose_text, time_scope, channels_s
     doc.add_heading(f"CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})", level=0)
     
     p_meta = doc.add_paragraph()
-    p_meta.add_run("Strategic Objective: ").bold = True
+    p_meta.add_run("Strategic objective: ").bold = True
     p_meta.add_run(f"{purpose_text}\n")
-    p_meta.add_run("Query Scope: ").bold = True
+    p_meta.add_run("Query scope: ").bold = True
     p_meta.add_run(f"{query}\n")
-    p_meta.add_run("Time Horizon: ").bold = True
+    p_meta.add_run("Time horizon: ").bold = True
     p_meta.add_run(f"{time_scope} | ")
     p_meta.add_run("Channels: ").bold = True
     p_meta.add_run(f"{channels_str}\n")
-    p_meta.add_run("Coverage Index: ").bold = True
-    p_meta.add_run(f"{brief.get('verified_coverage_metric', 'Verified Scope')}\n")
-    p_meta.add_run("Audience Reach: ").bold = True
+    p_meta.add_run("Coverage index: ").bold = True
+    p_meta.add_run(f"{brief.get('verified_coverage_metric', 'Verified scope')}\n")
+    p_meta.add_run("Audience reach: ").bold = True
     p_meta.add_run(f"{brief.get('total_combined_audience_reach', '')}")
     
     doc.add_heading("1. Executive summary and strategic read", level=1)
@@ -514,39 +509,39 @@ def generate_docx_brief(brief, query, lang, purpose_text, time_scope, channels_s
     buffer.seek(0)
     return buffer
 
-# --- VIEW 1: LIVE DASHBOARD & TRACKING ---
+# --- VIEW 1: LIVE DASHBOARD (SINGLE-WORD METRIC COLUMNS) ---
 if "Dashboard" in main_mode:
-    st.subheader("📊 Live Media & Social Intelligence Dashboard")
+    st.subheader("📊 Media tracking dashboard")
     st.caption("Real-time monitoring view for emerging issues, crisis tracking, and volume spike detection.")
     
     dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
     with dash_col1:
         st.markdown("<div class='metric-card'><h4>Volume</h4><h2>184</h2><caption>▲ +24% vs past cycle</caption></div>", unsafe_allow_html=True)
     with dash_col2:
-        st.markdown("<div class='metric-card'><h4>Reach</h4><h2>308.2M</h2><caption>Verified Press & Social</caption></div>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-card'><h4>Reach</h4><h2>308.2M</h2><caption>Verified press & social</caption></div>", unsafe_allow_html=True)
     with dash_col3:
-        st.markdown("<div class='metric-card'><h4>Top Medium</h4><h2>Online Press</h2><caption>62% Total Share of Voice</caption></div>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-card'><h4>Medium</h4><h2>Online</h2><caption>62% Share of voice</caption></div>", unsafe_allow_html=True)
     with dash_col4:
-        st.markdown("<div class='metric-card'><h4>Framing</h4><h2>Authority</h2><caption>100% Expert Alignment</caption></div>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-card'><h4>Framing</h4><h2>Authority</h2><caption>100% Expert alignment</caption></div>", unsafe_allow_html=True)
         
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader("Media Volume Spike Trajectory (Past 30 Days)")
+    st.subheader("Media volume spike trajectory (Past 30 days)")
     
     dates = pd.date_range(end=datetime.datetime.today(), periods=30)
     spike_data = pd.DataFrame({
         "Date": dates,
-        "Tier-1 News Press": [5, 4, 6, 8, 4, 3, 2, 5, 8, 42, 85, 31, 14, 8, 6, 4, 5, 7, 3, 2, 4, 6, 5, 4, 3, 2, 4, 5, 3, 2],
-        "Social Media & Video": [2, 3, 1, 4, 2, 1, 0, 2, 4, 18, 45, 12, 6, 4, 2, 1, 3, 2, 1, 0, 2, 3, 1, 2, 1, 0, 1, 2, 1, 0]
+        "Tier-1 Press": [5, 4, 6, 8, 4, 3, 2, 5, 8, 42, 85, 31, 14, 8, 6, 4, 5, 7, 3, 2, 4, 6, 5, 4, 3, 2, 4, 5, 3, 2],
+        "Social Channels": [2, 3, 1, 4, 2, 1, 0, 2, 4, 18, 45, 12, 6, 4, 2, 1, 3, 2, 1, 0, 2, 3, 1, 2, 1, 0, 1, 2, 1, 0]
     }).set_index("Date")
     
     st.line_chart(spike_data)
 
 # --- VIEW 2: STRATEGIC BRIEF EXECUTION ---
-elif "Strategic Executive" in main_mode:
+elif "Brief" in main_mode:
     tab_search, tab_custom_urls, tab_manual_entry = st.tabs([
-        "🔍 Live media search", 
-        "🔗 Add specific article links", 
-        "📝 Direct media and broadcast record input"
+        "🔍 Live search", 
+        "🔗 Added links", 
+        "📝 Direct input"
     ])
 
     search_query_input = ""
@@ -746,22 +741,22 @@ elif "Strategic Executive" in main_mode:
 
 # --- VIEW 3: REPORT LIBRARY & SAVED 50-QUERY DECK ---
 else:
-    st.subheader("📚 Saved 50-Query Deck & Report Library")
+    st.subheader("📚 Saved 50-query deck & Report library")
     st.caption("Manage your persistent monitoring deck, search generated reports, and view subscription details.")
     
     lib_col1, lib_col2 = st.columns([2, 1])
     
     with lib_col1:
-        st.markdown("#### Saved Search Deck (Up to 50 Queries)")
+        st.markdown("#### Saved search deck (Up to 50 queries)")
         
-        new_deck_query = st.text_input("Add new topic to 50-Query Deck:", placeholder="e.g. \"Tom Oxley\" OR Synchron Stentrode")
-        if st.button("➕ Add Topic to Saved Deck"):
+        new_deck_query = st.text_input("Add new topic to 50-query deck:", placeholder="e.g. \"Tom Oxley\" OR Synchron Stentrode")
+        if st.button("➕ Add topic to saved deck"):
             if new_deck_query.strip() and len(st.session_state.saved_queries) < 50:
                 st.session_state.saved_queries.append(new_deck_query.strip())
                 st.success("Topic added to persistent deck!")
                 st.rerun()
                 
-        st.markdown("**Active Deck Topics:**")
+        st.markdown("**Active deck topics:**")
         for idx, q in enumerate(st.session_state.saved_queries, 1):
             q_col1, q_col2 = st.columns([4, 1])
             with q_col1:
@@ -769,10 +764,10 @@ else:
             with q_col2:
                 if st.button("Run", key=f"run_deck_{idx}"):
                     st.session_state.executed_query = q
-                    st.info(f"Loaded `{q}` into active scope. Switch to Executive Briefs tab to execute.")
+                    st.info(f"Loaded `{q}` into active scope. Switch to Brief tab to execute.")
                     
         st.divider()
-        st.markdown("#### Archive Report Search Engine")
+        st.markdown("#### Archive report search engine")
         lib_search_kw = st.text_input("Search generated briefs by keyword, topic, or date:", placeholder="e.g. Coffee Concrete or Sep 2026")
         
         if st.session_state.report_library:
@@ -780,30 +775,30 @@ else:
                 if not lib_search_kw or lib_search_kw.lower() in rep["query"].lower() or lib_search_kw.lower() in rep["objective"].lower():
                     with st.expander(f"📄 Report #{rep['id']} — {rep['query']} ({rep['date']})"):
                         st.markdown(f"**Objective:** {rep['objective']}")
-                        st.markdown(f"**Audience Reach:** {rep['reach']}")
+                        st.markdown(f"**Audience reach:** {rep['reach']}")
                         st.write(rep["data"]["headline_synthesis"])
         else:
             st.caption("No generated reports saved in library yet. Run an Executive Brief to archive reports.")
 
     with lib_col2:
-        st.markdown("#### User Profile & Subscription")
+        st.markdown("#### User profile & Subscription")
         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
         st.markdown(f"### Plan: **{st.session_state.user_plan}**")
-        st.markdown(f"**Remaining Searches:** `{st.session_state.search_balance} / 100`")
-        st.caption("Renewal Date: 12 October 2026")
+        st.markdown(f"**Remaining searches:** `{st.session_state.search_balance} / 100`")
+        st.caption("Renewal date: 12 October 2026")
         st.markdown("</div>", unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("#### Commercial Tiers")
+        st.markdown("#### Commercial tiers")
         st.markdown("""
-        - **Free Plan:** 10 lifetime searches
+        - **Free plan:** 10 lifetime searches
         - **Starter ($9.99/mo):** 10 searches/month
-        - **Pro Plan ($29.99/mo):** 100 searches/month + Live Dashboard & 50-Query Deck
-        - **Master Plan ($199.99/mo):** Unlimited searches + Multi-seat export
+        - **Pro plan ($29.99/mo):** 100 searches/month + Live Dashboard & 50-Query Deck
+        - **Master plan ($199.99/mo):** Unlimited searches + Multi-seat export
         """)
 
 # --- DELIVERABLE RENDER (SHARED ACROSS VIEWS) ---
-if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Strategic Executive" in main_mode):
+if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in main_mode):
     brief = st.session_state.cumulative_brief
     st.markdown("---")
     
