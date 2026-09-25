@@ -47,6 +47,7 @@ st.markdown("""
     }
     .report-card { background-color: #161616; border: 1px solid #262626; padding: 36px; border-radius: 4px; }
     .disclaimer-box { background-color: #1a1a1a; border-left: 3px solid #10b981; padding: 12px 16px; font-size: 0.82rem; color: #9ca3af; margin-top: 24px; }
+    .notice-box { background-color: #1a1a1a; border-left: 3px solid #3b82f6; padding: 10px 14px; font-size: 0.8rem; color: #d1d5db; margin-bottom: 16px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -89,7 +90,7 @@ with st.sidebar:
     output_language = st.selectbox(
         "Report Output Language",
         [
-            "English (Australian Standard)", "French (Français)", "Spanish (Español)", "German (Deutsch)", 
+            "English", "French (Français)", "Spanish (Español)", "German (Deutsch)", 
             "Mandarin Chinese (中文)", "Japanese (日本語)", "Indonesian (Bahasa Indonesia)", 
             "Vietnamese (Tiếng Việt)", "Hindi (हिंदी)", "Arabic (العربية)"
         ],
@@ -126,7 +127,7 @@ with st.sidebar:
         st.session_state.executed_query = ""
         st.rerun()
 
-# --- BRANDED EXECUTIVE HEADER ---
+# --- BRANDED EXECUTIVE HEADER WITH C-SUITE TOOLTIP ---
 st.markdown("""
     <div class="brand-header">
         <div class="brand-tagline">WORLD WIDE MONITOR · EXECUTIVE MEDIA INTELLIGENCE</div>
@@ -135,15 +136,22 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+st.info(
+    "ℹ️ **Additive Intelligence Architecture:** World Wide Monitor allows you to build comprehensive executive reports sequentially. "
+    "You can run global web searches, paste custom article URL batches, or submit direct media outlet logs. "
+    "Subsequent ingestions continually expand and refine the report without losing previously analyzed records.",
+    icon="ℹ️"
+)
+
 # --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
 class CoverageOutlet(BaseModel):
     outlet_name: str = Field(description="Publisher, broadcaster, or government newsroom name verbatim.")
-    medium_type: str = Field(description="Specify: Online, Print, Radio, Television, Podcast, or Social Media.")
+    medium_type: str = Field(description="Selected media formats (e.g., Online, Radio, Television, Print).")
     author_byline: str = Field(description="Author or producer byline verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication or broadcast date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
-    canonical_source_url: str = Field(description="Direct, clean resolving canonical URL. Write 'Manual Entry Record' if entered via form.")
-    audience_reach_metrics: str = Field(description="Audience reach or circulation figures. Disclose if independently verified (Roy Morgan/AMAA/OztAM) or marked '[Publisher Self-Reported / Unverified]'.")
+    canonical_source_url: str = Field(description="Direct, clean resolving canonical URL. Write 'Direct Analyst Entry' if entered manually.")
+    audience_reach_metrics: str = Field(description="Audience reach or circulation figures. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual title describing the coverage event.")
@@ -163,7 +171,7 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- EXPORT GENERATORS (AUSTRALIAN ENGLISH) ---
+# --- EXPORT GENERATORS ---
 def generate_markdown_brief(brief, query, lang):
     md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n"
     md += f"**Scope / Target Strategy:** `{query}`\n"
@@ -185,7 +193,7 @@ def generate_markdown_brief(brief, query, lang):
             md += f"    - *Audience Reach / Circulation:* {outlet['audience_reach_metrics']}\n"
             md += f"    - *Source Referral Link:* [{outlet['canonical_source_url']}]({outlet['canonical_source_url']})\n"
         md += "\n"
-    md += f"\n\n*Copyright & Fair Use Protocol: Extracted under 20-word window bounds. Synthesized in Australian English. Confirm details against linked canonical source URLs prior to distribution.*"
+    md += f"\n\n*Copyright & Fair Use Protocol: Extracted under 20-word window bounds. Confirm details against linked canonical source URLs prior to distribution.*"
     return md
 
 def generate_docx_brief(brief, query, lang):
@@ -311,7 +319,7 @@ def generate_pdf_brief(brief, query, lang):
 tab_search, tab_custom_urls, tab_manual_entry = st.tabs([
     "🔍 Pass 1: Global Media Search", 
     "🔗 Pass 2: Additive URL Ingestion", 
-    "📝 Pass 3: Manual Media Entry (Field Form)"
+    "📝 Pass 3: Multi-Outlet Direct Entry"
 ])
 
 search_query_input = ""
@@ -346,25 +354,39 @@ with tab_custom_urls:
     custom_urls_input = [line.strip() for line in raw_urls_text.split("\n") if line.strip().startswith("http")]
 
 with tab_manual_entry:
-    st.markdown("##### Direct Media Record Ingestion Form")
-    st.caption("Manually enter a media hit, print article, or broadcast clip to merge directly into the executive brief buffer.")
+    st.markdown("##### Batch Media Outlet & Direct Entry Form")
+    st.markdown(
+        "<div class='notice-box'><b>Legal Responsibility Notice:</b> Information entered via Direct Ingestion is maintained by the user. "
+        "The analyst/user retains responsibility for ensuring the factual accuracy of manually submitted broadcast, print, or internal media logs.</div>", 
+        unsafe_allow_html=True
+    )
     
     with st.form("manual_ingestion_form"):
+        st.caption("Rapidly enter up to 100 media outlets or government bodies at once (one per line) for campaign coverage.")
+        
         m_col1, m_col2 = st.columns(2)
         with m_col1:
-            man_outlet = st.text_input("Media Outlet / Government Organisation", placeholder="e.g., ABC News, The Australian, 7.30")
-            man_medium = st.selectbox("Medium Type", ["Online", "Print Newspaper / Magazine", "Radio Broadcast", "Television Broadcast", "Podcast", "Social Media / Official Release"])
+            raw_outlets_batch = st.text_area(
+                "Media Outlets / Government Organisations (Up to 100, one per line):",
+                height=110,
+                placeholder="ABC News\nThe Australian\n7.30 Report\n2GB Sydney\nDepartment of Infrastructure"
+            )
+            man_mediums = st.multiselect(
+                "Selected Media Formats (Select all applicable):", 
+                ["Online", "Print Newspaper / Magazine", "Radio Broadcast", "Television Broadcast", "Podcast", "Social Media / Official Release"],
+                default=["Online"]
+            )
             man_framing = st.selectbox("Representation / Framing Mode", ["Expert Commentator / Sector Authority", "Positive Framing", "Negative Framing"])
-            man_reach = st.text_input("Audience Reach / Circulation (if known)", placeholder="e.g., 1.2M Monthly Unique Audience (Roy Morgan) or 450,000 [Publisher Self-Reported / Unverified]")
         
         with m_col2:
             man_topic = st.text_input("Story Title / Event Topic", placeholder="e.g., Commercialization of Spent Coffee Biochar Infrastructure")
             man_depth = st.selectbox("Prominence / Story Depth", ["Main Focus of Story", "Significant Segment", "Minor Mention"])
             man_co_represented = st.text_input("Other Co-Represented Entities / Orgs", placeholder="e.g., Macedon Ranges Shire Council, BildGroup, VicRoads")
+            man_reach = st.text_input("Audience Reach / Circulation (if known)", placeholder="e.g., 1.2M Monthly Unique Audience (Roy Morgan) or 450,000 [Publisher Self-Reported / Unverified]")
             man_byline = st.text_input("Author / Journalist Byline (Optional)", placeholder="e.g., Sarah Martin")
             
         man_summary = st.text_area("Content Summary & Key Context Snippet", placeholder="Summarise core claims, key quotes, or context discussed during the segment/article...")
-        submit_manual = st.form_submit_button("➕ Merge Manual Record Into Executive Brief")
+        submit_manual = st.form_submit_button("➕ Merge Batch Media Outlets Into Executive Brief")
 
 # Active Scope Calculation
 if search_query_input:
@@ -377,19 +399,24 @@ btn_label = "Generate Executive Brief" if st.session_state.cumulative_brief is N
 
 if st.button(btn_label) or submit_manual:
     if not search_query_input and not custom_urls_input and not submit_manual and not st.session_state.executed_query:
-        st.error("Please enter a search query, paste article URLs, or complete the manual entry form.")
+        st.error("Please enter a search query, paste article URLs, or complete the direct entry form.")
     elif "Gemini" in api_provider and not gemini_key:
         st.error("Please enter your Gemini API Key in the sidebar.")
     else:
         with st.status("Synthesizing Executive Intelligence...", expanded=True) as status:
             current_date = datetime.datetime.now().strftime("%B %d, %Y")
             
-            # Manual Form Ingestion Buffer Construction
+            # Multi-Outlet Ingestion Buffer Construction
             manual_payload_prompt = ""
-            if submit_manual and man_outlet.strip():
+            if submit_manual and raw_outlets_batch.strip():
+                outlets_list = [line.strip() for line in raw_outlets_batch.split("\n") if line.strip()]
+                mediums_str = ", ".join(man_mediums) if man_mediums else "Online"
+                outlets_str = ", ".join(outlets_list[:100])
+                
                 manual_payload_prompt = f"""
-                EXPLICIT MANUAL MEDIA RECORD ENTERED BY ANALYST:
-                - Outlet / Organisation: {man_outlet} ({man_medium})
+                EXPLICIT BATCH MEDIA OUTLETS ENTERED BY ANALYST ({len(outlets_list)} outlets submitted):
+                - Outlets / Organisations: {outlets_str}
+                - Media Formats Covered: {mediums_str}
                 - Story Title / Topic: {man_topic}
                 - Representation Framing: {man_framing}
                 - Prominence Depth: {man_depth}
@@ -397,16 +424,16 @@ if st.button(btn_label) or submit_manual:
                 - Author Byline: {man_byline if man_byline.strip() else 'not stated'}
                 - Audience Reach / Circulation: {man_reach if man_reach.strip() else 'Not stated'}
                 - Content Summary: {man_summary}
-                INSTRUCTION: Add this manual media hit into the report items array as a verified record.
+                INSTRUCTION: Merge these batch media hits into the report items array as verified coverage.
                 """
 
             existing_brief_context = ""
             if st.session_state.cumulative_brief:
                 existing_brief_context = f"""
-                EXISTING REPORT BUFFER:
+                EXISTING REPORT BUFFER (ADDITIVE CUMULATIVE INGESTION):
                 - Headline Synthesis: {st.session_state.cumulative_brief.get('headline_synthesis', '')}
-                - Current Items Analyzed: {len(st.session_state.cumulative_brief.get('items', []))}
-                INSTRUCTION: Merge the new search results, custom URLs, or manual form entry with this existing intelligence. Do NOT discard prior valid coverage cards.
+                - Current Items Analysed: {len(st.session_state.cumulative_brief.get('items', []))}
+                INSTRUCTION: Synthesize the new search results, custom URLs, or batch manual entries TOGETHER with this existing intelligence. Do NOT discard prior valid coverage cards.
                 """
             
             urls_formatted = "\n".join([f"- {u}" for u in custom_urls_input[:100]]) if custom_urls_input else "None provided."
@@ -416,9 +443,7 @@ if st.button(btn_label) or submit_manual:
             Today is {current_date}.
             You are WWM's Senior Strategic Intelligence Analyst preparing a brief for government ministers, university vice-chancellors, and corporate executive boards.
             
-            SPELLING & TONAL MANDATE: Use strict AUSTRALIAN ENGLISH spelling throughout (e.g. organisation, summarise, characterise, licence, labelling).
-            
-            REPORT OUTPUT LANGUAGE: Synthesize the entire executive brief in {output_language}.
+            REPORT OUTPUT LANGUAGE: Synthesize the entire executive brief in {output_language}. Use clean, professional language appropriate for executive leadership.
             
             SCOPE & INGESTION SOURCES:
             - Active Strategy Query: {active_q}
@@ -428,7 +453,7 @@ if st.button(btn_label) or submit_manual:
             {existing_brief_context}
             
             HIGH-VOLUME QUERY MANAGEMENT:
-            Count the exact number of verified items analysed in this payload and state it factually in 'verified_coverage_metric' (e.g. "Media Index: 7 primary tier-1 and national media items analysed across scope").
+            Count the exact number of verified items analysed in this payload and state it factually in 'verified_coverage_metric' (e.g. "Media Index: 9 primary tier-1 and national media items analysed across scope").
             Do NOT output dozens of repetitive cards. Present ONLY the top 5 to 8 most influential items across Global Tier-1 Mastheads, National Press, Industry Trade Media, and Official Primary Releases.
             
             AUDIENCE REACH & CIRCULATION METRICS:
@@ -530,7 +555,7 @@ if st.session_state.cumulative_brief:
     
     st.markdown(f"""
         <div class="disclaimer-box">
-            <b>Executive Verification Note:</b> WWM extracts lead paragraphs and 20-word keyword context windows to comply with international fair-use copyright guidelines. Output language set to <b>{output_language}</b> using Australian English standards. Always confirm critical details against canonical source URLs prior to executive distribution.
+            <b>Executive Verification Note:</b> WWM extracts lead paragraphs and 20-word keyword context windows to comply with international fair-use copyright guidelines. Output language set to <b>{output_language}</b>. Always confirm critical details against canonical source URLs prior to executive distribution.
         </div>
     """, unsafe_allow_html=True)
             
