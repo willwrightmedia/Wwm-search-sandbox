@@ -92,7 +92,7 @@ with st.sidebar:
     report_format_tier = st.selectbox(
         "Select report type",
         [
-            "Executive leadership brief (1 page PDF — C-Suite and Board)",
+            "Executive leadership brief (Strict 1 page PDF — C-Suite and Board)",
             "Strategic advisory report (2 pages PDF — Subject experts)",
             "Comprehensive media operations report (Up to 4 pages — PR and Media teams)",
             "Social media intelligence digest (Up to 2 pages — Digital teams)"
@@ -197,21 +197,20 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE ---
+# --- BRANDED PDF ENGINE (CLEAN TOP HEADER, NO BLACK BANNER, STRICT 1-PAGE ENGINE) ---
 class PDFReport(FPDF):
     def header(self):
-        self.set_fill_color(20, 18, 15)
-        self.rect(0, 0, 210, 20, 'F')
+        # Clean unobtrusive top text header without black fill rectangle
         self.set_font('Helvetica', 'B', 8)
-        self.set_text_color(198, 188, 169)
-        self.set_y(7)
+        self.set_text_color(107, 107, 107) # Muted Graphite
+        self.set_y(8)
         self.cell(0, 5, 'WORLD WIDE MONITOR  |  EXECUTIVE BRIEF', align='R')
 
     def footer(self):
-        self.set_y(-12)
-        self.set_font('Helvetica', '', 7)
+        self.set_y(-10)
+        self.set_font('Helvetica', '', 6.5)
         self.set_text_color(107, 107, 107)
-        self.cell(0, 8, 'Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting.', align='C')
+        self.cell(0, 5, 'Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting.', align='C')
 
 def clean_pdf_text(text):
     if not text:
@@ -224,116 +223,141 @@ def clean_pdf_text(text):
 def is_valid_url(url):
     return url and url.strip().lower() not in ["none", "null", "", "direct record input"] and url.strip().startswith("http")
 
-def generate_pdf_brief(brief, query, lang):
+def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     pdf = PDFReport()
-    pdf.set_fill_color(242, 237, 227)
-    margin = 15
-    top_margin = 28
+    pdf.set_fill_color(242, 237, 227) # Bone background (#F2EDE3)
+    margin = 12
+    top_margin = 14
     pdf.set_margins(margin, top_margin, margin)
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=18)
+    
+    # Disable auto page break if strict 1-page is required
+    if is_strict_one_page:
+        pdf.set_auto_page_break(auto=False)
+    else:
+        pdf.set_auto_page_break(auto=True, margin=14)
+        
     epw = pdf.epw
     
     clean_query = query.strip()
-    if len(clean_query) > 75:
-        clean_query = clean_query[:72] + "..."
+    if len(clean_query) > 65:
+        clean_query = clean_query[:62] + "..."
         
     metric_str = brief.get("verified_coverage_metric", "")
-    if len(metric_str) > 85:
-        metric_str = metric_str[:82] + "..."
+    if len(metric_str) > 75:
+        metric_str = metric_str[:72] + "..."
 
-    pdf.set_font('Helvetica', 'B', 15)
+    # Title & Metadata
+    title_size = 13 if is_strict_one_page else 15
+    pdf.set_font('Helvetica', 'B', title_size)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.cell(epw, 8, clean_pdf_text(f'Executive Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 6 if is_strict_one_page else 8, clean_pdf_text(f'Executive Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     
-    pdf.set_font('Helvetica', 'I', 8)
+    pdf.set_font('Helvetica', 'I', 7.5 if is_strict_one_page else 8)
     pdf.set_text_color(107, 107, 107)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 4, clean_pdf_text(f'Scope: {clean_query}  |  {metric_str}'))
+    pdf.multi_cell(epw, 3.5 if is_strict_one_page else 4, clean_pdf_text(f'Scope: {clean_query}  |  {metric_str}'))
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'))
+    pdf.multi_cell(epw, 3.5 if is_strict_one_page else 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'))
     
+    # Divider
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
-    pdf.ln(2)
+    pdf.ln(1.5 if is_strict_one_page else 2)
     pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
-    pdf.ln(4)
+    pdf.ln(2.5 if is_strict_one_page else 4)
     
-    pdf.set_font('Helvetica', 'B', 11)
+    # Text sizing adjustments for strict 1-page fit
+    h_size = 9.5 if is_strict_one_page else 11
+    body_size = 8.5 if is_strict_one_page else 9.5
+    lh = 3.6 if is_strict_one_page else 4.5
+    gap = 2 if is_strict_one_page else 3
+    
+    # Section 1: Executive overview
+    pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '1. Executive overview', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 9.5)
+    pdf.cell(epw, 4.5 if is_strict_one_page else 6, '1. Executive overview', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('headline_synthesis', '')))
-    pdf.ln(3)
+    pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('headline_synthesis', '')))
+    pdf.ln(gap)
     
-    pdf.set_font('Helvetica', 'B', 11)
+    # Section 2: Positioning
+    pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '2. Positioning and reputation', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 9.5)
+    pdf.cell(epw, 4.5 if is_strict_one_page else 6, '2. Positioning and reputation', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('sentiment_framing_read', '')))
-    pdf.ln(3)
+    pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('sentiment_framing_read', '')))
+    pdf.ln(gap)
     
-    pdf.set_font('Helvetica', 'B', 11)
+    # Section 3: Quotes
+    pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '3. Spokesperson quotes and commentary', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 9.5)
+    pdf.cell(epw, 4.5 if is_strict_one_page else 6, '3. Spokesperson quotes and commentary', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
-    pdf.ln(3)
+    pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
+    pdf.ln(gap)
 
-    pdf.set_font('Helvetica', 'B', 11)
+    # Section 4: Opportunities
+    pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '4. Strategic engagement opportunities', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 9.5)
+    pdf.cell(epw, 4.5 if is_strict_one_page else 6, '4. Strategic engagement opportunities', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('engagement_opportunities', '')))
-    pdf.ln(4)
+    pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('engagement_opportunities', '')))
+    pdf.ln(gap)
     
-    pdf.set_font('Helvetica', 'B', 11)
+    # Section 5: Coverage Records (Capped for 1-Page Briefs)
+    pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '5. Tier-1 sourced media records and verified audience reach', new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(2)
+    pdf.cell(epw, 4.5 if is_strict_one_page else 6, '5. Tier-1 sourced media records and verified audience reach', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(1.5 if is_strict_one_page else 2)
     
-    for item in brief.get("items", []):
-        if pdf.get_y() > 235:
+    # Cap item count strictly if 1-page tier is active
+    items_to_render = brief.get("items", [])
+    if is_strict_one_page:
+        items_to_render = items_to_render[:3]
+    
+    for item in items_to_render:
+        if not is_strict_one_page and pdf.get_y() > 240:
             pdf.add_page()
             
-        pdf.set_font('Helvetica', 'B', 9.5)
+        pdf.set_font('Helvetica', 'B', 8.5 if is_strict_one_page else 9.5)
         pdf.set_text_color(20, 18, 15)
         pdf.set_x(margin)
         title_text = f"• {item.get('event_title', '')} ({item.get('representation_mode', '')})"
-        pdf.multi_cell(epw, 4.5, clean_pdf_text(title_text))
+        pdf.multi_cell(epw, 3.8 if is_strict_one_page else 4.5, clean_pdf_text(title_text))
         
-        pdf.set_font('Helvetica', '', 8.5)
+        pdf.set_font('Helvetica', '', 7.5 if is_strict_one_page else 8.5)
         pdf.set_text_color(35, 35, 35)
         pdf.set_x(margin)
-        pdf.multi_cell(epw, 4, clean_pdf_text(f"Key messages delivered: {item.get('key_message_delivered', 'Standard coverage')}"))
+        pdf.multi_cell(epw, 3.4 if is_strict_one_page else 4, clean_pdf_text(f"Key messages: {item.get('key_message_delivered', 'Standard coverage')}"))
         pdf.set_x(margin)
-        pdf.multi_cell(epw, 4, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
+        pdf.multi_cell(epw, 3.4 if is_strict_one_page else 4, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
         
         for outlet in item.get('covering_outlets', []):
-            pdf.set_font('Helvetica', 'I', 7.5)
+            pdf.set_font('Helvetica', 'I', 7 if is_strict_one_page else 7.5)
             pdf.set_text_color(107, 107, 107)
             outlet_line = f"  - {outlet.get('outlet_name', '')} ({outlet.get('medium_type', 'Online')}) | Date: {outlet.get('publication_date', '')} | Reach: {outlet.get('audience_reach_metrics', 'Not stated')}"
             pdf.set_x(margin)
-            pdf.multi_cell(epw, 3.8, clean_pdf_text(outlet_line))
+            pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(outlet_line))
             
-        pdf.ln(2)
+        pdf.ln(1.5 if is_strict_one_page else 2)
         pdf.set_draw_color(220, 215, 205)
         pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
-        pdf.ln(2.5)
+        pdf.ln(1.5 if is_strict_one_page else 2.5)
         
     return bytes(pdf.output())
 
@@ -609,9 +633,10 @@ if st.session_state.cumulative_brief:
             key="export_format_top"
         )
         exec_query = st.session_state.get("executed_query", "Executive Media Intelligence Scope")
+        is_strict_1page = "Executive leadership brief" in report_format_tier
         
         if "PDF" in export_format:
-            st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, output_language), f"WWM_Executive_Brief_{output_language}.pdf", "application/pdf", key="dl_pdf_top")
+            st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, output_language, is_strict_1page), f"WWM_Executive_Brief_{output_language}.pdf", "application/pdf", key="dl_pdf_top")
         elif "Word" in export_format:
             st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, output_language), f"WWM_Executive_Brief_{output_language}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
         else:
