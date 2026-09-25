@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WILL WRIGHT MEDIA BRANDING) ---
-st.set_page_config(page_title="World Wide Monitor | Executive Intelligence", page_icon="📡", layout="wide")
+# --- UI CONFIGURATION (WWM BRANDING) ---
+st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
 # CUSTOM CSS - WWM EDITORIAL BRAND PALETTE (#14120F Ink, #F2EDE3 Bone, #6B6B6B Muted)
 st.markdown("""
@@ -61,8 +61,8 @@ if "executed_query" not in st.session_state:
 
 # --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
-    st.markdown("### WILL WRIGHT MEDIA")
-    st.caption("STRATEGIC COMMUNICATIONS · MEDIA INTELLIGENCE")
+    st.markdown("### WWM")
+    st.caption("GLOBAL MEDIA INSIGHTS")
     st.divider()
     
     st.subheader("1. Intelligence engine")
@@ -154,9 +154,9 @@ with st.sidebar:
 # --- BRANDED EXECUTIVE HEADER ---
 st.markdown("""
     <div class="brand-header">
-        <div class="brand-tagline">WILL WRIGHT MEDIA · EXECUTIVE BRIEF</div>
-        <div class="brand-title">Great work doesn't speak for itself.</div>
-        <div class="brand-subtitle">Strategic media intelligence, verified audience reach analytics, and cross-lingual reporting for leadership.</div>
+        <div class="brand-tagline">GLOBAL MEDIA INSIGHTS</div>
+        <div class="brand-title">World Wide Monitor</div>
+        <div class="brand-subtitle">Strategic media intelligence, audience reach analytics, and cross-lingual reporting for leadership.</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -175,14 +175,14 @@ class CoverageOutlet(BaseModel):
     publication_date: str = Field(description="Publication or post date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
     canonical_source_url: str = Field(description="Direct, clean resolving web URL verbatim from grounding. Write 'None' if unverified or broken.")
-    audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
+    audience_reach_metrics: str = Field(description="Audience reach or follower counts (Minimum threshold: 100,000 for press; 10,000 for social). Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual title describing the coverage event.")
     source_category: str = Field(description="Categorize as: 'Global Tier-1', 'National Press', 'Major Social Media', 'Industry Trade Press', or 'Official Primary Release'")
     prominence_depth: str = Field(description="Categorize as: 'Lead Story / Feature', 'Significant Segment', or 'Passing Mention'")
     representation_mode: str = Field(description="Categorize as: 'Positive Framing', 'Negative Framing', or 'Expert Commentator / Sector Authority'")
-    key_message_penetration: str = Field(description="Specific institutional key messages that landed in this item.")
+    key_message_delivered: str = Field(description="Specific institutional key messages delivered in this item.")
     co_represented_entities: str = Field(description="Other individuals, companies, or government agencies quoted or featured in the item.")
     core_event_summary: str = Field(description="Copyright-compliant summary restricted to lead paragraphs and 20-word context windows surrounding key terms.")
     covering_outlets: list[CoverageOutlet]
@@ -193,26 +193,25 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     total_combined_audience_reach: str = Field(description="Summed aggregate verifiable reach across major news and verified social channels (e.g., 'Total Combined Reach: 185.5 Million Audience').")
     headline_synthesis: str = Field(description="1-2 sentence executive overview of overall coverage trajectory.")
     sentiment_framing_read: str = Field(description="1-2 concise lines evaluating framing. Recognize expert authority: if addressing difficult sector topics, frame this POSITIVELY as domain leadership.")
-    subject_quoted_vs_reported: str = Field(description="Concise summary of direct subject quotes vs. what external parties, media, or social commentary reported about them.")
+    subject_quoted_vs_reported: str = Field(description="Concise summary of direct spokesperson quotes vs. what external media or social commentary reported about them.")
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE (FIXED ALIGNMENT, TRUNCATED METADATA, & PAGE BREAK PADDING) ---
+# --- BRANDED PDF ENGINE ---
 class PDFReport(FPDF):
     def header(self):
-        # Dark Ink Header Banner Block (#14120F)
         self.set_fill_color(20, 18, 15)
         self.rect(0, 0, 210, 20, 'F')
         self.set_font('Helvetica', 'B', 8)
         self.set_text_color(198, 188, 169)
         self.set_y(7)
-        self.cell(0, 5, 'WILL WRIGHT MEDIA  |  EXECUTIVE INTELLIGENCE BRIEF', align='R')
+        self.cell(0, 5, 'WORLD WIDE MONITOR  |  EXECUTIVE BRIEF', align='R')
 
     def footer(self):
         self.set_y(-12)
         self.set_font('Helvetica', '', 7)
         self.set_text_color(107, 107, 107)
-        self.cell(0, 8, 'Generated with AI assistance and reviewed by Will Wright Media. Sources are linked where verified; confirm critical details against source before acting.', align='C')
+        self.cell(0, 8, 'Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting.', align='C')
 
 def clean_pdf_text(text):
     if not text:
@@ -229,13 +228,12 @@ def generate_pdf_brief(brief, query, lang):
     pdf = PDFReport()
     pdf.set_fill_color(242, 237, 227)
     margin = 15
-    top_margin = 28 # Generous margin to prevent page 2 text bleed into header box
+    top_margin = 28
     pdf.set_margins(margin, top_margin, margin)
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=18)
     epw = pdf.epw
     
-    # Clean and truncate query scope if excessively long to prevent header collision
     clean_query = query.strip()
     if len(clean_query) > 75:
         clean_query = clean_query[:72] + "..."
@@ -244,11 +242,10 @@ def generate_pdf_brief(brief, query, lang):
     if len(metric_str) > 85:
         metric_str = metric_str[:82] + "..."
 
-    # Document Header Title & Metadata Block
     pdf.set_font('Helvetica', 'B', 15)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.cell(epw, 8, clean_pdf_text(f'Executive Intelligence Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, clean_pdf_text(f'Executive Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     
     pdf.set_font('Helvetica', 'I', 8)
     pdf.set_text_color(107, 107, 107)
@@ -257,14 +254,12 @@ def generate_pdf_brief(brief, query, lang):
     pdf.set_x(margin)
     pdf.multi_cell(epw, 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'))
     
-    # Hairline Section Divider (#C6BCA9)
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
     pdf.ln(2)
     pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
     pdf.ln(4)
     
-    # Section 1: Executive overview
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -275,29 +270,26 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(3)
     
-    # Section 2: Quality of institutional positioning
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '2. Quality of institutional positioning', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 6, '2. Positioning and reputation', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', 9.5)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('sentiment_framing_read', '')))
     pdf.ln(3)
     
-    # Section 3: Quotes vs commentary
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '3. Direct quotes vs. external commentary', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 6, '3. Spokesperson quotes and commentary', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', 9.5)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
     pdf.ln(3)
 
-    # Section 4: Strategic engagement opportunities
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -308,7 +300,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('engagement_opportunities', '')))
     pdf.ln(4)
     
-    # Section 5: Coverage Records
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -316,7 +307,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.ln(2)
     
     for item in brief.get("items", []):
-        # Strict Page Break Guard: Force new page if near bottom to prevent header bleed
         if pdf.get_y() > 235:
             pdf.add_page()
             
@@ -329,7 +319,7 @@ def generate_pdf_brief(brief, query, lang):
         pdf.set_font('Helvetica', '', 8.5)
         pdf.set_text_color(35, 35, 35)
         pdf.set_x(margin)
-        pdf.multi_cell(epw, 4, clean_pdf_text(f"Message penetration: {item.get('key_message_penetration', 'Standard coverage')}"))
+        pdf.multi_cell(epw, 4, clean_pdf_text(f"Key messages delivered: {item.get('key_message_delivered', 'Standard coverage')}"))
         pdf.set_x(margin)
         pdf.multi_cell(epw, 4, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
         
@@ -349,21 +339,21 @@ def generate_pdf_brief(brief, query, lang):
 
 # --- MARKDOWN & WORD EXPORTS ---
 def generate_markdown_brief(brief, query, lang):
-    md = f"# CONFIDENTIAL | WILL WRIGHT MEDIA EXECUTIVE BRIEF ({lang.upper()})\n\n"
+    md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n\n"
     md += f"**Scope:** `{query}`  \n"
     md += f"**Coverage index:** {brief.get('verified_coverage_metric', 'Verified Scope')}  \n"
     md += f"**Reach metric:** {brief.get('total_combined_audience_reach', '')}\n\n"
     md += f"## 1. Executive summary and strategic read\n"
     md += f"**Overview:** {brief['headline_synthesis']}\n\n"
-    md += f"**Quality of institutional positioning:** {brief['sentiment_framing_read']}\n\n"
-    md += f"**Direct quotes and external commentary:** {brief['subject_quoted_vs_reported']}\n\n"
+    md += f"**Positioning and reputation:** {brief['sentiment_framing_read']}\n\n"
+    md += f"**Spokesperson quotes and commentary:** {brief['subject_quoted_vs_reported']}\n\n"
     md += f"**Strategic engagement opportunities:** {brief['engagement_opportunities']}\n\n"
     md += f"---\n\n"
     md += f"## 2. Key media records and verified audience reach\n\n"
     for item in brief["items"]:
         md += f"### 📌 {item['event_title']}\n"
         md += f"- **Category:** {item['source_category']} | **Prominence:** {item['prominence_depth']}\n"
-        md += f"- **Framing:** {item['representation_mode']} | **Message penetration:** {item['key_message_penetration']}\n"
+        md += f"- **Framing:** {item['representation_mode']} | **Key messages delivered:** {item['key_message_delivered']}\n"
         md += f"- **Summary:** {item['core_event_summary']}\n"
         for outlet in item["covering_outlets"]:
             url = outlet.get('canonical_source_url', '')
@@ -371,12 +361,12 @@ def generate_markdown_brief(brief, query, lang):
             md += f"  - **{outlet['outlet_name']}** ({outlet['medium_type']}) — *Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}{link_str}\n"
             md += f"    - *Audience reach:* {outlet['audience_reach_metrics']}\n"
         md += "\n"
-    md += f"\n\n*Generated with AI assistance and reviewed by Will Wright Media. Confirm critical details against source before acting.*"
+    md += f"\n\n*Generated with AI assistance and reviewed by WWM. Confirm critical details against source before acting.*"
     return md
 
 def generate_docx_brief(brief, query, lang):
     doc = Document()
-    doc.add_heading(f"CONFIDENTIAL | WILL WRIGHT MEDIA EXECUTIVE BRIEF ({lang.upper()})", level=0)
+    doc.add_heading(f"CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})", level=0)
     
     p_meta = doc.add_paragraph()
     p_meta.add_run("Scope: ").bold = True
@@ -388,15 +378,15 @@ def generate_docx_brief(brief, query, lang):
     
     doc.add_heading("1. Executive summary and strategic read", level=1)
     doc.add_paragraph(f"Overview: {brief['headline_synthesis']}")
-    doc.add_paragraph(f"Quality of positioning: {brief['sentiment_framing_read']}")
-    doc.add_paragraph(f"Direct quotes and external commentary: {brief['subject_quoted_vs_reported']}")
+    doc.add_paragraph(f"Positioning and reputation: {brief['sentiment_framing_read']}")
+    doc.add_paragraph(f"Spokesperson quotes and commentary: {brief['subject_quoted_vs_reported']}")
     doc.add_paragraph(f"Strategic engagement opportunities: {brief['engagement_opportunities']}")
     
     doc.add_heading("2. Key media records and verified audience reach", level=1)
     for item in brief["items"]:
         doc.add_heading(f"📌 {item['event_title']}", level=2)
         doc.add_paragraph(f"Category: {item['source_category']} | Prominence: {item['prominence_depth']}")
-        doc.add_paragraph(f"Framing: {item['representation_mode']} | Message penetration: {item['key_message_penetration']}")
+        doc.add_paragraph(f"Framing: {item['representation_mode']} | Key messages delivered: {item['key_message_delivered']}")
         doc.add_paragraph(f"Summary: {item['core_event_summary']}")
         for outlet in item["covering_outlets"]:
             p = doc.add_paragraph(style='List Bullet')
@@ -564,7 +554,7 @@ if st.button(btn_label) or submit_manual:
             Count the exact number of verified items analysed in this payload and state it factually in 'verified_coverage_metric' (e.g. "Media Index: 7 tier-1 and national records analysed; low-value sources below reach thresholds suppressed").
             Do NOT output dozens of repetitive cards. Present ONLY the top 5 to 8 most influential items across Global Tier-1 Mastheads, National Press, Industry Trade Media, and Official Primary Releases.
             
-            AUDIENCE REACH & MESSAGE PENETRATION:
+            AUDIENCE REACH & KEY MESSAGES DELIVERED:
             - Sum total aggregate reach across all news and social channels meeting minimum thresholds and output in 'total_combined_audience_reach' (e.g. "Total Combined Reach: 185.5 Million Audience").
             - For each coverage outlet, extract or estimate verifiable audience reach.
               - If sourced from official rating bodies (Roy Morgan, AMAA, OztAM, CRA, IAB Australia), present figures cleanly (e.g. "1.4 Million Monthly Unique Audience (Roy Morgan)").
@@ -575,7 +565,7 @@ if st.button(btn_label) or submit_manual:
             
             STRATEGIC ANALYSIS INSTRUCTIONS:
             1. sentiment_framing_read: Evaluate quality of positioning. Recognize expert authority: if a subject addresses challenging or negative sector topics (e.g. waste crisis or industrial risk), frame this POSITIVELY as domain expertise.
-            2. subject_quoted_vs_reported: Summarise direct subject quotes vs. external commentary.
+            2. subject_quoted_vs_reported: Summarise direct spokesperson quotes vs. external commentary.
             3. engagement_opportunities: Identify prospective channels, unaddressed sector topics, and outreach targets.
             """
             
@@ -606,7 +596,7 @@ if st.session_state.cumulative_brief:
     
     header_col1, header_col2 = st.columns([2, 2])
     with header_col1:
-        st.caption("CONFIDENTIAL | WILL WRIGHT MEDIA INTELLIGENCE BRIEF")
+        st.caption("CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF")
         st.header(f"Executive brief ({output_language})")
         if brief.get("verified_coverage_metric"):
             st.caption(f"📊 **Coverage scope:** {brief['verified_coverage_metric']}")
@@ -637,10 +627,10 @@ if st.session_state.cumulative_brief:
         
         col1, col2 = st.columns(2)
         with col1:
-            st.subheader("2. Quality of institutional positioning")
+            st.subheader("2. Positioning and reputation")
             st.write(brief["sentiment_framing_read"])
             
-            st.subheader("3. Direct quotes vs. external commentary")
+            st.subheader("3. Spokesperson quotes and commentary")
             st.write(brief["subject_quoted_vs_reported"])
         with col2:
             st.subheader("4. Strategic engagement opportunities")
@@ -651,7 +641,7 @@ if st.session_state.cumulative_brief:
         for item in brief["items"]:
             with st.expander(f"📌 {item['event_title']}"):
                 st.markdown(f"**Category:** `{item['source_category']}` | **Prominence:** `{item['prominence_depth']}`")
-                st.markdown(f"**Framing:** `{item['representation_mode']}` | **Message penetration:** `{item['key_message_penetration']}`")
+                st.markdown(f"**Framing:** `{item['representation_mode']}` | **Key messages delivered:** `{item['key_message_delivered']}`")
                 st.write(f"**Summary:** {item['core_event_summary']}")
                 st.markdown("**Covering outlets and audience reach metrics:**")
                 
@@ -666,7 +656,7 @@ if st.session_state.cumulative_brief:
     
     st.markdown(f"""
         <div class="disclaimer-box">
-            <b>Executive verification note:</b> Generated with AI assistance and reviewed by Will Wright Media. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{output_language}</b>.
+            <b>Executive verification note:</b> Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{output_language}</b>.
         </div>
     """, unsafe_allow_html=True)
             
