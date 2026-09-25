@@ -13,7 +13,6 @@ from fpdf import FPDF
 st.set_page_config(page_title="World Wide Monitor | Executive Intelligence", page_icon="📡", layout="wide")
 
 # CUSTOM CSS - WWM EDITORIAL BRAND PALETTE (#14120F Ink, #F2EDE3 Bone, #6B6B6B Muted)
-# HIGH-CONTRAST FORM INPUT FIX: Forces crisp dark ink text (#14120F) on bone white inputs
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -27,7 +26,7 @@ st.markdown("""
     .brand-title { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
     .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: #C6BCA9; margin-top: 8px; }
 
-    /* HIGH-CONTRAST VISIBILITY FOR ALL INPUT FIELDS & PASS 3 TEXTAREAS */
+    /* HIGH-CONTRAST BONE INPUT FIELDS */
     div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
         background-color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important; border-radius: 2px !important;
     }
@@ -168,7 +167,7 @@ st.info(
     icon="ℹ️"
 )
 
-# --- STRICT AUSTRALIAN ENGLISH SCHEMA WITH VERIFIED AUDIENCE THRESHOLDS ---
+# --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
 class CoverageOutlet(BaseModel):
     outlet_name: str = Field(description="Publisher, broadcaster, major social channel, or government newsroom name verbatim.")
     medium_type: str = Field(description="Media format(s) covering this story (e.g., Online Press, Radio, TV, Print, Social Media).")
@@ -176,7 +175,7 @@ class CoverageOutlet(BaseModel):
     publication_date: str = Field(description="Publication or post date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
     canonical_source_url: str = Field(description="Direct, clean resolving web URL verbatim from grounding. Write 'None' if unverified or broken.")
-    audience_reach_metrics: str = Field(description="Audience reach or follower counts (Minimum threshold: 100,000 for press; 10,000 for social). Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
+    audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual title describing the coverage event.")
@@ -198,9 +197,10 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE ---
+# --- BRANDED PDF ENGINE (FIXED ALIGNMENT, TRUNCATED METADATA, & PAGE BREAK PADDING) ---
 class PDFReport(FPDF):
     def header(self):
+        # Dark Ink Header Banner Block (#14120F)
         self.set_fill_color(20, 18, 15)
         self.rect(0, 0, 210, 20, 'F')
         self.set_font('Helvetica', 'B', 8)
@@ -229,12 +229,22 @@ def generate_pdf_brief(brief, query, lang):
     pdf = PDFReport()
     pdf.set_fill_color(242, 237, 227)
     margin = 15
-    top_margin = 28
+    top_margin = 28 # Generous margin to prevent page 2 text bleed into header box
     pdf.set_margins(margin, top_margin, margin)
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=18)
     epw = pdf.epw
     
+    # Clean and truncate query scope if excessively long to prevent header collision
+    clean_query = query.strip()
+    if len(clean_query) > 75:
+        clean_query = clean_query[:72] + "..."
+        
+    metric_str = brief.get("verified_coverage_metric", "")
+    if len(metric_str) > 85:
+        metric_str = metric_str[:82] + "..."
+
+    # Document Header Title & Metadata Block
     pdf.set_font('Helvetica', 'B', 15)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
@@ -243,15 +253,18 @@ def generate_pdf_brief(brief, query, lang):
     pdf.set_font('Helvetica', 'I', 8)
     pdf.set_text_color(107, 107, 107)
     pdf.set_x(margin)
-    pdf.cell(epw, 4, clean_pdf_text(f'Scope: {query} | {brief.get("verified_coverage_metric", "")}'), new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(epw, 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'), new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(epw, 4, clean_pdf_text(f'Scope: {clean_query}  |  {metric_str}'))
+    pdf.set_x(margin)
+    pdf.multi_cell(epw, 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'))
     
+    # Hairline Section Divider (#C6BCA9)
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
     pdf.ln(2)
     pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
     pdf.ln(4)
     
+    # Section 1: Executive overview
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -262,6 +275,7 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(3)
     
+    # Section 2: Quality of institutional positioning
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -272,6 +286,7 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('sentiment_framing_read', '')))
     pdf.ln(3)
     
+    # Section 3: Quotes vs commentary
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -282,6 +297,7 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
     pdf.ln(3)
 
+    # Section 4: Strategic engagement opportunities
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -292,6 +308,7 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('engagement_opportunities', '')))
     pdf.ln(4)
     
+    # Section 5: Coverage Records
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -299,7 +316,8 @@ def generate_pdf_brief(brief, query, lang):
     pdf.ln(2)
     
     for item in brief.get("items", []):
-        if pdf.get_y() > 240:
+        # Strict Page Break Guard: Force new page if near bottom to prevent header bleed
+        if pdf.get_y() > 235:
             pdf.add_page()
             
         pdf.set_font('Helvetica', 'B', 9.5)
@@ -331,9 +349,9 @@ def generate_pdf_brief(brief, query, lang):
 
 # --- MARKDOWN & WORD EXPORTS ---
 def generate_markdown_brief(brief, query, lang):
-    md = f"# CONFIDENTIAL | WILL WRIGHT MEDIA EXECUTIVE BRIEF ({lang.upper()})\n"
-    md += f"**Scope:** `{query}`\n"
-    md += f"**Coverage index:** {brief.get('verified_coverage_metric', 'Verified Scope')}\n"
+    md = f"# CONFIDENTIAL | WILL WRIGHT MEDIA EXECUTIVE BRIEF ({lang.upper()})\n\n"
+    md += f"**Scope:** `{query}`  \n"
+    md += f"**Coverage index:** {brief.get('verified_coverage_metric', 'Verified Scope')}  \n"
     md += f"**Reach metric:** {brief.get('total_combined_audience_reach', '')}\n\n"
     md += f"## 1. Executive summary and strategic read\n"
     md += f"**Overview:** {brief['headline_synthesis']}\n\n"
@@ -359,9 +377,14 @@ def generate_markdown_brief(brief, query, lang):
 def generate_docx_brief(brief, query, lang):
     doc = Document()
     doc.add_heading(f"CONFIDENTIAL | WILL WRIGHT MEDIA EXECUTIVE BRIEF ({lang.upper()})", level=0)
-    doc.add_paragraph(f"Scope: {query}")
-    doc.add_paragraph(f"Coverage index: {brief.get('verified_coverage_metric', 'Verified Scope')}")
-    doc.add_paragraph(f"Audience reach: {brief.get('total_combined_audience_reach', '')}")
+    
+    p_meta = doc.add_paragraph()
+    p_meta.add_run("Scope: ").bold = True
+    p_meta.add_run(f"{query}\n")
+    p_meta.add_run("Coverage Index: ").bold = True
+    p_meta.add_run(f"{brief.get('verified_coverage_metric', 'Verified Scope')}\n")
+    p_meta.add_run("Audience Reach: ").bold = True
+    p_meta.add_run(f"{brief.get('total_combined_audience_reach', '')}")
     
     doc.add_heading("1. Executive summary and strategic read", level=1)
     doc.add_paragraph(f"Overview: {brief['headline_synthesis']}")
@@ -565,7 +588,7 @@ if st.button(btn_label) or submit_manual:
                         tools=[{"google_search": {}}],
                         response_mime_type="application/json",
                         response_schema=WWMExecutiveAnalysisBrief,
-                        temperature=0.0, # Enforces 100% deterministic, reproducible output
+                        temperature=0.0,
                     )
                 )
                 st.session_state.cumulative_brief = json.loads(response.text)
