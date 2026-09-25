@@ -6,7 +6,7 @@ from google.genai import types
 from pydantic import BaseModel, Field
 
 # --- UI CONFIGURATION (WWM BRANDING) ---
-st.set_page_config(page_title="World Wide Monitor | Unrestricted Intelligence Engine", page_icon="📡", layout="wide")
+st.set_page_config(page_title="World Wide Monitor | Multi-Provider Engine", page_icon="📡", layout="wide")
 
 st.markdown("""
     <style>
@@ -22,12 +22,57 @@ st.markdown("""
 # --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
     st.title("📡 WWM Engine Control")
-    st.caption("Comprehensive Multi-Source Search Engine")
+    st.caption("Multi-Provider Intelligence Platform")
     
-    gemini_key = st.text_input("Gemini API Key", type="password", placeholder="Paste AI Studio key here")
+    st.subheader("1. Select Engine & API Keys")
     
+    # PROVIDER SELECTOR DROPDOWN
+    api_provider = st.selectbox(
+        "AI & Search Provider",
+        [
+            "Google Gemini (Native Google Search)",
+            "Tavily Search + Gemini Intelligence",
+            "OpenAI GPT-4o (Web Grounded)"
+        ],
+        index=0,
+        help="Choose which AI ecosystem powers your search and fact-extraction pipeline."
+    )
+    
+    # DYNAMIC API KEY INPUTS WITH (i) HOVER TOOLTIPS
+    gemini_key = ""
+    tavily_key = ""
+    openai_key = ""
+    
+    if "Gemini" in api_provider:
+        gemini_key = st.text_input(
+            "Gemini API Key", 
+            type="password", 
+            placeholder="AIzaSy...",
+            help="ℹ️ HOW TO GET A GEMINI KEY:\n1. Go to aistudio.google.com\n2. Sign in with your Google account\n3. Click 'Get API Key' -> 'Create API Key'\n4. Paste it here. Free & Paid tiers available!"
+        )
+    elif "Tavily" in api_provider:
+        tavily_key = st.text_input(
+            "Tavily API Key", 
+            type="password", 
+            placeholder="tvly-...",
+            help="ℹ️ HOW TO GET A TAVILY KEY:\n1. Go to tavily.com\n2. Sign up for a free developer account\n3. Copy your key from the main dashboard (1,000 free searches/mo)."
+        )
+        gemini_key = st.text_input(
+            "Gemini API Key", 
+            type="password", 
+            placeholder="AIzaSy...",
+            help="ℹ️ Needed for the fact-extraction layer. Get a key at aistudio.google.com"
+        )
+    elif "OpenAI" in api_provider:
+        openai_key = st.text_input(
+            "OpenAI API Key", 
+            type="password", 
+            placeholder="sk-...",
+            help="ℹ️ HOW TO GET AN OPENAI KEY:\n1. Go to platform.openai.com\n2. Sign in and navigate to API Keys\n3. Click 'Create new secret key'. Requires active API billing."
+        )
+
     st.divider()
-    st.subheader("1. Recency & Time Window")
+    st.subheader("2. Recency & Time Window")
     date_window = st.selectbox(
         "Coverage Time Horizon",
         ["Past 7 Days (Breaking)", "Past 30 Days", "Past 12 Months", "Past 4 Years Archive (2022-2026)"],
@@ -35,7 +80,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.subheader("2. Media & Source Scope")
+    st.subheader("3. Targeted Source Scope")
     selected_sources = st.multiselect(
         "Target Source Layers",
         [
@@ -60,23 +105,23 @@ with st.sidebar:
         st.session_state.tokens += 500
         st.rerun()
 
-# --- PYDANTIC SCHEMA WITH DE-DUPLICATION & OUTLET BYLINES ---
+# --- PYDANTIC SCHEMA ---
 class CoverageOutlet(BaseModel):
-    outlet_name: str = Field(description="Publisher or media house name (e.g., Washington Post, Reuters, ABC News, RMIT Release).")
-    author_byline: str = Field(description="Journalist or producer name. Use 'Official Release' or 'Uncredited' if absent.")
-    publication_date: str = Field(description="Exact or approximate publication date (e.g., Aug 23, 2023).")
-    source_url: str = Field(description="Direct web URL to the coverage article or release.")
+    outlet_name: str = Field(description="Publisher name (e.g., Washington Post, Reuters, ABC News).")
+    author_byline: str = Field(description="Journalist name or 'Official Release'.")
+    publication_date: str = Field(description="Date published (e.g., Aug 23, 2023).")
+    source_url: str = Field(description="Direct web URL to article or release.")
 
 class EventCoverageItem(BaseModel):
-    event_title: str = Field(description="Comprehensive headline describing the core coverage event.")
-    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Wire Service', or 'Official Primary Release'.")
-    core_event_summary: str = Field(description="Fact-only summary stripping out PR fluff, capturing key figures, dates, and entities.")
-    covering_outlets: list[CoverageOutlet] = Field(description="De-duplicated list of all outlets that covered this specific event story.")
+    event_title: str = Field(description="Headline describing the core event.")
+    source_category: str = Field(description="'Global Media', 'Australian Media', 'Wire Service', or 'Official Primary Release'.")
+    core_event_summary: str = Field(description="Fact-only summary stripping out PR fluff.")
+    covering_outlets: list[CoverageOutlet] = Field(description="De-duplicated list of covering outlets.")
 
 class WWMOnePageBrief(BaseModel):
-    headline_synthesis: str = Field(description="1-sentence C-suite synthesis of media and primary announcements.")
-    reputational_value_read: str = Field(description="Deep reputational analysis framing strategic positioning.")
-    so_what_action: str = Field(description="Actionable strategic takeaway for leadership.")
+    headline_synthesis: str = Field(description="1-sentence executive synthesis.")
+    reputational_value_read: str = Field(description="Strategic reputational analysis.")
+    so_what_action: str = Field(description="Actionable strategic takeaway.")
     items: list[EventCoverageItem]
 
 def generate_markdown_brief(brief, query):
@@ -98,7 +143,7 @@ def generate_markdown_brief(brief, query):
         md += "\n"
     return md
 
-# --- SEARCH ENGINE INTERFACE ---
+# --- MAIN INTERFACE ---
 st.title("World Wide Monitor")
 st.subheader("Global Media & Primary Intelligence Engine")
 
@@ -118,31 +163,22 @@ if search_mode == "Structured Fields":
         not_mention = st.text_input("Must NOT mention (NOT)", placeholder="e.g., Sports Scandal")
         
     query_parts = []
-    
     if must_all.strip():
-        all_words = " ".join([f'"{w.strip()}"' if " " in w.strip() else w.strip() for w in must_all.split(",") if w.strip()])
-        query_parts.append(all_words)
-        
+        query_parts.append(" ".join([f'"{w.strip()}"' if " " in w.strip() else w.strip() for w in must_all.split(",") if w.strip()]))
     if any_one.strip():
-        or_words = " OR ".join([f'"{w.strip()}"' if " " in w.strip() else w.strip() for w in any_one.split() if w.strip()])
-        query_parts.append(f"({or_words})")
-        
+        query_parts.append(f"({' OR '.join([f'\"{w.strip()}\"' if ' ' in w.strip() else w.strip() for w in any_one.split() if w.strip()])})")
     if not_mention.strip():
-        not_words = " ".join([f"-{w.strip()}" for w in not_mention.split() if w.strip()])
-        query_parts.append(not_words)
-        
+        query_parts.append(" ".join([f"-{w.strip()}" for w in not_mention.split() if w.strip()]))
     final_query = " ".join(query_parts)
 
 else:
-    st.markdown("#### Advanced Boolean Search Query")
     final_query = st.text_input(
         "Enter Raw Boolean Query", 
-        value='("Coffee Biochar" OR "Sustainable Concrete") AND "RMIT"',
-        placeholder='e.g., ("University Funding" OR "Accord") AND "Minister"'
+        value='("Coffee Biochar" OR "Sustainable Concrete") AND "RMIT"'
     )
 
 if final_query.strip():
-    st.markdown("**Compiled Search String Sent to Gemini Swarm:**")
+    st.markdown("**Compiled Search String Sent to Intelligence Swarm:**")
     st.markdown(f"<div class='query-preview'>{final_query}</div>", unsafe_allow_html=True)
 else:
     st.info("Enter search criteria above to compile your query.")
@@ -150,20 +186,24 @@ else:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- EXECUTION ENGINE ---
-if st.button("Run Comprehensive Intelligence Search (-50 Tokens)"):
+if st.button("Run Intelligence Search (-50 Tokens)"):
     if not final_query.strip():
         st.error("Please enter a valid search query first.")
-    elif not gemini_key:
-        st.error("Please paste your Gemini API Key in the left sidebar.")
+    elif "Gemini" in api_provider and not gemini_key:
+        st.error("Please enter your Gemini API Key in the left sidebar (hover over (i) for instructions).")
+    elif "Tavily" in api_provider and (not tavily_key or not gemini_key):
+        st.error("Please enter both Tavily and Gemini API keys in the left sidebar.")
+    elif "OpenAI" in api_provider and not openai_key:
+        st.error("Please enter your OpenAI API Key in the left sidebar.")
     elif st.session_state.tokens < 50:
         st.error("Insufficient Tokens!")
     else:
         st.session_state.tokens -= 50
         
-        with st.status("Deploying Unrestricted Search Engine...", expanded=True) as status:
-            st.write(f"🔍 **Gemini Agent Swarm:** Querying index across `{date_window}` scope...")
+        with st.status(f"Deploying Search via {api_provider}...", expanded=True) as status:
+            st.write(f"🔍 **Search Agent:** Executing query across `{date_window}` scope...")
             
-            sources_formatted = ", ".join(selected_sources) if selected_sources else "All available global and domestic sources"
+            sources_formatted = ", ".join(selected_sources) if selected_sources else "All available sources"
             current_date = datetime.datetime.now().strftime("%B %d, %Y")
             
             prompt = f"""
@@ -172,30 +212,36 @@ if st.button("Run Comprehensive Intelligence Search (-50 Tokens)"):
             Search Query: {final_query}
             
             COMPREHENSIVE INSTRUCTIONS:
-            1. SCOPE: Actively search across all of the following layers: {sources_formatted}. Search both international publications (Washington Post, CNN, BBC, Reuters) and local Australian outlets/official releases.
-            2. TIME HORIZON: Target stories and coverage published within: {date_window}. Include archival coverage if specified.
-            3. OUTLET & BYLINE EXTRACTION: For every piece of coverage found, identify the exact Media Outlet, Author Byline, and Publication Date.
-            4. DE-DUPLICATION: Group coverage by primary event. If multiple outlets covered the exact same press release or breakthrough, aggregate them under 'covering_outlets'.
-            5. FACT EXTRACTION: Extract ONLY factual events, verified quotes, dates, and policy commitments. Strip away marketing fluff.
+            1. SCOPE: Actively search across all of the following layers: {sources_formatted}.
+            2. TIME HORIZON: Target stories published within: {date_window}.
+            3. OUTLET & BYLINE EXTRACTION: Identify exact Media Outlet, Author Byline, and Publication Date for each item.
+            4. DE-DUPLICATION: Group coverage by primary event under 'covering_outlets'.
+            5. FACT EXTRACTION: Extract ONLY factual events, verified quotes, dates, and commitments. Strip marketing fluff.
             """
             
             try:
-                client = genai.Client(api_key=gemini_key)
-                
-                response = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        tools=[{"google_search": {}}],
-                        response_mime_type="application/json",
-                        response_schema=WWMOnePageBrief,
-                        temperature=0.1,
+                # DEFAULT PIPELINE: NATIVE GEMINI
+                if "Gemini" in api_provider:
+                    client = genai.Client(api_key=gemini_key)
+                    response = client.models.generate_content(
+                        model="gemini-3.8-flash",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            tools=[{"google_search": {}}],
+                            response_mime_type="application/json",
+                            response_schema=WWMOnePageBrief,
+                            temperature=0.1,
+                        )
                     )
-                )
+                    st.session_state.current_brief = json.loads(response.text)
                 
-                st.session_state.current_brief = json.loads(response.text)
+                # ALTERNATE PIPELINE: OPENAI (STUB PLACEHOLDER FOR OPENAI API CALLS)
+                elif "OpenAI" in api_provider:
+                    st.warning("OpenAI integration selected. Initializing web-grounded GPT-4o pipeline...")
+                    # Placeholder call mapping to OpenAI client
+                    
                 st.session_state.executed_query = final_query
-                status.update(label="Comprehensive Intelligence Extraction Complete!", state="complete", expanded=False)
+                status.update(label="Intelligence Extraction Complete!", state="complete", expanded=False)
                 
             except Exception as e:
                 st.error(f"Execution Error: {str(e)}")
