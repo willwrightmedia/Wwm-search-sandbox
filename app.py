@@ -115,9 +115,9 @@ with st.sidebar:
     social_media_focus = st.selectbox(
         "Coverage Scope",
         [
-            "Include News & Social Media Combined",
-            "Focus Exclusively on Social Media Channels",
-            "Focus Exclusively on News & Broadcast Press"
+            "Include News & Social Media Combined (Filter Out Sub-10k Accounts)",
+            "Focus Exclusively on Major News & Broadcast Press",
+            "Focus Exclusively on High-Reach Social Media (>10k Subscribers/Followers)"
         ],
         index=0
     )
@@ -133,7 +133,7 @@ with st.sidebar:
         [
             "Global Tier-1 & Wires (Reuters, AP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
             "Australian Press (AFR, ABC News, SMH, The Age, news.com.au)",
-            "Social Media Platforms (LinkedIn, X/Twitter, YouTube, Instagram, Reddit)",
+            "Major Social Media Channels (>10k Subscribers/Followers)",
             "Southeast Asia Press (Kompas, VNExpress, Jakarta Post)",
             "Indian & South Asian Press (The Hindu, Times of India, Dainik Jagran)",
             "Official Releases (.gov.au, .edu.au, Corporate Newsrooms, ASX)"
@@ -141,7 +141,6 @@ with st.sidebar:
         default=[
             "Global Tier-1 & Wires (Reuters, AP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
             "Australian Press (AFR, ABC News, SMH, The Age, news.com.au)",
-            "Social Media Platforms (LinkedIn, X/Twitter, YouTube, Instagram, Reddit)",
             "Official Releases (.gov.au, .edu.au, Corporate Newsrooms, ASX)"
         ]
     )
@@ -157,30 +156,29 @@ st.markdown("""
     <div class="brand-header">
         <div class="brand-tagline">WILL WRIGHT MEDIA · EXECUTIVE BRIEF</div>
         <div class="brand-title">Great work doesn't speak for itself.</div>
-        <div class="brand-subtitle">Strategic media intelligence, message penetration analytics, and cross-lingual reporting for leadership.</div>
+        <div class="brand-subtitle">High-value strategic media intelligence, verified audience reach metrics, and sub-10k noise suppression for leadership.</div>
     </div>
 """, unsafe_allow_html=True)
 
 st.info(
-    "ℹ️ **Sequential Report Building:** World Wide Monitor allows you to build complete media reports step by step. "
-    "You can run live web searches, add specific article links, or directly enter mixed broadcast, print, social, and online outlet records. "
-    "New inputs continuously expand and refine your report without losing previously analysed information.",
+    "ℹ️ **High-Value Executive Filtering Active:** Low-value YouTube channels, sub-10k subscriber accounts, and unverified content aggregators are automatically suppressed. "
+    "Only major global press mastheads, verified national broadcasters, trade journals, and high-impact digital channels are included in report builds.",
     icon="ℹ️"
 )
 
-# --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
+# --- STRICT AUSTRALIAN ENGLISH SCHEMA WITH MINIMUM REACH GUARDRAILS ---
 class CoverageOutlet(BaseModel):
-    outlet_name: str = Field(description="Publisher, broadcaster, social platform, or government newsroom name verbatim.")
-    medium_type: str = Field(description="Media format(s) covering this story (e.g., Online, Radio, TV, Print, Social Media).")
+    outlet_name: str = Field(description="Publisher, broadcaster, major social channel, or government newsroom name verbatim.")
+    medium_type: str = Field(description="Media format(s) covering this story (e.g., Online Press, Radio, TV, Print, Major Social Platform).")
     author_byline: str = Field(description="Author, journalist, or account handle verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication or post date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
     canonical_source_url: str = Field(description="Direct, clean resolving web URL verbatim from grounding. Write 'None' if unverified or broken.")
-    audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
+    audience_reach_metrics: str = Field(description="Audience reach or follower counts (>10k threshold required). Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual title describing the coverage event.")
-    source_category: str = Field(description="Categorize as: 'Global Tier-1', 'National Press', 'Social Media', 'Industry Trade Press', or 'Official Primary Release'")
+    source_category: str = Field(description="Categorize as: 'Global Tier-1', 'National Press', 'High-Impact Social Media (>10k)', 'Industry Trade Press', or 'Official Primary Release'")
     prominence_depth: str = Field(description="Categorize as: 'Lead Story / Feature', 'Significant Segment', or 'Passing Mention'")
     representation_mode: str = Field(description="Categorize as: 'Positive Framing', 'Negative Framing', or 'Expert Commentator / Sector Authority'")
     key_message_penetration: str = Field(description="Specific institutional key messages that landed in this item.")
@@ -189,19 +187,18 @@ class EventCoverageItem(BaseModel):
     covering_outlets: list[CoverageOutlet]
 
 class WWMExecutiveAnalysisBrief(BaseModel):
-    coverage_found: bool = Field(description="Set to False if no verified coverage matched parameters or direct inputs.")
-    verified_coverage_metric: str = Field(description="Factual count of retrieved and manually entered records (e.g. 'Media Index: 8 primary tier-1 and national records analysed across scope').")
-    total_combined_audience_reach: str = Field(description="Summed aggregate verifiable reach across all news and social channels (e.g., 'Total Combined Reach: 3.8M Audience').")
+    coverage_found: bool = Field(description="Set to False if no verified high-impact coverage matched parameters.")
+    verified_coverage_metric: str = Field(description="Factual count of retrieved records (e.g. 'Media Index: 7 tier-1 and national records analysed; low-value sub-10k sources suppressed').")
+    total_combined_audience_reach: str = Field(description="Summed aggregate verifiable reach across major news and verified social channels (e.g., 'Total Combined Reach: 185.5M Audience').")
     headline_synthesis: str = Field(description="1-2 sentence executive overview of overall coverage trajectory.")
     sentiment_framing_read: str = Field(description="1-2 concise lines evaluating framing. Recognize expert authority: if addressing difficult sector topics, frame this POSITIVELY as domain leadership.")
     subject_quoted_vs_reported: str = Field(description="Concise summary of direct subject quotes vs. what external parties, media, or social commentary reported about them.")
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE (FIXED LAYOUT, NO HEADER BLEED & NO ORPHAN BULLETS) ---
+# --- BRANDED PDF ENGINE (PRESERVED STYLING, FIXED OVERFLOW) ---
 class PDFReport(FPDF):
     def header(self):
-        # Dark Ink Header Banner Block (#14120F)
         self.set_fill_color(20, 18, 15)
         self.rect(0, 0, 210, 20, 'F')
         self.set_font('Helvetica', 'B', 8)
@@ -230,13 +227,12 @@ def generate_pdf_brief(brief, query, lang):
     pdf = PDFReport()
     pdf.set_fill_color(242, 237, 227)
     margin = 15
-    top_margin = 28 # Generous margin to prevent page 2 bleed into header box
+    top_margin = 28
     pdf.set_margins(margin, top_margin, margin)
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=18)
     epw = pdf.epw
     
-    # Document Header Title
     pdf.set_font('Helvetica', 'B', 15)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
@@ -248,14 +244,12 @@ def generate_pdf_brief(brief, query, lang):
     pdf.cell(epw, 4, clean_pdf_text(f'Scope: {query} | {brief.get("verified_coverage_metric", "")}'), new_x="LMARGIN", new_y="NEXT")
     pdf.cell(epw, 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'), new_x="LMARGIN", new_y="NEXT")
     
-    # Hairline Section Divider (#C6BCA9)
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
     pdf.ln(2)
     pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
     pdf.ln(4)
     
-    # Section 1: Executive Overview
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -266,7 +260,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(3)
     
-    # Section 2: Quality of Institutional Positioning
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -277,7 +270,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('sentiment_framing_read', '')))
     pdf.ln(3)
     
-    # Section 3: Quotes & Commentary
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -288,7 +280,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
     pdf.ln(3)
 
-    # Section 4: Strategic Opportunities
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -299,15 +290,13 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('engagement_opportunities', '')))
     pdf.ln(4)
     
-    # Section 5: Coverage Records
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, '5. Sourced Media Records & Audience Reach', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 6, '5. Tier-1 Sourced Media Records & Verified Audience Reach', new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     
     for item in brief.get("items", []):
-        # Strict Orphan Prevention: Add page if near bottom
         if pdf.get_y() > 240:
             pdf.add_page()
             
@@ -340,7 +329,7 @@ def generate_pdf_brief(brief, query, lang):
 
 # --- MARKDOWN & WORD EXPORTS ---
 def generate_markdown_brief(brief, query, lang):
-    md = f"# CONFIDENTIAL | WILL WRIGHT MEDIA EXECUTIVE BRIEF ({lang.upper()})\n"
+    md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n"
     md += f"**Scope:** `{query}`\n"
     md += f"**Coverage Index:** {brief.get('verified_coverage_metric', 'Verified Scope')}\n"
     md += f"**Reach Metric:** {brief.get('total_combined_audience_reach', '')}\n\n"
@@ -367,7 +356,7 @@ def generate_markdown_brief(brief, query, lang):
 
 def generate_docx_brief(brief, query, lang):
     doc = Document()
-    doc.add_heading(f"CONFIDENTIAL | WILL WRIGHT MEDIA EXECUTIVE BRIEF ({lang.upper()})", level=0)
+    doc.add_heading(f"CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})", level=0)
     doc.add_paragraph(f"Scope: {query}")
     doc.add_paragraph(f"Coverage Index: {brief.get('verified_coverage_metric', 'Verified Scope')}")
     doc.add_paragraph(f"Audience Reach: {brief.get('total_combined_audience_reach', '')}")
@@ -532,10 +521,10 @@ if st.button(btn_label) or submit_manual:
             
             MEDIA & SOCIAL FOCUS MODE: {social_media_focus}.
             
-            STRICT CLEAN URL PROTOCOL:
-            - For 'canonical_source_url', pass ONLY exact, verbatim resolving URLs provided in grounding metadata or custom URLs.
-            - DO NOT construct, guess, or invent deep URL paths (e.g. do NOT invent '/science/2023/aug/...'). 
-            - IF A DIRECT RESOLVING ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'. Do NOT provide dead links or generic root domain fallbacks if an exact article link is absent.
+            STRICT AUDIENCE & NOISE SUPPRESSION GUARDRAILS:
+            1. 10,000+ AUDIENCE THRESHOLD: Strictly DISCARD low-value YouTube videos, personal blogs, sub-10,000 subscriber channels, or unverified content aggregators. (e.g. DO NOT include minor YouTube uploads or niche fan channels).
+            2. PRIORITISE MAINSTREAM TIER-1 PRESS: Actively search for and extract coverage from major global press mastheads (e.g., The Washington Post, CNN, BBC, Reuters, The Guardian, Nikkei, AFR, ABC News, SCMP) and official primary releases.
+            3. CLEAN URL PROTOCOL: For 'canonical_source_url', pass ONLY exact, verbatim resolving URLs provided in grounding metadata or custom URLs. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'.
             
             SCOPE & SOURCES:
             - Active Strategy Query: {active_q}
@@ -545,11 +534,11 @@ if st.button(btn_label) or submit_manual:
             {existing_brief_context}
             
             HIGH-VOLUME QUERY MANAGEMENT:
-            Count the exact number of verified items analysed in this payload and state it factually in 'verified_coverage_metric' (e.g. "Media Index: 9 primary tier-1 and national media items analysed across scope").
-            Do NOT output dozens of repetitive cards. Present ONLY the top 5 to 8 most influential items across Global Tier-1 Mastheads, National Press, Social Media Channels, Industry Trade Media, and Official Primary Releases.
+            Count the exact number of verified items analysed in this payload and state it factually in 'verified_coverage_metric' (e.g. "Media Index: 7 tier-1 and national records analysed; low-value sub-10k sources suppressed").
+            Do NOT output dozens of repetitive cards. Present ONLY the top 5 to 8 most influential items across Global Tier-1 Mastheads, National Press, Industry Trade Media, and Official Primary Releases.
             
             AUDIENCE REACH & MESSAGE PENETRATION:
-            - Sum total aggregate reach across all news and social channels and output in 'total_combined_audience_reach' (e.g. "Total Combined Reach: 4.2M Audience").
+            - Sum total aggregate reach across all news and social channels (>10k reach) and output in 'total_combined_audience_reach' (e.g. "Total Combined Reach: 185.5M Audience").
             - For each coverage outlet, extract or estimate verifiable audience reach.
               - If sourced from official rating bodies (Roy Morgan, AMAA, OztAM, CRA, IAB Australia), present figures cleanly (e.g. "1.4M Monthly Unique Audience (Roy Morgan)").
               - If figures come from publisher media kits or self-disclosures, explicitly append the disclosure tag: "[Publisher Self-Reported / Unverified]".
