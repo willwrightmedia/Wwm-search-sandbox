@@ -284,8 +284,8 @@ class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
         self.set_text_color(120, 120, 120)
-        self.cell(0, 8, 'CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF', new_x="LMARGIN", new_y="NEXT", align='R')
-        self.ln(2)
+        self.cell(0, 8, 'CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF', align='R')
+        self.ln(10)
 
     def footer(self):
         self.set_y(-15)
@@ -298,7 +298,8 @@ def clean_pdf_text(text):
     if not text:
         return ""
     replacements = {
-        '“': '"', '”': '"', '‘': "'", '’': "'", '—': '-', '–': '-', '•': '*'
+        '“': '"', '”': '"', '‘': "'", '’': "'", '—': '-', '–': '-', '•': '*',
+        '…': '...', '™': 'TM', '®': '(R)', '©': '(C)'
     }
     for orig, repl in replacements.items():
         text = text.replace(orig, repl)
@@ -306,46 +307,55 @@ def clean_pdf_text(text):
 
 def generate_pdf_brief(brief, query):
     pdf = PDFReport()
+    pdf.set_margins(15, 15, 15)
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
+    # Calculate explicit effective printable width
+    epw = pdf.epw
+    
+    # Title
     pdf.set_font('Helvetica', 'B', 16)
-    pdf.cell(0, 10, 'Executive Intelligence Brief', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 10, 'Executive Intelligence Brief', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', 'I', 10)
-    pdf.cell(0, 6, clean_pdf_text(f'Target Query: {query}'), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 6, clean_pdf_text(f'Target Query: {query}'), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
     
+    # Section 1: Executive Overview
     pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(0, 8, '1. Executive Overview', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, '1. Executive Overview', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', 10)
-    pdf.multi_cell(0, 5, clean_pdf_text(brief.get('headline_synthesis', '')))
+    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(4)
     
+    # Section 2: Strategic Imperatives
     pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(0, 8, '2. Strategic Imperatives for Leadership', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, '2. Strategic Imperatives for Leadership', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', 10)
-    pdf.multi_cell(0, 5, clean_pdf_text(brief.get('so_what_action', '')))
+    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('so_what_action', '')))
     pdf.ln(4)
     
+    # Section 3: Institutional Positioning
     pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(0, 8, '3. Institutional Positioning & Risk', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, '3. Institutional Positioning & Risk', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', 10)
-    pdf.multi_cell(0, 5, clean_pdf_text(brief.get('reputational_value_read', '')))
+    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('reputational_value_read', '')))
     pdf.ln(4)
     
+    # Section 4: Coverage Breakdown
     pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(0, 8, '4. Verified Coverage Records', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, '4. Verified Coverage Records', new_x="LMARGIN", new_y="NEXT")
     
     for item in brief.get("items", []):
         pdf.set_font('Helvetica', 'B', 10)
-        pdf.multi_cell(0, 5, clean_pdf_text(f"* {item.get('event_title', '')}"))
+        pdf.multi_cell(epw, 5, clean_pdf_text(f"* {item.get('event_title', '')}"))
         
         pdf.set_font('Helvetica', '', 9)
-        pdf.multi_cell(0, 5, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
+        pdf.multi_cell(epw, 5, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
         
         for outlet in item.get('covering_outlets', []):
             outlet_line = f"  - Outlet: {outlet.get('outlet_name', '')} | Byline: {outlet.get('author_byline', '')} | Date: {outlet.get('publication_date', '')}"
-            pdf.multi_cell(0, 5, clean_pdf_text(outlet_line))
+            pdf.multi_cell(epw, 5, clean_pdf_text(outlet_line))
             
         pdf.ln(2)
         
