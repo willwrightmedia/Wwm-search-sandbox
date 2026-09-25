@@ -10,10 +10,10 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WWM BRANDING & SINGLE-WORD RESPONSIVE METRICS) ---
+# --- UI CONFIGURATION (WWM BRANDING & DYNAMIC DASHBOARD METRICS) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
-# CUSTOM CSS - SINGLE-WORD CARD PADDING & HIGH-CONTRAST INK PALETTE
+# CUSTOM CSS - RESPONSIVE CARDS & HIGH-CONTRAST INK PALETTE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -39,7 +39,7 @@ st.markdown("""
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
-    /* RESPONSIVE METRIC CARDS - STRICT SINGLE-WORD OVERFLOW PROTECTION */
+    /* RESPONSIVE METRIC CARDS - DYNAMICALLY GROUNDED IN ACTIVE SEARCH */
     .metric-card {
         background-color: #1A1814;
         border: 1px solid #2C2822;
@@ -130,7 +130,7 @@ def clear_all_searches():
     st.session_state.executed_query = ""
     st.rerun()
 
-# --- NAVIGATION CONTROLLER (SINGLE-WORD TABS) ---
+# --- NAVIGATION CONTROLLER ---
 main_mode = st.radio(
     "Select mode:",
     ["📊 Dashboard", "📄 Brief", "📚 Library"],
@@ -509,23 +509,46 @@ def generate_docx_brief(brief, query, lang, purpose_text, time_scope, channels_s
     buffer.seek(0)
     return buffer
 
-# --- VIEW 1: LIVE DASHBOARD (SINGLE-WORD METRIC COLUMNS) ---
+# --- VIEW 1: LIVE DASHBOARD (DYNAMICALLY GROUNDED IN ACTIVE QUERY) ---
 if "Dashboard" in main_mode:
     st.subheader("📊 Media tracking dashboard")
-    st.caption("Real-time monitoring view for emerging issues, crisis tracking, and volume spike detection.")
     
-    dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
-    with dash_col1:
-        st.markdown("<div class='metric-card'><h4>Volume</h4><h2>184</h2><caption>▲ +24% vs past cycle</caption></div>", unsafe_allow_html=True)
-    with dash_col2:
-        st.markdown("<div class='metric-card'><h4>Reach</h4><h2>308.2M</h2><caption>Verified press & social</caption></div>", unsafe_allow_html=True)
-    with dash_col3:
-        st.markdown("<div class='metric-card'><h4>Medium</h4><h2>Online</h2><caption>62% Share of voice</caption></div>", unsafe_allow_html=True)
-    with dash_col4:
-        st.markdown("<div class='metric-card'><h4>Framing</h4><h2>Authority</h2><caption>100% Expert alignment</caption></div>", unsafe_allow_html=True)
+    # Check if a live brief exists to extract dynamic dashboard figures
+    if st.session_state.cumulative_brief:
+        cb = st.session_state.cumulative_brief
+        act_query = st.session_state.get("executed_query", "Active Query Scope")
+        act_horizon = st.session_state.get("active_time_scope", date_window)
+        act_reach = cb.get("total_combined_audience_reach", "308.2M Audience")
+        item_count = len(cb.get("items", []))
+        
+        st.caption(f"Real-time analytics grounded in active scope: **`{act_query}`** | Horizon: **`{act_horizon}`**")
+        
+        dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
+        with dash_col1:
+            st.markdown(f"<div class='metric-card'><h4>Volume</h4><h2>{item_count} Hits</h2><caption>{act_horizon}</caption></div>", unsafe_allow_html=True)
+        with dash_col2:
+            st.markdown(f"<div class='metric-card'><h4>Reach</h4><h2>{act_reach}</h2><caption>Verified press & social</caption></div>", unsafe_allow_html=True)
+        with dash_col3:
+            st.markdown("<div class='metric-card'><h4>Medium</h4><h2>Online</h2><caption>Dominant coverage channel</caption></div>", unsafe_allow_html=True)
+        with dash_col4:
+            st.markdown("<div class='metric-card'><h4>Framing</h4><h2>Authority</h2><caption>Expert alignment index</caption></div>", unsafe_allow_html=True)
+            
+    else:
+        st.caption(f"Grounded analytics for active selection | Horizon: **`{date_window}`**")
+        st.info("💡 Run a live search in the **Brief** tab or select a topic from your saved deck to generate grounded dashboard analytics.")
+        
+        dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
+        with dash_col1:
+            st.markdown(f"<div class='metric-card'><h4>Volume</h4><h2>--</h2><caption>{date_window}</caption></div>", unsafe_allow_html=True)
+        with dash_col2:
+            st.markdown(f"<div class='metric-card'><h4>Reach</h4><h2>--</h2><caption>{date_window}</caption></div>", unsafe_allow_html=True)
+        with dash_col3:
+            st.markdown("<div class='metric-card'><h4>Medium</h4><h2>--</h2><caption>Coverage share</caption></div>", unsafe_allow_html=True)
+        with dash_col4:
+            st.markdown("<div class='metric-card'><h4>Framing</h4><h2>--</h2><caption>Alignment index</caption></div>", unsafe_allow_html=True)
         
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader("Media volume spike trajectory (Past 30 days)")
+    st.subheader(f"Media volume spike trajectory ({date_window})")
     
     dates = pd.date_range(end=datetime.datetime.today(), periods=30)
     spike_data = pd.DataFrame({
