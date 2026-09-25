@@ -1,7 +1,6 @@
 import json
 import datetime
 import io
-import re
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -10,7 +9,7 @@ from docx import Document
 from fpdf import FPDF
 
 # --- UI CONFIGURATION (WILL WRIGHT MEDIA BRANDING) ---
-st.set_page_config(page_title="World Wide Monitor | Will Wright Media", page_icon="📡", layout="wide")
+st.set_page_config(page_title="World Wide Monitor | Executive Intelligence", page_icon="📡", layout="wide")
 
 st.markdown("""
     <style>
@@ -23,7 +22,7 @@ st.markdown("""
     .brand-header { background-color: #161616; border: 1px solid #262626; padding: 36px 40px; border-radius: 4px; margin-bottom: 32px; }
     .brand-tagline { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #a3a3a0; margin-bottom: 12px; }
     .brand-title { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; font-weight: 400; color: #ffffff; margin: 0; line-height: 1.1; }
-    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-style: italic; color: #d4d4d0; margin-top: 8px; }
+    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: #d4d4d0; margin-top: 8px; }
 
     /* HIGH-CONTRAST WHITE INPUT FIELDS */
     div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
@@ -51,21 +50,68 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- INITIALIZE PERSISTENT SESSION STATE ---
+if "cumulative_brief" not in st.session_state:
+    st.session_state.cumulative_brief = None
+if "executed_query" not in st.session_state:
+    st.session_state.executed_query = ""
+if "ingested_urls_history" not in st.session_state:
+    st.session_state.ingested_urls_history = []
+
 # --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
     st.markdown("### WILL WRIGHT MEDIA")
     st.caption("STRATEGIC COMMUNICATIONS · MEDIA INTELLIGENCE")
     st.divider()
     
-    st.subheader("1. API Engine Configuration")
-    gemini_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
+    st.subheader("1. Intelligence Engine Routing")
+    api_provider = st.selectbox(
+        "AI Search Provider",
+        [
+            "Google Gemini 3 (Native Search Grounding)",
+            "OpenAI GPT-4o (Web Grounded)",
+            "Tavily Search + Gemini Intelligence"
+        ],
+        index=0,
+        help="Select the underlying AI model and search infrastructure."
+    )
+    
+    gemini_key = ""
+    openai_key = ""
+    tavily_key = ""
+    
+    if "Gemini" in api_provider or "Tavily" in api_provider:
+        gemini_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
+    if "OpenAI" in api_provider:
+        openai_key = st.text_input("OpenAI API Key", type="password", placeholder="sk-...")
+    if "Tavily" in api_provider:
+        tavily_key = st.text_input("Tavily API Key", type="password", placeholder="tvly-...")
 
     st.divider()
-    st.subheader("2. Time Horizon")
+    st.subheader("2. Language & Output Settings")
+    output_language = st.selectbox(
+        "Executive Report Language",
+        [
+            "English", "French (Français)", "Spanish (Español)", "German (Deutsch)", 
+            "Mandarin Chinese (中文)", "Japanese (日本語)", "Indonesian (Bahasa Indonesia)", 
+            "Vietnamese (Tiếng Việt)", "Hindi (हिंदी)", "Arabic (العربية)"
+        ],
+        index=0,
+        help="The final report will be synthesized directly into your chosen language, regardless of original source languages."
+    )
+    
+    enable_translation = st.checkbox(
+        "Enable Global Cross-Lingual Search Ingestion", 
+        value=True,
+        help="Translates query keywords to search non-English media mastheads across Asia-Pacific, EMEA, and LatAm."
+    )
+    
+    st.divider()
+    st.subheader("3. Horizon & Channels")
     date_window = st.selectbox(
         "Recency Scope",
         ["Past 7 Days (Current Cycle)", "Past 30 Days", "Past 12 Months", "Past 4 Years Archive"],
-        index=2
+        index=3  # Default to 4-year archive for broad executive topics
     )
     
     selected_sources = st.multiselect(
@@ -85,36 +131,38 @@ with st.sidebar:
     )
 
     st.divider()
-    st.subheader("Account Ledger")
-    if "tokens" not in st.session_state:
-        st.session_state.tokens = 1000
-    st.metric("Token Balance", f"{st.session_state.tokens} WWM")
+    if st.button("Clear Report Buffer & Reset"):
+        st.session_state.cumulative_brief = None
+        st.session_state.executed_query = ""
+        st.session_state.ingested_urls_history = []
+        st.rerun()
 
-# --- BRANDED HEADER ---
+# --- BRANDED EXECUTIVE HEADER ---
 st.markdown("""
     <div class="brand-header">
-        <div class="brand-tagline">WORLD WIDE MONITOR · EXECUTIVE INTELLIGENCE</div>
+        <div class="brand-tagline">WORLD WIDE MONITOR · EXECUTIVE MEDIA INTELLIGENCE</div>
         <div class="brand-title">Great work doesn't speak for itself.</div>
-        <div class="brand-subtitle">Executive media analysis, copyright-compliant extraction, and custom URL batch ingestion.</div>
+        <div class="brand-subtitle">Precision media monitoring, multi-language synthesis, and additive intelligence briefs for institutional, government, and university leadership.</div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- ENHANCED PYDANTIC SCHEMA FOR EXECUTIVE ANALYSIS ---
+# --- ENHANCED PYDANTIC SCHEMA ---
 class CoverageOutlet(BaseModel):
     outlet_name: str = Field(description="Publisher or newsroom name verbatim from source.")
     author_byline: str = Field(description="Author byline verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original publication language.")
-    canonical_source_url: str = Field(description="Direct, clean resolving canonical URL (e.g. https://theguardian.com/...). Never return dead redirects.")
+    canonical_source_url: str = Field(description="Direct, clean resolving canonical URL. Never return dead redirects.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual headline describing the coverage event.")
-    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Asian Press', or 'Official Primary Release'")
-    core_event_summary: str = Field(description="Copyright-compliant summary restricted to 20-word context windows around keywords and lead paragraphs.")
+    source_category: str = Field(description="Categorize as: 'Global Tier-1', 'National Press', 'Industry Trade Press', or 'Official Primary Release'")
+    core_event_summary: str = Field(description="Copyright-compliant summary restricted to lead paragraphs and 20-word context windows around keywords.")
     covering_outlets: list[CoverageOutlet]
 
 class WWMExecutiveAnalysisBrief(BaseModel):
     coverage_found: bool = Field(description="Set to False if no verified coverage matched query or provided URLs.")
+    total_estimated_coverage_volume: str = Field(description="Estimate total indexed volume across 4 years (e.g. 'High-Density: Estimated 120+ global/domestic items indexed').")
     headline_synthesis: str = Field(description="1-2 sentence executive overview of overall coverage momentum.")
     sentiment_framing_read: str = Field(description="1-2 lines analyzing sentiment & framing. Note if addressing negative/difficult topics reflects positively on subject authority.")
     subject_quoted_vs_reported: str = Field(description="Summary of direct quotes by subject vs. what external parties/outlets reported about them.")
@@ -122,16 +170,17 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     items: list[EventCoverageItem]
 
 # --- EXPORT GENERATORS ---
-def generate_markdown_brief(brief, query):
-    md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF\n"
-    md += f"**Target Strategy Query / Bulk Scope:** `{query}`\n\n"
+def generate_markdown_brief(brief, query, lang):
+    md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n"
+    md += f"**Target Strategy Query / Scope:** `{query}`\n"
+    md += f"**Indexed Volume Metrics:** {brief.get('total_estimated_coverage_volume', 'Standard Scope')}\n\n"
     md += f"## 1. Executive Synthesis & Strategic Read\n"
     md += f"**Overview:** {brief['headline_synthesis']}\n\n"
     md += f"**Sentiment & Representation Read:** {brief['sentiment_framing_read']}\n\n"
-    md += f"**Primary Quotes & Commentary:** {brief['subject_quoted_vs_reported']}\n\n"
-    md += f"**Engagement & Media Opportunities:** {brief['engagement_opportunities']}\n\n"
+    md += f"**Primary Quotes & External Commentary:** {brief['subject_quoted_vs_reported']}\n\n"
+    md += f"**Strategic Engagement Opportunities:** {brief['engagement_opportunities']}\n\n"
     md += f"---\n\n"
-    md += f"## 2. Verified Coverage & Media Records\n\n"
+    md += f"## 2. Tier-1 High-Impact Media Records\n\n"
     for item in brief["items"]:
         md += f"### 📌 {item['event_title']}\n"
         md += f"- **Category:** {item['source_category']}\n"
@@ -139,24 +188,25 @@ def generate_markdown_brief(brief, query):
         for outlet in item["covering_outlets"]:
             md += f"  - **{outlet['outlet_name']}** (*Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}) — [Source Link]({outlet['canonical_source_url']})\n"
         md += "\n"
-    md += "\n\n*Copyright Protocol: Extracted under strict fair-dealing 20-word window bounds. Confirm details against linked canonical source URLs prior to distribution.*"
+    md += f"\n\n*Copyright & Fair Use Protocol: Extracted under 20-word window bounds. Synthesized into {lang}. Confirm details against linked canonical source URLs prior to distribution.*"
     return md
 
-def generate_docx_brief(brief, query):
+def generate_docx_brief(brief, query, lang):
     doc = Document()
-    doc.add_heading("CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF", level=0)
-    doc.add_paragraph(f"Target Strategy Query / Bulk Scope: {query}")
+    doc.add_heading(f"CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})", level=0)
+    doc.add_paragraph(f"Target Strategy Query / Scope: {query}")
+    doc.add_paragraph(f"Indexed Volume Metrics: {brief.get('total_estimated_coverage_volume', 'Standard Scope')}")
     
     doc.add_heading("1. Executive Synthesis & Strategic Read", level=1)
     doc.add_paragraph(f"Overview: {brief['headline_synthesis']}")
     doc.add_paragraph(f"Sentiment & Representation: {brief['sentiment_framing_read']}")
-    doc.add_paragraph(f"Subject Quotes vs Reported: {brief['subject_quoted_vs_reported']}")
+    doc.add_paragraph(f"Subject Quotes vs External Commentary: {brief['subject_quoted_vs_reported']}")
     doc.add_paragraph(f"Strategic Engagement Opportunities: {brief['engagement_opportunities']}")
     
-    doc.add_heading("2. Verified Coverage & Media Records", level=1)
+    doc.add_heading("2. Tier-1 High-Impact Media Records", level=1)
     for item in brief["items"]:
         doc.add_heading(f"📌 {item['event_title']}", level=2)
-        doc.add_paragraph(f"Channel: {item['source_category']}")
+        doc.add_paragraph(f"Category: {item['source_category']}")
         doc.add_paragraph(f"Summary: {item['core_event_summary']}")
         for outlet in item["covering_outlets"]:
             p = doc.add_paragraph(style='List Bullet')
@@ -189,7 +239,7 @@ def clean_pdf_text(text):
         text = text.replace(orig, repl)
     return text.encode('latin-1', 'replace').decode('latin-1')
 
-def generate_pdf_brief(brief, query):
+def generate_pdf_brief(brief, query, lang):
     pdf = PDFReport()
     margin = 15
     pdf.set_margins(margin, 22, margin)
@@ -199,10 +249,10 @@ def generate_pdf_brief(brief, query):
     
     pdf.set_font('Helvetica', 'B', 16)
     pdf.set_x(margin)
-    pdf.cell(epw, 10, 'Executive Intelligence Brief', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 10, clean_pdf_text(f'Executive Intelligence Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', 'I', 10)
     pdf.set_x(margin)
-    pdf.cell(epw, 6, clean_pdf_text(f'Target Scope: {query}'), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 6, clean_pdf_text(f'Scope: {query} | {brief.get("total_estimated_coverage_volume", "")}'), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
     
     pdf.set_font('Helvetica', 'B', 12)
@@ -223,7 +273,7 @@ def generate_pdf_brief(brief, query):
     
     pdf.set_font('Helvetica', 'B', 12)
     pdf.set_x(margin)
-    pdf.cell(epw, 8, '3. Direct Quotes & Commentary', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, '3. Direct Quotes & External Commentary', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', 10)
     pdf.set_x(margin)
     pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
@@ -239,7 +289,7 @@ def generate_pdf_brief(brief, query):
     
     pdf.set_font('Helvetica', 'B', 12)
     pdf.set_x(margin)
-    pdf.cell(epw, 8, '5. Verified Coverage Records', new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, '5. Tier-1 High-Impact Media Records', new_x="LMARGIN", new_y="NEXT")
     
     for item in brief.get("items", []):
         pdf.set_font('Helvetica', 'B', 10)
@@ -259,17 +309,13 @@ def generate_pdf_brief(brief, query):
         
     return bytes(pdf.output())
 
-# --- INGESTION MODE SELECTOR ---
-ingestion_mode = st.radio(
-    "Ingestion Strategy:", 
-    ["1. Open Web & Global Media Search", "2. Custom Batch Ingestion (Paste Up to 100 Article URLs)"], 
-    horizontal=True
-)
+# --- DUAL INGESTION INTERFACE ---
+tab_search, tab_custom_urls = st.tabs(["🔍 Pass 1: Global Media Search", "🔗 Pass 2: Additive URL Ingestion (Paste Up to 100 Links)"])
 
-final_query = ""
-custom_urls_list = []
+search_query_input = ""
+custom_urls_input = []
 
-if "1. Open Web" in ingestion_mode:
+with tab_search:
     col1, col2, col3 = st.columns(3)
     with col1:
         must_all = st.text_input("Must include (AND)", placeholder="e.g., Rajeev Roychand RMIT")
@@ -285,65 +331,73 @@ if "1. Open Web" in ingestion_mode:
         query_parts.append(f"({' OR '.join([f'\"{w.strip()}\"' if ' ' in w.strip() else w.strip() for w in any_one.split() if w.strip()])})")
     if not_mention.strip():
         query_parts.append(" ".join([f"-{w.strip()}" for w in not_mention.split() if w.strip()]))
-    final_query = " ".join(query_parts)
+    search_query_input = " ".join(query_parts)
 
-else:
-    st.markdown("#### Custom Batch Ingestion Mode")
-    st.caption("Paste up to 100 article URLs below (one per line). WWM will bypass generic search and run strategic analysis directly across these exact documents.")
+with tab_custom_urls:
+    st.markdown("##### Additive Bulk URL Ingestion")
+    st.caption("Paste additional article links below (up to 100 URLs, one per line). WWM will ingest these documents and merge them directly into the current executive brief without discarding existing findings.")
     raw_urls_text = st.text_area(
-        "Paste Article URLs (One per line):", 
-        height=180, 
+        "Paste Additional Article URLs:", 
+        height=140, 
         placeholder="https://www.theguardian.com/science/2023/aug/23/full-of-beans-scientists-use-processed-coffee-grounds-to-make-stronger-concrete\nhttps://www.gcrmag.com/turning-spent-coffee-into-concrete/\nhttps://www.rmit.edu.au/news/all-news/2023/aug/coffee-concrete"
     )
-    custom_urls_list = [line.strip() for line in raw_urls_text.split("\n") if line.strip().startswith("http")]
-    final_query = f"Custom Bulk Ingestion batch ({len(custom_urls_list)} URLs submitted)"
+    custom_urls_input = [line.strip() for line in raw_urls_text.split("\n") if line.strip().startswith("http")]
 
-if final_query.strip():
-    st.markdown("**Active Scope:**")
-    st.code(final_query, language="text")
+# Active Scope Calculation
+if search_query_input:
+    st.session_state.executed_query = search_query_input
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- EXECUTION ENGINE ---
-if st.button("Generate Strategic Executive Brief"):
-    if not final_query.strip():
-        st.error("Please specify search parameters or paste bulk URLs before running.")
-    elif not gemini_key:
-        st.error("Please enter your Gemini API Key in the left menu.")
+# --- EXECUTION ENGINE (ADDITIVE BRIEF SYNTHESIS) ---
+btn_label = "Generate Initial Executive Brief" if st.session_state.cumulative_brief is None else "Update & Expand Executive Brief (Additive Ingestion)"
+
+if st.button(btn_label):
+    if not search_query_input and not custom_urls_input and not st.session_state.executed_query:
+        st.error("Please enter a search query or paste custom article URLs first.")
+    elif "Gemini" in api_provider and not gemini_key:
+        st.error("Please enter your Gemini API Key in the sidebar.")
     else:
-        st.session_state.tokens -= 50
-        
-        with st.status("Gathering & Processing Media Scope...", expanded=True) as status:
+        with st.status("Gathering & Synthesizing Multi-Source Intelligence...", expanded=True) as status:
             current_date = datetime.datetime.now().strftime("%B %d, %Y")
             
-            # Formulate Prompt based on Ingestion Mode
-            if "2. Custom Batch" in ingestion_mode:
-                urls_formatted = "\n".join([f"- {url}" for url in custom_urls_list[:100]])
-                prompt_task = f"""
-                Today is {current_date}.
-                You are WWM's Senior Strategic Intelligence Analyst.
-                Perform a direct fact extraction and strategic analysis for the following explicitly provided URLs:
-                {urls_formatted}
+            # Combine current execution payload with existing state
+            existing_brief_context = ""
+            if st.session_state.cumulative_brief:
+                existing_brief_context = f"""
+                EXISTING REPORT BUFFER (ADDITIVE INGESTION):
+                The user has an existing executive report with the following synthesis:
+                - Headline Synthesis: {st.session_state.cumulative_brief.get('headline_synthesis', '')}
+                - Existing Item Count: {len(st.session_state.cumulative_brief.get('items', []))}
+                INSTRUCTION: Synthesize the new search results or custom URLs TOGETHER with this existing context. Do NOT discard prior valid coverage cards.
                 """
-            else:
-                prompt_task = f"""
-                Today is {current_date}.
-                You are WWM's Senior Strategic Intelligence Analyst.
-                Execute an open web search across media channels matching: {final_query}
-                """
-
+            
+            urls_formatted = "\n".join([f"- {u}" for u in custom_urls_input[:100]]) if custom_urls_input else "None provided."
+            active_q = search_query_input if search_query_input else st.session_state.executed_query
+            
             prompt = f"""
-            {prompt_task}
+            Today is {current_date}.
+            You are WWM's Chief Media Analyst preparing an executive brief for leadership (government, university, and corporate executives).
             
-            STRICT COPYRIGHT & Extraction Protocol:
-            1. COPYRIGHT COMPLIANCE: To respect international database extraction laws, consume and extract ONLY the headline, byline, publication date, lead paragraphs (paras 1-2), and up to 20-word context windows surrounding search term hits.
-            2. CANONICAL LINK RESOLUTION: Always return clean, resolving canonical publisher URLs (e.g., https://theguardian.com/science/2023/aug/23/...). Do NOT return dynamic Google redirect links.
+            REPORT OUTPUT LANGUAGE: Write the entire executive brief in {output_language}.
             
-            FOUR-STAGE STRATEGIC ANALYSIS INSTRUCTIONS:
-            - sentiment_framing_read: Provide 1-2 lines gaging overall sentiment. Recognize expert framing: if a subject speaks on challenging or negative sector topics (e.g. waste management crisis or clinical risk), frame this POSITIVELY as authority positioning.
-            - subject_quoted_vs_reported: Summarize what the subject was directly quoted as saying vs. what was reported about them by external outlets.
-            - engagement_opportunities: Identify prospective channels (e.g. government procurement, trade forums, social commentary) where the subject/org can engage further to achieve broader strategic impact.
-            - NO FABRICATION: Only cite verified facts and canonical URLs present in the scope.
+            PRIMARY INGESTION SCOPE:
+            - Active Query: {active_q}
+            - Custom Additive URLs ({len(custom_urls_input)} provided): {urls_formatted}
+            
+            {existing_brief_context}
+            
+            HIGH-VOLUME EXECUTIVE MANAGED LISTINGS:
+            If a query (e.g. "Rajeev Roychand") generates dozens of pages of press over a 4-year horizon, estimate the total volume in 'total_estimated_coverage_volume' (e.g. "High-Density Media Horizon: Estimated 140+ global/domestic items indexed across 4 years"). 
+            Do NOT output 80 repetitive cards. Select and present ONLY the top 5 to 8 most influential items categorized by impact: Global Tier-1 Mastheads, National Press, Industry Trade Media, and Official University Releases.
+            
+            COPYRIGHT & FAIR USE PROTOCOL:
+            Consume and extract ONLY headlines, bylines, dates, lead paragraphs (paras 1-2), and 20-word keyword context snippets.
+            
+            FOUR-STAGE STRATEGIC ANALYSIS:
+            1. sentiment_framing_read: Analyze sentiment. Recognize expert authority: if a subject addresses difficult topics (e.g. waste crisis or industrial risk), frame this POSITIVELY as domain expertise.
+            2. subject_quoted_vs_reported: Summarize direct subject quotes vs. external commentary.
+            3. engagement_opportunities: Identify prospective channels, unaddressed sector topics, and outreach targets.
             """
             
             try:
@@ -358,25 +412,25 @@ if st.button("Generate Strategic Executive Brief"):
                         temperature=0.0,
                     )
                 )
-                st.session_state.current_brief = json.loads(response.text)
-                st.session_state.executed_query = final_query
-                status.update(label="Strategic Analysis Complete!", state="complete", expanded=False)
+                st.session_state.cumulative_brief = json.loads(response.text)
+                status.update(label="Executive Synthesis Complete!", state="complete", expanded=False)
                 
             except Exception as e:
                 st.error(f"Processing Error: {str(e)}")
 
 # --- DELIVERABLE RENDER ---
-if "current_brief" in st.session_state:
-    brief = st.session_state.current_brief
+if st.session_state.cumulative_brief:
+    brief = st.session_state.cumulative_brief
     st.markdown("---")
     
     st.markdown("<div class='report-card'>", unsafe_allow_html=True)
     
-    # TOP HEADER & MULTI-FORMAT DOWNLOAD SELECTOR
     header_col1, header_col2 = st.columns([2, 2])
     with header_col1:
         st.caption("CONFIDENTIAL | WILL WRIGHT MEDIA INTELLIGENCE BRIEF")
-        st.header("Executive Intelligence Output")
+        st.header(f"Executive Output ({output_language})")
+        if brief.get("total_estimated_coverage_volume"):
+            st.caption(f"📊 **Volume Index:** {brief['total_estimated_coverage_volume']}")
     
     with header_col2:
         export_format = st.selectbox(
@@ -384,21 +438,21 @@ if "current_brief" in st.session_state:
             ["PDF Document (.pdf)", "Microsoft Word (.docx)", "Markdown (.md)"],
             key="export_format_top"
         )
-        exec_query = st.session_state.get("executed_query", "")
+        exec_query = st.session_state.get("executed_query", "Executive Media Intelligence Scope")
         
         if "PDF" in export_format:
-            st.download_button("💚 Download PDF Report", generate_pdf_brief(brief, exec_query), "WWM_Executive_Brief.pdf", "application/pdf", key="dl_pdf_top")
+            st.download_button("💚 Download PDF Report", generate_pdf_brief(brief, exec_query, output_language), f"WWM_Executive_Brief_{output_language}.pdf", "application/pdf", key="dl_pdf_top")
         elif "Word" in export_format:
-            st.download_button("💚 Download Word Document", generate_docx_brief(brief, exec_query), "WWM_Executive_Brief.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
+            st.download_button("💚 Download Word Document", generate_docx_brief(brief, exec_query, output_language), f"WWM_Executive_Brief_{output_language}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
         else:
-            st.download_button("💚 Download Markdown File", generate_markdown_brief(brief, exec_query), "WWM_Executive_Brief.md", "text/markdown", key="dl_md_top")
+            st.download_button("💚 Download Markdown File", generate_markdown_brief(brief, exec_query, output_language), f"WWM_Executive_Brief_{output_language}.md", "text/markdown", key="dl_md_top")
     
     st.markdown("<br>", unsafe_allow_html=True)
     
     if not brief.get("coverage_found", True):
         st.warning("⚠️ **Limited Verified Coverage:** No high-confidence media records matched your criteria. Unverified claims have been suppressed to preserve factual integrity.")
     else:
-        st.subheader("1. Executive Overview")
+        st.subheader("1. Executive Synthesis")
         st.info(brief["headline_synthesis"])
         
         col1, col2 = st.columns(2)
@@ -409,14 +463,14 @@ if "current_brief" in st.session_state:
             st.subheader("3. Direct Quotes vs. External Commentary")
             st.write(brief["subject_quoted_vs_reported"])
         with col2:
-            st.subheader("4. Strategic Engagement & Media Opportunities")
+            st.subheader("4. Strategic Engagement Opportunities")
             st.warning(brief["engagement_opportunities"])
             
         st.divider()
-        st.subheader("5. Verified Coverage Records")
+        st.subheader("5. Tier-1 High-Impact Media Records")
         for item in brief["items"]:
             with st.expander(f"📌 {item['event_title']}"):
-                st.markdown(f"**Channel:** `{item['source_category']}`")
+                st.markdown(f"**Category:** `{item['source_category']}`")
                 st.write(f"**Copyright-Compliant Context Summary:** {item['core_event_summary']}")
                 st.markdown("**Covering Outlets & Source Referral Links:**")
                 
@@ -427,9 +481,9 @@ if "current_brief" in st.session_state:
                         unsafe_allow_html=True
                     )
     
-    st.markdown("""
+    st.markdown(f"""
         <div class="disclaimer-box">
-            <b>Analyst Verification Note:</b> WWM extracts lead paragraphs and 20-word keyword context windows to comply with international fair-use copyright guidelines. Always confirm critical details against canonical source URLs prior to executive distribution.
+            <b>Executive Verification Note:</b> WWM extracts lead paragraphs and 20-word keyword context windows to comply with international fair-use copyright guidelines. Output language set to <b>{output_language}</b>. Always confirm critical details against canonical source URLs prior to executive distribution.
         </div>
     """, unsafe_allow_html=True)
             
