@@ -1,7 +1,7 @@
 import json
 import datetime
 import io
-import Streamlit as st
+import streamlit as st
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
@@ -126,6 +126,24 @@ with st.sidebar:
         ["Past 7 Days (Current Cycle)", "Past 30 Days", "Past 12 Months", "Past 4 Years Archive"],
         index=3
     )
+    
+    selected_sources = st.multiselect(
+        "Target Channels",
+        [
+            "Global Tier-1 & Wires (Reuters, AP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
+            "Australian Press (AFR, ABC News, SMH, The Age, news.com.au)",
+            "Social Media Platforms (LinkedIn, X/Twitter, YouTube, Instagram, Reddit)",
+            "Southeast Asia Press (Kompas, VNExpress, Jakarta Post)",
+            "Indian & South Asian Press (The Hindu, Times of India, Dainik Jagran)",
+            "Official Releases (.gov.au, .edu.au, Corporate Newsrooms, ASX)"
+        ],
+        default=[
+            "Global Tier-1 & Wires (Reuters, AP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
+            "Australian Press (AFR, ABC News, SMH, The Age, news.com.au)",
+            "Social Media Platforms (LinkedIn, X/Twitter, YouTube, Instagram, Reddit)",
+            "Official Releases (.gov.au, .edu.au, Corporate Newsrooms, ASX)"
+        ]
+    )
 
     st.divider()
     if st.button("Reset Brief Buffer & Clear All"):
@@ -142,15 +160,22 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- STRICT AUSTRALIAN ENGLISH SCHEMA (AVE REMOVED AS A LEAD METRIC) ---
+st.info(
+    "ℹ️ **Sequential Report Building:** World Wide Monitor allows you to build complete media reports step by step. "
+    "You can run live web searches, add specific article links, or directly enter mixed broadcast, print, social, and online outlet records. "
+    "New inputs continuously expand and refine your report without losing previously analysed information.",
+    icon="ℹ️"
+)
+
+# --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
 class CoverageOutlet(BaseModel):
-    outlet_name: str = Field(description="Publisher, broadcaster, or newsroom name verbatim.")
+    outlet_name: str = Field(description="Publisher, broadcaster, social platform, or government newsroom name verbatim.")
     medium_type: str = Field(description="Media format(s) covering this story (e.g., Online, Radio, TV, Print, Social Media).")
     author_byline: str = Field(description="Author, journalist, or account handle verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication or post date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
     canonical_source_url: str = Field(description="Direct, clean resolving canonical URL discovered on the web for this coverage piece.")
-    audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified (Roy Morgan/AMAA/OztAM) or marked '[Publisher Self-Reported / Unverified]'.")
+    audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual title describing the coverage event.")
@@ -179,15 +204,14 @@ class PDFReport(FPDF):
         self.set_fill_color(20, 18, 15)
         self.rect(0, 0, 210, 24, 'F')
         self.set_font('Helvetica', 'B', 8)
-        self.set_text_color(198, 188, 169) # Warm Ecru
+        self.set_text_color(198, 188, 169)
         self.set_y(8)
         self.cell(0, 5, 'WILL WRIGHT MEDIA  |  EXECUTIVE INTELLIGENCE BRIEF', align='R')
 
     def footer(self):
         self.set_y(-15)
         self.set_font('Helvetica', '', 8)
-        self.set_text_color(107, 107, 107) # Muted Graphite
-        # Required AI Disclaimer Footer
+        self.set_text_color(107, 107, 107)
         self.cell(0, 10, 'Generated with AI assistance and reviewed by Will Wright Media. Sources are linked; confirm critical details against source before acting.', align='C')
 
 def clean_pdf_text(text):
@@ -200,7 +224,6 @@ def clean_pdf_text(text):
 
 def generate_pdf_brief(brief, query, lang):
     pdf = PDFReport()
-    # Bone/Cream Page Background (#F2EDE3)
     pdf.set_fill_color(242, 237, 227)
     margin = 15
     pdf.set_margins(margin, 28, margin)
@@ -208,9 +231,8 @@ def generate_pdf_brief(brief, query, lang):
     pdf.set_auto_page_break(auto=True, margin=15)
     epw = pdf.epw
     
-    # Document Header Title
     pdf.set_font('Helvetica', 'B', 16)
-    pdf.set_text_color(35, 35, 35) # Dark Body Text (#232323)
+    pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
     pdf.cell(epw, 10, clean_pdf_text(f'Executive Intelligence Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     
@@ -220,14 +242,12 @@ def generate_pdf_brief(brief, query, lang):
     pdf.cell(epw, 5, clean_pdf_text(f'Scope: {query} | {brief.get("verified_coverage_metric", "")}'), new_x="LMARGIN", new_y="NEXT")
     pdf.cell(epw, 5, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'), new_x="LMARGIN", new_y="NEXT")
     
-    # Hairline Section Divider (#C6BCA9)
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
     pdf.ln(3)
     pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
     pdf.ln(4)
     
-    # Section 1: Executive Overview
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -238,7 +258,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(3)
     
-    # Section 2: Positioning & Framing
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -249,7 +268,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('sentiment_framing_read', '')))
     pdf.ln(3)
     
-    # Section 3: Quotes & Commentary
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -260,7 +278,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
     pdf.ln(3)
 
-    # Section 4: Strategic Opportunities
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -271,7 +288,6 @@ def generate_pdf_brief(brief, query, lang):
     pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('engagement_opportunities', '')))
     pdf.ln(4)
     
-    # Section 5: Coverage Records
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
