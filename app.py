@@ -37,10 +37,6 @@ st.markdown("""
     }
     div[data-baseweb="select"] * { color: #111827 !important; }
 
-    /* VERIFICATION BADGES */
-    .badge-confirmed { background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-    .badge-unconfirmed { background-color: #78350f; color: #fcd34d; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-
     .stButton>button {
         background-color: transparent !important; color: #e5e5e0 !important; border: 1px solid #444444 !important;
         border-radius: 2px !important; padding: 0.75rem 1.8rem !important; font-family: 'Inter', sans-serif !important;
@@ -65,11 +61,28 @@ with st.sidebar:
     gemini_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
     
     st.divider()
-    st.subheader("2. Unlimited Search Horizon")
+    st.subheader("2. Search Parameters")
     date_window = st.selectbox(
-        "Search Recency Scope",
+        "Time Horizon",
         ["Past 7 Days (Current Cycle)", "Past 30 Days", "Past 12 Months", "Past 4 Years Archive"],
         index=0
+    )
+    
+    selected_sources = st.multiselect(
+        "Target Channels & Geographic Focus",
+        [
+            "Global Tier-1 & Wires (Reuters, AP, AFP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
+            "Australian National & Regional Press (AFR, ABC News, SMH, The Age, news.com.au)",
+            "Asia-Pacific & India Media (The Hindu, Times of India, Nikkei, South China Morning Post)",
+            "EMEA & Middle East Press (Al Jazeera, Financial Times, Le Monde, Deutsche Welle)",
+            "Latin America & Americas Press (El País, Folha, Globe & Mail)",
+            "Official & Primary Releases (.gov.au, .edu.au, Corporate Portals, ASX)"
+        ],
+        default=[
+            "Global Tier-1 & Wires (Reuters, AP, AFP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
+            "Australian National & Regional Press (AFR, ABC News, SMH, The Age, news.com.au)",
+            "Official & Primary Releases (.gov.au, .edu.au, Corporate Portals, ASX)"
+        ]
     )
 
     st.divider()
@@ -77,17 +90,20 @@ with st.sidebar:
     if "tokens" not in st.session_state:
         st.session_state.tokens = 1000
     st.metric("Token Balance", f"{st.session_state.tokens} WWM")
+    if st.button("Top Up Credits (+500 WWM)"):
+        st.session_state.tokens += 500
+        st.rerun()
 
 # --- BRANDED HEADER ---
 st.markdown("""
     <div class="brand-header">
         <div class="brand-tagline">WORLD WIDE MONITOR · EXECUTIVE INTELLIGENCE</div>
         <div class="brand-title">Great work doesn't speak for itself.</div>
-        <div class="brand-subtitle">Actionable, unconstrained media intelligence derived from comprehensive web searches.</div>
+        <div class="brand-subtitle">Unrestricted global search across primary portals, wire services, and multi-region media networks.</div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- STRICT PYDANTIC SCHEMA ---
+# --- PYDANTIC SCHEMA ---
 class CoverageOutlet(BaseModel):
     outlet_name: str = Field(description="Publisher or media house name found in web record.")
     author_byline: str = Field(description="Explicit author byline. Write 'not stated' if missing.")
@@ -96,7 +112,7 @@ class CoverageOutlet(BaseModel):
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Executive title for the coverage event.")
-    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Trade / Sector Press', or 'Official Primary Release'")
+    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Asia-Pacific Press', 'EMEA Press', 'Americas Press', or 'Official Primary Release'")
     core_event_summary: str = Field(description="Fact-only summary strictly derived from source documents.")
     covering_outlets: list[CoverageOutlet]
 
@@ -107,7 +123,7 @@ class WWMOnePageBrief(BaseModel):
     so_what_action: str = Field(description="Actionable strategic recommendations for leadership.")
     items: list[EventCoverageItem]
 
-# --- EXPORT GENERATORS ---
+# --- EXPORT GENERATORS: MARKDOWN, WORD (.DOCX), AND PDF ---
 def generate_markdown_brief(brief, query):
     md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF\n"
     md += f"**Target Strategy Query:** `{query}`\n\n"
@@ -116,7 +132,7 @@ def generate_markdown_brief(brief, query):
     md += f"**Strategic Imperatives:** {brief['so_what_action']}\n\n"
     md += f"**Positioning & Risk Analysis:** {brief['reputational_value_read']}\n\n"
     md += f"---\n\n"
-    md += f"## Unrestricted Coverage & Media Records\n\n"
+    md += f"## Verified Coverage & Media Records\n\n"
     for item in brief["items"]:
         md += f"### 📌 {item['event_title']}\n"
         md += f"- **Category:** {item['source_category']}\n"
@@ -126,6 +142,120 @@ def generate_markdown_brief(brief, query):
         md += "\n"
     md += "\n\n*This brief was generated with AI assistance. Review and confirm source credibility via linked URLs before strategic distribution.*"
     return md
+
+def generate_docx_brief(brief, query):
+    doc = Document()
+    doc.add_heading("CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF", level=0)
+    doc.add_paragraph(f"Target Strategy Query: {query}")
+    
+    doc.add_heading("1. Executive Summary & Strategic Takeaway", level=1)
+    doc.add_paragraph(f"Overview: {brief['headline_synthesis']}")
+    doc.add_paragraph(f"Strategic Imperatives: {brief['so_what_action']}")
+    doc.add_paragraph(f"Positioning & Risk Analysis: {brief['reputational_value_read']}")
+    
+    doc.add_heading("2. Verified Coverage & Media Records", level=1)
+    for item in brief["items"]:
+        doc.add_heading(f"📌 {item['event_title']}", level=2)
+        doc.add_paragraph(f"Channel: {item['source_category']}")
+        doc.add_paragraph(f"Summary: {item['core_event_summary']}")
+        
+        doc.add_paragraph("Covering Outlets & Bylines:")
+        for outlet in item["covering_outlets"]:
+            p = doc.add_paragraph(style='List Bullet')
+            p.add_run(f"{outlet['outlet_name']} ").bold = True
+            p.add_run(f"(Byline: {outlet['author_byline']} | Date: {outlet['publication_date']}) - {outlet['source_url']}")
+            
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+class PDFReport(FPDF):
+    def header(self):
+        self.set_font('Helvetica', 'B', 8)
+        self.set_text_color(120, 120, 120)
+        self.set_y(10)
+        self.cell(0, 5, 'CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF', align='R')
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Helvetica', 'I', 8)
+        self.set_text_color(150, 150, 150)
+        self.cell(0, 10, f'Page {self.page_no()}', align='C')
+
+def clean_pdf_text(text):
+    if not text:
+        return ""
+    replacements = {
+        '“': '"', '”': '"', '‘': "'", '’': "'", '—': '-', '–': '-', '•': '*',
+        '…': '...', '™': 'TM', '®': '(R)', '©': '(C)'
+    }
+    for orig, repl in replacements.items():
+        text = text.replace(orig, repl)
+    return text.encode('latin-1', 'replace').decode('latin-1')
+
+def generate_pdf_brief(brief, query):
+    pdf = PDFReport()
+    margin = 15
+    pdf.set_margins(margin, 22, margin)
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    epw = pdf.epw
+    
+    pdf.set_font('Helvetica', 'B', 16)
+    pdf.set_x(margin)
+    pdf.cell(epw, 10, 'Executive Intelligence Brief', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', 'I', 10)
+    pdf.set_x(margin)
+    pdf.cell(epw, 6, clean_pdf_text(f'Target Query: {query}'), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+    
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_x(margin)
+    pdf.cell(epw, 8, '1. Executive Overview', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_x(margin)
+    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('headline_synthesis', '')))
+    pdf.ln(4)
+    
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_x(margin)
+    pdf.cell(epw, 8, '2. Strategic Imperatives for Leadership', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_x(margin)
+    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('so_what_action', '')))
+    pdf.ln(4)
+    
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_x(margin)
+    pdf.cell(epw, 8, '3. Institutional Positioning & Risk', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_x(margin)
+    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('reputational_value_read', '')))
+    pdf.ln(4)
+    
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_x(margin)
+    pdf.cell(epw, 8, '4. Verified Coverage Records', new_x="LMARGIN", new_y="NEXT")
+    
+    for item in brief.get("items", []):
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.set_x(margin)
+        pdf.multi_cell(epw, 5, clean_pdf_text(f"* {item.get('event_title', '')}"))
+        
+        pdf.set_font('Helvetica', '', 9)
+        pdf.set_x(margin)
+        pdf.multi_cell(epw, 5, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
+        
+        for outlet in item.get('covering_outlets', []):
+            outlet_line = f"  - Outlet: {outlet.get('outlet_name', '')} | Byline: {outlet.get('author_byline', '')} | Date: {outlet.get('publication_date', '')}"
+            pdf.set_x(margin)
+            pdf.multi_cell(epw, 5, clean_pdf_text(outlet_line))
+            
+        pdf.ln(3)
+        
+    return bytes(pdf.output())
 
 # --- SEARCH INTERFACE ---
 search_mode = st.radio("Search Mode:", ["Structured Parameters", "Advanced Boolean Search"], horizontal=True)
@@ -157,7 +287,7 @@ if final_query.strip():
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- EXECUTION ENGINE (UNRESTRICTED OPEN WEB SEARCH) ---
+# --- EXECUTION ENGINE ---
 if st.button("Generate Executive Brief"):
     if not final_query.strip():
         st.error("Please specify search parameters before running.")
@@ -166,20 +296,30 @@ if st.button("Generate Executive Brief"):
     else:
         st.session_state.tokens -= 50
         
-        with st.status("Gathering & Processing Open Web Coverage...", expanded=True) as status:
+        with st.status("Gathering & Synthesizing Multi-Source Coverage...", expanded=True) as status:
             current_date = datetime.datetime.now().strftime("%B %d, %Y")
+            sources_formatted = ", ".join(selected_sources) if selected_sources else "Global media, wire services, national press, and official releases"
             
             prompt = f"""
             Today is {current_date}.
-            You are the WWM Fact Extraction Engine.
-            Execute an open web search across all news sources, official announcements, trade journals, and global press matching: {final_query}
+            You are the WWM Fact Extraction Engine for Will Wright Media.
+            Execute an OPEN WEB SEARCH across all media outlets, news wires, trade journals, and primary releases matching: {final_query}
+            
+            GLOBAL DIRECTORY REFERENCE (ACTIVELY CHECK AND CATEGORIZE ACROSS ALL REGIONS):
+            - GLOBAL WIRES & TIERS: Reuters, Associated Press (AP), Agence France-Presse (AFP), Bloomberg, Financial Times, Wall Street Journal, New York Times, Washington Post, CNN, BBC World, TIME, Forbes, Fortune, EurekAlert!.
+            - AUSTRALIAN & PACIFIC MEDIA: Australian Financial Review (AFR), ABC News, The Age, Sydney Morning Herald (SMH), The Australian, SBS News, news.com.au, Architecture & Design, Inner City News.
+            - ASIA-PACIFIC & SOUTH ASIA: The Hindu, Times of India, Indian Express, Nikkei Asia, South China Morning Post (SCMP), Straits Times, Xinhua.
+            - EMEA & MIDDLE EAST: Al Jazeera, Le Monde, Deutsche Welle, El País, BBC UK, Sky News.
+            - AMERICAS & LATAM: Globe and Mail, Folha de S.Paulo, Clarín, USA Today, NBC News, CNBC.
+            - OFFICIAL & PRIMARY: .gov.au, .edu.au, .gov, .edu, university newsrooms (e.g. rmit.edu.au), ASX/SEC corporate announcements.
             
             INSTRUCTIONS:
-            1. Search broadly across open web media, wires, regional publications, and official portals.
-            2. Extract ONLY factual events, quotes, and milestone commitments present in the retrieved web content.
-            3. If a date, author, or publisher name is absent, write 'not stated'. Do NOT invent metadata values.
-            4. Group coverage by core story event under 'covering_outlets'.
-            5. Present 'reputational_value_read' clearly as strategic interpretation for executive leadership.
+            1. SCOPE: Perform an unconstrained open web search prioritizing the following user channels: {sources_formatted}. Do NOT restrict search results exclusively to these—capture any relevant open web news or release.
+            2. RECENCY: Target coverage published within: {date_window}.
+            3. FACTUAL PRECISION: Extract ONLY verifiable events, policy commitments, figures, and dates explicitly present in web records.
+            4. METADATA STAGES: If a date, author, or publisher name is absent in the source record, write 'not stated'. Do NOT invent values.
+            5. DE-DUPLICATION: Group coverage by core story event under 'covering_outlets'.
+            6. REPUTATIONAL READ: Present 'reputational_value_read' clearly as strategic interpretation for executive leadership.
             """
             
             try:
@@ -196,7 +336,7 @@ if st.button("Generate Executive Brief"):
                 )
                 st.session_state.current_brief = json.loads(response.text)
                 st.session_state.executed_query = final_query
-                status.update(label="Open Web Search & Synthesis Complete!", state="complete", expanded=False)
+                status.update(label="Global Search & Synthesis Complete!", state="complete", expanded=False)
                 
             except Exception as e:
                 st.error(f"Processing Error: {str(e)}")
@@ -208,19 +348,48 @@ if "current_brief" in st.session_state:
     
     st.markdown("<div class='report-card'>", unsafe_allow_html=True)
     
-    header_col1, header_col2 = st.columns([2.5, 1.5])
+    # TOP HEADER & MULTI-FORMAT DOWNLOAD SELECTOR
+    header_col1, header_col2 = st.columns([2, 2])
     with header_col1:
         st.caption("CONFIDENTIAL | WILL WRIGHT MEDIA INTELLIGENCE BRIEF")
         st.header("Executive Intelligence Output")
+    
     with header_col2:
-        md_data = generate_markdown_brief(brief, st.session_state.get("executed_query", ""))
-        st.download_button(
-            label="💚 Download Executive Brief (.md)",
-            data=md_data,
-            file_name="WWM_Executive_Brief.md",
-            mime="text/markdown",
-            key="dl_top"
+        export_format = st.selectbox(
+            "Export Document Format:",
+            ["PDF Document (.pdf)", "Microsoft Word (.docx)", "Markdown (.md)"],
+            key="export_format_top"
         )
+        
+        exec_query = st.session_state.get("executed_query", "")
+        
+        if "PDF" in export_format:
+            pdf_data = generate_pdf_brief(brief, exec_query)
+            st.download_button(
+                label="💚 Download PDF Report",
+                data=pdf_data,
+                file_name="WWM_Executive_Brief.pdf",
+                mime="application/pdf",
+                key="dl_pdf_top"
+            )
+        elif "Word" in export_format:
+            docx_data = generate_docx_brief(brief, exec_query)
+            st.download_button(
+                label="💚 Download Word Document",
+                data=docx_data,
+                file_name="WWM_Executive_Brief.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key="dl_docx_top"
+            )
+        else:
+            md_data = generate_markdown_brief(brief, exec_query)
+            st.download_button(
+                label="💚 Download Markdown File",
+                data=md_data,
+                file_name="WWM_Executive_Brief.md",
+                mime="text/markdown",
+                key="dl_md_top"
+            )
     
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -239,7 +408,7 @@ if "current_brief" in st.session_state:
         st.write(brief["reputational_value_read"])
         
         st.divider()
-        st.subheader("Unrestricted Coverage & Media Records")
+        st.subheader("Verified Coverage & Media Records")
         for item in brief["items"]:
             with st.expander(f"📌 {item['event_title']}"):
                 st.markdown(f"**Channel:** `{item['source_category']}`")
@@ -253,11 +422,36 @@ if "current_brief" in st.session_state:
                         unsafe_allow_html=True
                     )
     
-    # DISCLAIMER NOTE
-    st.markdown("""
-        <div class="disclaimer-box">
-            <b>Analyst Verification Note:</b> This brief captures open web coverage across global and regional outlets. All records link directly to original source URLs so analysts can audit publisher credibility and confirm details prior to client distribution.
-        </div>
-    """, unsafe_allow_html=True)
+    st.divider()
+    
+    # BOTTOM REPEATED DOWNLOAD BUTTON
+    bot_col1, bot_col2 = st.columns([2, 1])
+    with bot_col1:
+        st.markdown("**Ready to share or archive this brief?** Select format above and download.")
+    with bot_col2:
+        if "PDF" in export_format:
+            st.download_button(
+                label="💚 Download PDF Report",
+                data=generate_pdf_brief(brief, exec_query),
+                file_name="WWM_Executive_Brief.pdf",
+                mime="application/pdf",
+                key="dl_pdf_bot"
+            )
+        elif "Word" in export_format:
+            st.download_button(
+                label="💚 Download Word Document",
+                data=generate_docx_brief(brief, exec_query),
+                file_name="WWM_Executive_Brief.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key="dl_docx_bot"
+            )
+        else:
+            st.download_button(
+                label="💚 Download Markdown File",
+                data=generate_markdown_brief(brief, exec_query),
+                file_name="WWM_Executive_Brief.md",
+                mime="text/markdown",
+                key="dl_md_bot"
+            )
             
     st.markdown("</div>", unsafe_allow_html=True)
