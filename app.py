@@ -1,13 +1,11 @@
-import os
 import json
 import streamlit as st
-from tavily import TavilyClient
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
 # --- UI CONFIGURATION (WWM BRANDING) ---
-st.set_page_config(page_title="World Wide Monitor | Search Sandbox", page_icon="📡", layout="wide")
+st.set_page_config(page_title="World Wide Monitor | Native Gemini Sandbox", page_icon="📡", layout="wide")
 
 st.markdown("""
     <style>
@@ -21,33 +19,20 @@ st.markdown("""
 # --- SIDEBAR: CONTROL PANEL ---
 with st.sidebar:
     st.title("📡 WWM Engine Control")
-    st.caption("Media Intelligence Search Engine")
+    st.caption("Native Gemini + Google Search Grounding")
     
-    tavily_key = st.text_input("Tavily API Key", type="password", value=os.getenv("TAVILY_API_KEY", ""))
-    gemini_key = st.text_input("Gemini API Key", type="password", value=os.getenv("GEMINI_API_KEY", ""))
-    
-    st.divider()
-    st.subheader("Source Whitelist (Non-Copyright Target)")
-    
-    whitelisted_domains = [
-        "minister.education.gov.au",
-        "education.gov.au",
-        "arc.gov.au",
-        "rmit.edu.au",
-        "unimelb.edu.au",
-        "media.gov.au",
-        "themorningmail.com.au",
-        "aap.com.au"
-    ]
-    st.code("\n".join(whitelisted_domains), language="text")
+    gemini_key = st.text_input("Gemini API Key", type="password", placeholder="Paste your AI Studio key here")
     
     st.divider()
     st.subheader("Account Tokens")
     if "tokens" not in st.session_state:
         st.session_state.tokens = 1000
     st.metric("Token Balance", f"{st.session_state.tokens} WWM")
+    if st.button("Top Up (+500 Tokens)"):
+        st.session_state.tokens += 500
+        st.rerun()
 
-# --- PYDANTIC SCHEMA: PURE FACT EXTRACTION ---
+# --- PYDANTIC SCHEMA: STRICT FACT EXTRACTION ---
 class EntityMention(BaseModel):
     entity_name: str = Field(description="Individual or organization mentioned")
     positioning: str = Field(description="Policy position or action taken")
@@ -56,13 +41,13 @@ class EntityMention(BaseModel):
 class ReleaseFactItem(BaseModel):
     source_title: str
     source_url: str
-    core_event_summary: str = Field(description="Fact-only summary of the announcement.")
+    core_event_summary: str = Field(description="Fact-only summary of the news item.")
     entities: list[EntityMention]
 
 class WWMOnePageBrief(BaseModel):
     headline_synthesis: str = Field(description="1-sentence synthesis of media/announcements today.")
-    reputational_value_read: str = Field(description="Base AI read on reputational impact.")
-    so_what_action: str = Field(description="Base AI suggested takeaway for leadership.")
+    reputational_value_read: str = Field(description="Deep reputational read.")
+    so_what_action: str = Field(description="Strategic takeaway for executive leadership.")
     items: list[ReleaseFactItem]
 
 # --- SEARCH ENGINE INTERFACE ---
@@ -85,21 +70,17 @@ if search_mode == "Structured Fields":
     with col3:
         not_mention = st.text_input("Must NOT mention (NOT)", placeholder="e.g., Sports Scandal")
         
-    # LOGIC TO CONSTRUCT BOOLEAN QUERY AUTOMATICALLY
     query_parts = []
     
     if must_all.strip():
-        # Enclose multiple mandatory words in double quotes or strict sequence
         all_words = " ".join([f'"{w.strip()}"' if " " in w.strip() else w.strip() for w in must_all.split(",") if w.strip()])
         query_parts.append(all_words)
         
     if any_one.strip():
-        # Join choices with OR logic
         or_words = " OR ".join([f'"{w.strip()}"' if " " in w.strip() else w.strip() for w in any_one.split() if w.strip()])
         query_parts.append(f"({or_words})")
         
     if not_mention.strip():
-        # Prefix exclusions with NOT / minus
         not_words = " ".join([f"-{w.strip()}" for w in not_mention.split() if w.strip()])
         query_parts.append(not_words)
         
@@ -109,13 +90,12 @@ else:
     st.markdown("#### Advanced Boolean Search Query")
     final_query = st.text_input(
         "Enter Raw Boolean Query", 
-        value='("Higher Education" OR "Research Grant") AND "RMIT" -Sports',
-        placeholder='e.g., ("University Funding" OR "Accord") AND "Minister" -Protest'
+        value='("Higher Education" OR "Research Grant") AND "RMIT"',
+        placeholder='e.g., ("University Funding" OR "Accord") AND "Minister"'
     )
 
-# DISPLAY THE EXECUTED STRING PREVIEW
 if final_query.strip():
-    st.markdown("**Compiled Search String Sent to Agents:**")
+    st.markdown("**Compiled Search String Sent to Gemini Swarm:**")
     st.markdown(f"<div class='query-preview'>{final_query}</div>", unsafe_allow_html=True)
 else:
     st.info("Enter search criteria above to compile your query.")
@@ -126,55 +106,46 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.button("Run Intelligence Search (-50 Tokens)"):
     if not final_query.strip():
         st.error("Please enter a valid search query first.")
-    elif not tavily_key or not gemini_key:
-        st.error("Please enter both Tavily and Gemini API keys in the sidebar.")
+    elif not gemini_key:
+        st.error("Please paste your Gemini API Key in the left sidebar.")
     elif st.session_state.tokens < 50:
         st.error("Insufficient Tokens!")
     else:
         st.session_state.tokens -= 50
         
-        with st.status("Executing Search Swarm across Target Media...", expanded=True) as status:
-            # AGENT 1: DISCOVERY & BOOLEAN EXECUTION
-            st.write(f"🔍 **Agent 1:** Executing boolean search string across media portals...")
-            tavily_client = TavilyClient(api_key=tavily_key)
+        with st.status("Deploying Gemini Agent Swarm with Native Google Search...", expanded=True) as status:
+            st.write("🔍 **Gemini Search Agent:** Searching live Australian media and extracting structured facts...")
             
-            search_response = tavily_client.search(
-                query=f"{final_query} Australia media release",
-                search_depth="advanced",
-                max_results=5,
-                include_domains=whitelisted_domains
-            )
-            
-            raw_results = search_response.get("results", [])
-            st.write(f"✓ Retrieved {len(raw_results)} matching results.")
-            
-            # AGENTS 2 & 3: FACT EXTRACTION & EDITORIAL SYNTHESIS
-            st.write("🧠 **Agents 2 & 3:** Stripping noise, applying boolean filters, and synthesizing fact brief...")
-            client = genai.Client(api_key=gemini_key)
-            
-            prompt = f"""
-            You are the WWM Fact Engine analyzing targeted media results for the search query: '{final_query}'.
-            
-            CRITICAL CONSTRAINT:
-            Extract ONLY factual events, policy commitments, entity statements, and dates.
-            Disregard PR fluff and promotional narrative.
-            
-            Raw Results:
-            {json.dumps(raw_results)}
-            """
-            
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=WWMOnePageBrief,
-                    temperature=0.1,
+            try:
+                client = genai.Client(api_key=gemini_key)
+                
+                prompt = f"""
+                You are the WWM Fact Engine. Perform a web search for current public media, press releases, and news regarding:
+                Search Query: {final_query} Australia
+                
+                CRITICAL INSTRUCTIONS:
+                1. Focus search primarily on Australian public media releases (.gov.au, .edu.au) and major news.
+                2. Extract ONLY factual events, policy commitments, entity statements, and dates.
+                3. Disregard PR fluff and promotional narrative.
+                """
+                
+                # Gemini handles search and structured output natively
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[{"google_search": {}}],  # Native Google Search Tool
+                        response_mime_type="application/json",
+                        response_schema=WWMOnePageBrief,
+                        temperature=0.1,
+                    )
                 )
-            )
-            
-            st.session_state.current_brief = json.loads(response.text)
-            status.update(label="Search Processing Complete!", state="complete", expanded=False)
+                
+                st.session_state.current_brief = json.loads(response.text)
+                status.update(label="Search & Fact Extraction Complete!", state="complete", expanded=False)
+                
+            except Exception as e:
+                st.error(f"Execution Error: {str(e)}")
 
 # --- DELIVERABLE RENDER ---
 if "current_brief" in st.session_state:
