@@ -16,146 +16,42 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
 
-    /* Global Dark Background & Default Typography */
-    .stApp {
-        background-color: #111111 !important;
-        color: #e5e5e0 !important;
-        font-family: 'Inter', sans-serif !important;
-    }
-    
-    /* Sidebar Dark Styling */
-    [data-testid="stSidebar"] {
-        background-color: #161616 !important;
-        border-right: 1px solid #262626 !important;
-    }
-    [data-testid="stSidebar"] * {
-        color: #d4d4d0 !important;
-    }
+    .stApp { background-color: #111111 !important; color: #e5e5e0 !important; font-family: 'Inter', sans-serif !important; }
+    [data-testid="stSidebar"] { background-color: #161616 !important; border-right: 1px solid #262626 !important; }
+    [data-testid="stSidebar"] * { color: #d4d4d0 !important; }
 
-    /* Editorial Brand Header Banner */
-    .brand-header {
-        background-color: #161616;
-        border: 1px solid #262626;
-        padding: 36px 40px;
-        border-radius: 4px;
-        margin-bottom: 32px;
-    }
-    .brand-tagline {
-        font-family: 'Inter', sans-serif;
-        font-size: 0.75rem;
-        letter-spacing: 0.25em;
-        text-transform: uppercase;
-        color: #a3a3a0;
-        margin-bottom: 12px;
-    }
-    .brand-title {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 2.8rem;
-        font-weight: 400;
-        color: #ffffff;
-        margin: 0;
-        line-height: 1.1;
-    }
-    .brand-subtitle {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 1.35rem;
-        font-style: italic;
-        color: #d4d4d0;
-        margin-top: 8px;
-    }
+    .brand-header { background-color: #161616; border: 1px solid #262626; padding: 36px 40px; border-radius: 4px; margin-bottom: 32px; }
+    .brand-tagline { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #a3a3a0; margin-bottom: 12px; }
+    .brand-title { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; font-weight: 400; color: #ffffff; margin: 0; line-height: 1.1; }
+    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-style: italic; color: #d4d4d0; margin-top: 8px; }
 
-    /* =========================================================
-       HIGH-CONTRAST WHITE INPUT FIELDS
-       ========================================================= */
-    div[data-baseweb="input"], 
-    div[data-baseweb="base-input"],
-    div[data-baseweb="select"] > div {
-        background-color: #ffffff !important;
-        border: 1px solid #d1d5db !important;
-        border-radius: 4px !important;
+    /* HIGH-CONTRAST WHITE INPUT FIELDS */
+    div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div {
+        background-color: #ffffff !important; border: 1px solid #d1d5db !important; border-radius: 4px !important;
     }
-
-    div[data-baseweb="input"] input, 
-    div[data-baseweb="base-input"] input {
-        background-color: #ffffff !important;
-        color: #111827 !important;
-        font-weight: 500 !important;
-        font-size: 0.95rem !important;
+    div[data-baseweb="input"] input, div[data-baseweb="base-input"] input {
+        background-color: #ffffff !important; color: #111827 !important; font-weight: 500 !important; font-size: 0.95rem !important;
     }
-
-    div[data-baseweb="input"] input::placeholder, 
-    div[data-baseweb="base-input"] input::placeholder {
-        color: #6b7280 !important;
-        opacity: 1 !important;
+    div[data-baseweb="input"] input::placeholder, div[data-baseweb="base-input"] input::placeholder {
+        color: #6b7280 !important; opacity: 1 !important;
     }
+    div[data-baseweb="select"] * { color: #111827 !important; }
 
-    div[data-baseweb="input"] button {
-        background-color: #ffffff !important;
-        color: #374151 !important;
-    }
+    /* VERIFICATION BADGES */
+    .badge-confirmed { background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-unconfirmed { background-color: #78350f; color: #fcd34d; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
 
-    div[data-baseweb="select"] * {
-        color: #111827 !important;
-    }
-
-    div[data-testid="stRadio"] label p {
-        color: #e5e5e0 !important;
-        font-weight: 500 !important;
-    }
-
-    /* Primary Outline Buttons (Matching 'START A CONVERSATION') */
     .stButton>button {
-        background-color: transparent !important;
-        color: #e5e5e0 !important;
-        border: 1px solid #444444 !important;
-        border-radius: 2px !important;
-        padding: 0.75rem 1.8rem !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: 0.8rem !important;
-        letter-spacing: 0.18em !important;
-        text-transform: uppercase !important;
-        transition: all 0.25s ease !important;
+        background-color: transparent !important; color: #e5e5e0 !important; border: 1px solid #444444 !important;
+        border-radius: 2px !important; padding: 0.75rem 1.8rem !important; font-family: 'Inter', sans-serif !important;
+        font-size: 0.8rem !important; letter-spacing: 0.18em !important; text-transform: uppercase !important;
     }
-    .stButton>button:hover {
-        border-color: #ffffff !important;
-        color: #ffffff !important;
-        background-color: #1f1f1f !important;
-    }
-
-    /* Prominent Raised Emerald Green Download Buttons */
     .stDownloadButton>button {
-        background-color: #10b981 !important;
-        color: #ffffff !important;
-        font-family: 'Inter', sans-serif !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
-        letter-spacing: 0.08em !important;
-        text-transform: uppercase !important;
-        padding: 0.8rem 1.8rem !important;
-        border-radius: 2px !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3) !important;
-        transition: all 0.2s ease-in-out !important;
+        background-color: #10b981 !important; color: #ffffff !important; font-weight: 600 !important;
+        padding: 0.8rem 1.8rem !important; border-radius: 2px !important; border: none !important;
     }
-    .stDownloadButton>button:hover {
-        background-color: #059669 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45) !important;
-    }
-
-    /* Executive Report Card Containers */
-    .report-card {
-        background-color: #161616;
-        border: 1px solid #262626;
-        padding: 36px;
-        border-radius: 4px;
-    }
-    
-    .streamlit-expanderHeader {
-        background-color: #1a1a1a !important;
-        color: #ffffff !important;
-        border-radius: 2px !important;
-    }
+    .report-card { background-color: #161616; border: 1px solid #262626; padding: 36px; border-radius: 4px; }
+    .disclaimer-box { background-color: #1a1a1a; border-left: 3px solid #6b7280; padding: 12px 16px; font-size: 0.82rem; color: #9ca3af; margin-top: 24px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -166,34 +62,14 @@ with st.sidebar:
     st.divider()
     
     st.subheader("1. API Configuration")
-    api_provider = st.selectbox(
-        "AI Engine Provider",
-        ["Google Gemini (Native Grounding)", "Tavily + Gemini", "OpenAI GPT-4o"],
-        index=0
-    )
-    
     gemini_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
     
     st.divider()
-    st.subheader("2. Search Parameters")
+    st.subheader("2. Unlimited Search Horizon")
     date_window = st.selectbox(
-        "Time Horizon",
+        "Search Recency Scope",
         ["Past 7 Days (Current Cycle)", "Past 30 Days", "Past 12 Months", "Past 4 Years Archive"],
         index=0
-    )
-    
-    selected_sources = st.multiselect(
-        "Target Channels",
-        [
-            "Global Tier-1 Media (Washington Post, Reuters, CNN, BBC)",
-            "Australian National Press (AFR, ABC News, SMH, The Age)",
-            "Official & Primary Releases (.gov.au, .edu.au)"
-        ],
-        default=[
-            "Global Tier-1 Media (Washington Post, Reuters, CNN, BBC)",
-            "Australian National Press (AFR, ABC News, SMH, The Age)",
-            "Official & Primary Releases (.gov.au, .edu.au)"
-        ]
     )
 
     st.divider()
@@ -201,39 +77,37 @@ with st.sidebar:
     if "tokens" not in st.session_state:
         st.session_state.tokens = 1000
     st.metric("Token Balance", f"{st.session_state.tokens} WWM")
-    if st.button("Top Up Credits (+500 WWM)"):
-        st.session_state.tokens += 500
-        st.rerun()
 
-# --- BRANDED TOP HEADER BANNER ---
+# --- BRANDED HEADER ---
 st.markdown("""
     <div class="brand-header">
         <div class="brand-tagline">WORLD WIDE MONITOR · EXECUTIVE INTELLIGENCE</div>
         <div class="brand-title">Great work doesn't speak for itself.</div>
-        <div class="brand-subtitle">Actionable, high-margin media intelligence derived from public releases and global coverage.</div>
+        <div class="brand-subtitle">Actionable, unconstrained media intelligence derived from comprehensive web searches.</div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- PYDANTIC SCHEMA ---
+# --- STRICT PYDANTIC SCHEMA ---
 class CoverageOutlet(BaseModel):
-    outlet_name: str = Field(description="Publisher or media house name (e.g., Washington Post, Reuters, ABC News).")
-    author_byline: str = Field(description="Journalist or producer byline. Use 'Official Announcement' if uncredited.")
-    publication_date: str = Field(description="Date published (e.g., Aug 23, 2024).")
-    source_url: str = Field(description="Direct URL to article or official release.")
+    outlet_name: str = Field(description="Publisher or media house name found in web record.")
+    author_byline: str = Field(description="Explicit author byline. Write 'not stated' if missing.")
+    publication_date: str = Field(description="Explicit publication date. Write 'not stated' if missing.")
+    source_url: str = Field(description="Direct web URL to the retrieved source article.")
 
 class EventCoverageItem(BaseModel):
-    event_title: str = Field(description="Clear executive title summarizing the story event.")
-    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Wire Service', or 'Official Primary Release'.")
-    core_event_summary: str = Field(description="Fact-only summary stripping out promotional fluff, highlighting milestones, figures, and commitments.")
-    covering_outlets: list[CoverageOutlet] = Field(description="De-duplicated list of all outlets that covered this story.")
+    event_title: str = Field(description="Executive title for the coverage event.")
+    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Trade / Sector Press', or 'Official Primary Release'")
+    core_event_summary: str = Field(description="Fact-only summary strictly derived from source documents.")
+    covering_outlets: list[CoverageOutlet]
 
 class WWMOnePageBrief(BaseModel):
-    headline_synthesis: str = Field(description="One-sentence executive synthesis of overall coverage.")
-    reputational_value_read: str = Field(description="Strategic analysis of institutional positioning and media sentiment.")
-    so_what_action: str = Field(description="Direct, actionable recommendations for executive leadership.")
+    coverage_found: bool = Field(description="Set to False if no relevant coverage was found matching query.")
+    headline_synthesis: str = Field(description="1-sentence synthesis of media/announcements.")
+    reputational_value_read: str = Field(description="Strategic analysis of positioning and risk (analyst interpretation).")
+    so_what_action: str = Field(description="Actionable strategic recommendations for leadership.")
     items: list[EventCoverageItem]
 
-# --- EXPORT GENERATORS: MARKDOWN, WORD (.DOCX), AND PDF ---
+# --- EXPORT GENERATORS ---
 def generate_markdown_brief(brief, query):
     md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF\n"
     md += f"**Target Strategy Query:** `{query}`\n\n"
@@ -242,146 +116,21 @@ def generate_markdown_brief(brief, query):
     md += f"**Strategic Imperatives:** {brief['so_what_action']}\n\n"
     md += f"**Positioning & Risk Analysis:** {brief['reputational_value_read']}\n\n"
     md += f"---\n\n"
-    md += f"## Verified Coverage & Media Records\n\n"
+    md += f"## Unrestricted Coverage & Media Records\n\n"
     for item in brief["items"]:
         md += f"### 📌 {item['event_title']}\n"
         md += f"- **Category:** {item['source_category']}\n"
         md += f"- **Summary:** {item['core_event_summary']}\n"
-        md += f"- **Media Outlets & Bylines:**\n"
         for outlet in item["covering_outlets"]:
             md += f"  - **{outlet['outlet_name']}** (*Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']}) — [Source Link]({outlet['source_url']})\n"
         md += "\n"
+    md += "\n\n*This brief was generated with AI assistance. Review and confirm source credibility via linked URLs before strategic distribution.*"
     return md
 
-def generate_docx_brief(brief, query):
-    doc = Document()
-    doc.add_heading("CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF", level=0)
-    doc.add_paragraph(f"Target Strategy Query: {query}")
-    
-    doc.add_heading("1. Executive Summary & Strategic Takeaway", level=1)
-    doc.add_paragraph(f"Overview: {brief['headline_synthesis']}")
-    doc.add_paragraph(f"Strategic Imperatives: {brief['so_what_action']}")
-    doc.add_paragraph(f"Positioning & Risk Analysis: {brief['reputational_value_read']}")
-    
-    doc.add_heading("2. Verified Coverage & Media Records", level=1)
-    for item in brief["items"]:
-        doc.add_heading(f"📌 {item['event_title']}", level=2)
-        doc.add_paragraph(f"Channel: {item['source_category']}")
-        doc.add_paragraph(f"Summary: {item['core_event_summary']}")
-        
-        doc.add_paragraph("Covering Outlets & Bylines:")
-        for outlet in item["covering_outlets"]:
-            p = doc.add_paragraph(style='List Bullet')
-            p.add_run(f"{outlet['outlet_name']} ").bold = True
-            p.add_run(f"(Byline: {outlet['author_byline']} | Date: {outlet['publication_date']}) - {outlet['source_url']}")
-            
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    return buffer
-
-class PDFReport(FPDF):
-    def header(self):
-        self.set_font('Helvetica', 'B', 8)
-        self.set_text_color(120, 120, 120)
-        # Position running header cleanly at top margin
-        self.set_y(10)
-        self.cell(0, 5, 'CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF', align='R')
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Helvetica', 'I', 8)
-        self.set_text_color(150, 150, 150)
-        self.cell(0, 10, f'Page {self.page_no()}', align='C')
-
-def clean_pdf_text(text):
-    """Encodes special unicode characters to prevent PDF library crashes."""
-    if not text:
-        return ""
-    replacements = {
-        '“': '"', '”': '"', '‘': "'", '’': "'", '—': '-', '–': '-', '•': '*',
-        '…': '...', '™': 'TM', '®': '(R)', '©': '(C)'
-    }
-    for orig, repl in replacements.items():
-        text = text.replace(orig, repl)
-    return text.encode('latin-1', 'replace').decode('latin-1')
-
-def generate_pdf_brief(brief, query):
-    pdf = PDFReport()
-    
-    # Define explicit page margins (15mm left, right, top)
-    margin = 15
-    pdf.set_margins(margin, 22, margin)
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # Calculate explicit effective printable width
-    epw = pdf.epw
-    
-    # Document Header Title
-    pdf.set_font('Helvetica', 'B', 16)
-    pdf.set_x(margin)
-    pdf.cell(epw, 10, 'Executive Intelligence Brief', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', 'I', 10)
-    pdf.set_x(margin)
-    pdf.cell(epw, 6, clean_pdf_text(f'Target Query: {query}'), new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(4)
-    
-    # Section 1: Executive Overview
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_x(margin)
-    pdf.cell(epw, 8, '1. Executive Overview', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_x(margin)
-    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('headline_synthesis', '')))
-    pdf.ln(4)
-    
-    # Section 2: Strategic Imperatives
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_x(margin)
-    pdf.cell(epw, 8, '2. Strategic Imperatives for Leadership', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_x(margin)
-    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('so_what_action', '')))
-    pdf.ln(4)
-    
-    # Section 3: Institutional Positioning
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_x(margin)
-    pdf.cell(epw, 8, '3. Institutional Positioning & Risk', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_x(margin)
-    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('reputational_value_read', '')))
-    pdf.ln(4)
-    
-    # Section 4: Coverage Breakdown
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_x(margin)
-    pdf.cell(epw, 8, '4. Verified Coverage Records', new_x="LMARGIN", new_y="NEXT")
-    
-    for item in brief.get("items", []):
-        pdf.set_font('Helvetica', 'B', 10)
-        pdf.set_x(margin)
-        pdf.multi_cell(epw, 5, clean_pdf_text(f"* {item.get('event_title', '')}"))
-        
-        pdf.set_font('Helvetica', '', 9)
-        pdf.set_x(margin)
-        pdf.multi_cell(epw, 5, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
-        
-        for outlet in item.get('covering_outlets', []):
-            outlet_line = f"  - Outlet: {outlet.get('outlet_name', '')} | Byline: {outlet.get('author_byline', '')} | Date: {outlet.get('publication_date', '')}"
-            pdf.set_x(margin)
-            pdf.multi_cell(epw, 5, clean_pdf_text(outlet_line))
-            
-        pdf.ln(3)
-        
-    return bytes(pdf.output())
-
-# --- MAIN ENGINE INTERFACE ---
+# --- SEARCH INTERFACE ---
 search_mode = st.radio("Search Mode:", ["Structured Parameters", "Advanced Boolean Search"], horizontal=True)
 
 final_query = ""
-
 if search_mode == "Structured Parameters":
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -399,7 +148,6 @@ if search_mode == "Structured Parameters":
     if not_mention.strip():
         query_parts.append(" ".join([f"-{w.strip()}" for w in not_mention.split() if w.strip()]))
     final_query = " ".join(query_parts)
-
 else:
     final_query = st.text_input("Raw Query String", value='("Coffee Biochar" OR "Sustainable Concrete") AND "RMIT"')
 
@@ -409,34 +157,29 @@ if final_query.strip():
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- EXECUTION ENGINE ---
+# --- EXECUTION ENGINE (UNRESTRICTED OPEN WEB SEARCH) ---
 if st.button("Generate Executive Brief"):
     if not final_query.strip():
         st.error("Please specify search parameters before running.")
-    elif "Gemini" in api_provider and not gemini_key:
+    elif not gemini_key:
         st.error("Please enter your Gemini API Key in the left menu.")
-    elif st.session_state.tokens < 50:
-        st.error("Insufficient credit balance.")
     else:
         st.session_state.tokens -= 50
         
-        with st.status("Gathering & Synthesizing Global Coverage...", expanded=True) as status:
-            st.write(f"🔍 Searching coverage across `{date_window}` window...")
-            
-            sources_formatted = ", ".join(selected_sources) if selected_sources else "All available sources"
+        with st.status("Gathering & Processing Open Web Coverage...", expanded=True) as status:
             current_date = datetime.datetime.now().strftime("%B %d, %Y")
             
             prompt = f"""
             Today is {current_date}.
-            You are the WWM Executive Fact Engine for Will Wright Media. Execute a web search for media coverage, wire pickups, and primary announcements matching:
-            Strategy Query: {final_query}
+            You are the WWM Fact Extraction Engine.
+            Execute an open web search across all news sources, official announcements, trade journals, and global press matching: {final_query}
             
-            CRITICAL INSTRUCTIONS:
-            1. SCOPE: Search across these target channels: {sources_formatted}. Include major global publications, national press, and official announcements.
-            2. RECENCY: Focus on stories published within: {date_window}.
-            3. PUBLISHER & BYLINE: Identify the exact Publisher Name, Journalist Byline, and Date for every record found.
-            4. DE-DUPLICATION: Group coverage by core story event under 'covering_outlets'.
-            5. FACTUAL PRECISION: Extract ONLY verifiable events, policy statements, figures, and dates. Strip out PR fluff.
+            INSTRUCTIONS:
+            1. Search broadly across open web media, wires, regional publications, and official portals.
+            2. Extract ONLY factual events, quotes, and milestone commitments present in the retrieved web content.
+            3. If a date, author, or publisher name is absent, write 'not stated'. Do NOT invent metadata values.
+            4. Group coverage by core story event under 'covering_outlets'.
+            5. Present 'reputational_value_read' clearly as strategic interpretation for executive leadership.
             """
             
             try:
@@ -448,12 +191,12 @@ if st.button("Generate Executive Brief"):
                         tools=[{"google_search": {}}],
                         response_mime_type="application/json",
                         response_schema=WWMOnePageBrief,
-                        temperature=0.1,
+                        temperature=0.0,
                     )
                 )
                 st.session_state.current_brief = json.loads(response.text)
                 st.session_state.executed_query = final_query
-                status.update(label="Synthesis Complete!", state="complete", expanded=False)
+                status.update(label="Open Web Search & Synthesis Complete!", state="complete", expanded=False)
                 
             except Exception as e:
                 st.error(f"Processing Error: {str(e)}")
@@ -465,106 +208,56 @@ if "current_brief" in st.session_state:
     
     st.markdown("<div class='report-card'>", unsafe_allow_html=True)
     
-    # TOP HEADER & MULTI-FORMAT DOWNLOAD SELECTOR
-    header_col1, header_col2 = st.columns([2, 2])
+    header_col1, header_col2 = st.columns([2.5, 1.5])
     with header_col1:
         st.caption("CONFIDENTIAL | WILL WRIGHT MEDIA INTELLIGENCE BRIEF")
         st.header("Executive Intelligence Output")
-    
     with header_col2:
-        export_format = st.selectbox(
-            "Export Document Format:",
-            ["PDF Document (.pdf)", "Microsoft Word (.docx)", "Markdown (.md)"],
-            key="export_format_top"
+        md_data = generate_markdown_brief(brief, st.session_state.get("executed_query", ""))
+        st.download_button(
+            label="💚 Download Executive Brief (.md)",
+            data=md_data,
+            file_name="WWM_Executive_Brief.md",
+            mime="text/markdown",
+            key="dl_top"
         )
-        
-        exec_query = st.session_state.get("executed_query", "")
-        
-        if "PDF" in export_format:
-            pdf_data = generate_pdf_brief(brief, exec_query)
-            st.download_button(
-                label="💚 Download PDF Report",
-                data=pdf_data,
-                file_name="WWM_Executive_Brief.pdf",
-                mime="application/pdf",
-                key="dl_pdf_top"
-            )
-        elif "Word" in export_format:
-            docx_data = generate_docx_brief(brief, exec_query)
-            st.download_button(
-                label="💚 Download Word Document",
-                data=docx_data,
-                file_name="WWM_Executive_Brief.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key="dl_docx_top"
-            )
-        else:
-            md_data = generate_markdown_brief(brief, exec_query)
-            st.download_button(
-                label="💚 Download Markdown File",
-                data=md_data,
-                file_name="WWM_Executive_Brief.md",
-                mime="text/markdown",
-                key="dl_md_top"
-            )
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Executive Overview")
-        st.info(brief["headline_synthesis"])
-    with col2:
-        st.subheader("Strategic Imperatives for Leadership")
-        st.warning(brief["so_what_action"])
-        
-    st.subheader("Institutional Positioning & Strategic Risk")
-    st.write(brief["reputational_value_read"])
-    
-    st.divider()
-    st.subheader("Verified Coverage & Media Records")
-    for item in brief["items"]:
-        with st.expander(f"📌 {item['event_title']}"):
-            st.markdown(f"**Channel:** `{item['source_category']}`")
-            st.write(f"**Core Summary:** {item['core_event_summary']}")
-            st.markdown("**Covering Outlets & Bylines:**")
+    if not brief.get("coverage_found", True):
+        st.warning("⚠️ No relevant coverage was returned matching your query.")
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Executive Overview")
+            st.info(brief["headline_synthesis"])
+        with col2:
+            st.subheader("Strategic Imperatives for Leadership")
+            st.warning(brief["so_what_action"])
             
-            for outlet in item["covering_outlets"]:
-                st.info(
-                    f"📰 **{outlet['outlet_name']}**  |  ✍️ *Byline:* {outlet['author_byline']}  |  📅 *Date:* {outlet['publication_date']}\n\n"
-                    f"🔗 [Direct Source Referral Link]({outlet['source_url']})"
-                )
+        st.subheader("Institutional Positioning & Risk Analysis")
+        st.write(brief["reputational_value_read"])
+        
+        st.divider()
+        st.subheader("Unrestricted Coverage & Media Records")
+        for item in brief["items"]:
+            with st.expander(f"📌 {item['event_title']}"):
+                st.markdown(f"**Channel:** `{item['source_category']}`")
+                st.write(f"**Core Summary:** {item['core_event_summary']}")
+                st.markdown("**Covering Outlets & Source Referral Links:**")
+                
+                for outlet in item["covering_outlets"]:
+                    st.markdown(
+                        f"📰 **{outlet['outlet_name']}** | ✍️ *Byline:* {outlet['author_byline']} | 📅 *Date:* {outlet['publication_date']}<br>"
+                        f"🔗 <a href='{outlet['source_url']}' target='_blank'>Review Source Link & Audit Credibility</a>",
+                        unsafe_allow_html=True
+                    )
     
-    st.divider()
-    
-    # BOTTOM REPEATED DOWNLOAD BUTTON
-    bot_col1, bot_col2 = st.columns([2, 1])
-    with bot_col1:
-        st.markdown("**Ready to share or archive this brief?** Select format above and download.")
-    with bot_col2:
-        if "PDF" in export_format:
-            st.download_button(
-                label="💚 Download PDF Report",
-                data=generate_pdf_brief(brief, exec_query),
-                file_name="WWM_Executive_Brief.pdf",
-                mime="application/pdf",
-                key="dl_pdf_bot"
-            )
-        elif "Word" in export_format:
-            st.download_button(
-                label="💚 Download Word Document",
-                data=generate_docx_brief(brief, exec_query),
-                file_name="WWM_Executive_Brief.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key="dl_docx_bot"
-            )
-        else:
-            st.download_button(
-                label="💚 Download Markdown File",
-                data=generate_markdown_brief(brief, exec_query),
-                file_name="WWM_Executive_Brief.md",
-                mime="text/markdown",
-                key="dl_md_bot"
-            )
+    # DISCLAIMER NOTE
+    st.markdown("""
+        <div class="disclaimer-box">
+            <b>Analyst Verification Note:</b> This brief captures open web coverage across global and regional outlets. All records link directly to original source URLs so analysts can audit publisher credibility and confirm details prior to client distribution.
+        </div>
+    """, unsafe_allow_html=True)
             
     st.markdown("</div>", unsafe_allow_html=True)
