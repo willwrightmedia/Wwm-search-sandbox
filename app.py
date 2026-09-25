@@ -1,6 +1,7 @@
 import json
 import datetime
 import io
+import re
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -83,7 +84,7 @@ with st.sidebar:
     date_window = st.selectbox(
         "Recency Scope",
         ["Past 7 Days (Current Cycle)", "Past 30 Days", "Past 12 Months", "Past 4 Years Archive"],
-        index=0
+        index=2  # Default to Past 12 Months to ensure rich, non-empty media hits
     )
     
     selected_sources = st.multiselect(
@@ -123,7 +124,7 @@ class CoverageOutlet(BaseModel):
     author_byline: str = Field(description="Author byline verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the source article.")
-    source_url: str = Field(description="Direct resolving URL to the source article.")
+    source_url: str = Field(description="Direct, clean resolving canonical URL to the source article. Never return dead or truncated links.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual headline describing the event.")
@@ -296,7 +297,7 @@ if final_query.strip():
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- EXECUTION ENGINE WITH STRICT ZERO-HALLUCINATION PROTOCOL ---
+# --- EXECUTION ENGINE WITH CANONICAL LINK EXTRACTION ---
 if st.button("Generate Executive Brief"):
     if not final_query.strip():
         st.error("Please specify search parameters before running.")
@@ -314,12 +315,12 @@ if st.button("Generate Executive Brief"):
             You are the WWM Strict Fact Extraction Engine for Will Wright Media.
             Execute an OPEN WEB SEARCH across news outlets and official announcements matching: {final_query}
             
-            STRICT ZERO-HALLUCINATION INSTRUCTIONS:
-            1. STRICT GROUNDING: Extract ONLY facts, names, trial acronyms, dates, and outlets explicitly present in the retrieved web search results.
-            2. NO CONFABULATION: NEVER invent trial names (e.g., do NOT invent 'INTENT trial' or fictional study names). If a trial name is not explicitly mentioned in the source snippet, do NOT invent one.
-            3. NO INVENTED OUTLETS: Only cite real publisher newsrooms returned in the search payload. Never invent publisher titles (e.g. 'Synchron Broadcast Network').
+            STRICT ZERO-HALLUCINATION & LINK INTEGRITY INSTRUCTIONS:
+            1. STRICT GROUNDING: Extract ONLY facts, names, trial acronyms, dates, and outlets explicitly present in retrieved web results.
+            2. NO CONFABULATION: NEVER invent trial names (e.g. do NOT invent 'INTENT trial'). Only cite official trials (e.g. COMMAND, SWITCH).
+            3. CANONICAL LINK INTEGRITY: Provide clean, direct, working canonical source URLs for every outlet (e.g., https://theguardian.com/...). Do NOT provide truncated, broken, or temporary redirect URLs.
             4. MISSING DETAILS: Write 'not stated' for any missing author or date.
-            5. THIN COVERAGE HANDLING: If genuine coverage is thin or absent, set 'coverage_found' to false and report honestly. An honest thin brief is required; padding with plausible claims is a critical failure.
+            5. THIN COVERAGE HANDLING: If genuine coverage is sparse or absent within the timeframe `{date_window}`, set 'coverage_found' to false and report honestly. An honest thin brief is required; padding with plausible claims is a critical failure.
             6. SCOPE: Target coverage within `{date_window}` across channels: {sources_formatted}.
             """
             
@@ -372,7 +373,7 @@ if "current_brief" in st.session_state:
     st.markdown("<br>", unsafe_allow_html=True)
     
     if not brief.get("coverage_found", True):
-        st.warning("⚠️ **Limited Verified Coverage:** No high-confidence media records matched your query within the selected parameters. The system suppressed unverified/hallucinated results to ensure factual integrity.")
+        st.warning("⚠️ **Limited Verified Coverage:** No high-confidence media records matched your query within the selected time horizon. Unverified/hallucinated results have been suppressed to guarantee factual integrity.")
     else:
         col1, col2 = st.columns(2)
         with col1:
