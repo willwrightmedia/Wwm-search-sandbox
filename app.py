@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WWM BRANDING & DYNAMIC DASHBOARD METRICS) ---
+# --- UI CONFIGURATION (WWM BRANDING & DYNAMIC METRICS) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
 # CUSTOM CSS - RESPONSIVE CARDS & HIGH-CONTRAST INK PALETTE
@@ -39,7 +39,7 @@ st.markdown("""
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
-    /* RESPONSIVE METRIC CARDS - DYNAMICALLY GROUNDED IN ACTIVE SEARCH */
+    /* RESPONSIVE METRIC CARDS */
     .metric-card {
         background-color: #1A1814;
         border: 1px solid #2C2822;
@@ -252,7 +252,7 @@ with control_col1:
     )
 with control_col2:
     st.markdown("<div class='reset-btn'>", unsafe_allow_html=True)
-    st.button("🔄 Start new search / Clear buffer", on_click=clear_all_searches, key="header_reset", use_container_width=True)
+    st.button("🔄 Refresh", on_click=clear_all_searches, key="header_reset", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
@@ -509,16 +509,150 @@ def generate_docx_brief(brief, query, lang, purpose_text, time_scope, channels_s
     buffer.seek(0)
     return buffer
 
-# --- VIEW 1: LIVE DASHBOARD (DYNAMICALLY GROUNDED IN ACTIVE QUERY) ---
+# --- REUSABLE EXECUTION FUNCTION FOR DASHBOARD & BRIEF VIEWS ---
+def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary):
+    if not search_query_input and not custom_urls_input and not submit_manual and not st.session_state.executed_query:
+        st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
+    elif "Gemini" in api_provider and not gemini_key:
+        st.error("Please enter your Gemini API key in the sidebar.")
+    else:
+        with st.status("Synthesizing executive intelligence...", expanded=True) as status:
+            current_date = datetime.datetime.now().strftime("%B %d, %Y")
+            channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
+            
+            manual_payload_prompt = ""
+            if submit_manual and raw_outlets_batch.strip():
+                outlets_list = [line.strip() for line in raw_outlets_batch.split("\n") if line.strip()]
+                mediums_str = ", ".join(man_mediums) if man_mediums else "Mixed Formats (Online/Broadcast/Print)"
+                outlets_str = ", ".join(outlets_list[:100])
+                
+                manual_payload_prompt = f"""
+                EXPLICIT BATCH MEDIA OUTLETS ENTERED BY ANALYST ({len(outlets_list)} outlets submitted):
+                - Outlets / Channels / Organisations: {outlets_str}
+                - Formats Covered: {mediums_str}
+                - Story Title / Topic: {man_topic}
+                - Representation Framing: {man_framing}
+                - Prominence Depth: {man_depth}
+                - Co-Represented Entities: {man_co_represented}
+                - Author / Handle: {man_byline if man_byline.strip() else 'not stated'}
+                - Audience Reach / Followers: {man_reach if man_reach.strip() else 'Not stated'}
+                - Content Summary: {man_summary}
+                
+                SEARCH TOOL TRIGGER INSTRUCTION: Perform an active web search for these specific media outlets ({outlets_str}) in relation to the topic '{man_topic}' or '{st.session_state.executed_query}'. Locate real, resolving web URLs for these outlets. If no exact deep URL is found, pass 'None'.
+                """
+
+            existing_brief_context = ""
+            if st.session_state.cumulative_brief:
+                existing_brief_context = f"""
+                EXISTING REPORT BUFFER (ADDITIVE CUMULATIVE COMBINATION):
+                - Headline Synthesis: {st.session_state.cumulative_brief.get('headline_synthesis', '')}
+                - Current Items Analysed: {len(st.session_state.cumulative_brief.get('items', []))}
+                INSTRUCTION: Synthesise the new search results, custom URLs, or direct input entries TOGETHER with this existing intelligence. Do NOT discard prior valid coverage cards.
+                """
+            
+            urls_formatted = "\n".join([f"- {u}" for u in custom_urls_input[:100]]) if custom_urls_input else "None provided."
+            active_q = search_query_input if search_query_input else st.session_state.executed_query
+            
+            prompt = f"""
+            Today is {current_date}.
+            You are WWM's Senior Strategic Intelligence Analyst preparing a brief for government ministers, university vice-chancellors, and corporate executive boards.
+            
+            PRIMARY STRATEGIC OBJECTIVE: {active_report_purpose}. 
+            INSTRUCTION: Frame the 'headline_synthesis', 'sentiment_framing_read', and 'engagement_opportunities' specifically to address this objective. 
+            - If objective is 'Demonstrate long-term impact / career promotion & track record', emphasize sustained track record, international authority, cumulative reach, and long-term research translation rather than immediate short-term PR actions.
+            
+            REPORT TIER FORMAT: {report_format_tier}. Calibrate depth, page count, and detail level to match this report type.
+            
+            SPELLING MANDATE: Use strict AUSTRALIAN ENGLISH spelling throughout (e.g. organisation, summarise, characterise, licence, labelling).
+            
+            REPORT OUTPUT LANGUAGE: Synthesise the entire executive brief in {output_language}. Use clean, professional language appropriate for executive leadership.
+            
+            MEDIA & TIME SCOPE:
+            - Recency Scope: {date_window}
+            - Channel Scope: {channels_str}
+            - Media & Social Focus: {social_media_focus}
+            
+            STRICT COMPREHENSIVE SEARCH & MINIMUM THRESHOLDS INSTRUCTION:
+            1. MULTI-PASS COMPREHENSIVE GROUNDING: Perform a thorough search across global press corridors to ensure tier-1 outlets (e.g. The Washington Post, CNN, BBC, Reuters, The Guardian, AFR, ABC News) and major university press releases are consistently captured.
+            2. MINIMUM AUDIENCE THRESHOLDS:
+               - Traditional Press / Broadcast / Online News: Include ONLY outlets with an audience of at least 100,000 readers, viewers, or listeners. Strictly suppress low-value blogs, personal websites, and unverified content aggregators.
+               - Social Media Platforms: Include ONLY verified accounts or creators with at least 10,000 subscribers or followers.
+            3. CLEAN URL PROTOCOL: For 'canonical_source_url', pass ONLY exact, verbatim resolving URLs provided in grounding metadata or custom URLs. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'.
+            
+            SCOPE & SOURCES:
+            - Active Strategy Query: {active_q}
+            - Custom Added URLs ({len(custom_urls_input)} provided): {urls_formatted}
+            
+            {manual_payload_prompt}
+            {existing_brief_context}
+            
+            HIGH-VOLUME QUERY MANAGEMENT:
+            Count the exact number of verified items analysed in this payload and state it factually in 'verified_coverage_metric' (e.g. "Media Index: 7 tier-1 and national records analysed; low-value sources below reach thresholds suppressed").
+            Do NOT output dozens of repetitive cards. Present ONLY the top 5 to 8 most influential items across Global Tier-1 Mastheads, National Press, Industry Trade Media, and Official Primary Releases.
+            
+            AUDIENCE REACH & KEY MESSAGES DELIVERED:
+            - Sum total aggregate reach across all news and social channels meeting minimum thresholds and output in 'total_combined_audience_reach' (e.g. "Total Combined Reach: 185.5 Million Audience").
+            - For each coverage outlet, extract or estimate verifiable audience reach.
+              - If sourced from official rating bodies (Roy Morgan, AMAA, OztAM, CRA, IAB Australia), present figures cleanly (e.g. "1.4 Million Monthly Unique Audience (Roy Morgan)").
+              - If figures come from publisher media kits or self-disclosures, explicitly append the disclosure tag: "[Publisher Self-Reported / Unverified]".
+            
+            COPYRIGHT & FAIR USE PROTOCOL:
+            Consume and extract ONLY headlines, bylines, dates, lead paragraphs (paras 1-2), and 20-word keyword context snippets.
+            """
+            
+            try:
+                client = genai.Client(api_key=gemini_key)
+                response = client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[{"google_search": {}}],
+                        response_mime_type="application/json",
+                        response_schema=WWMExecutiveAnalysisBrief,
+                        temperature=0.0,
+                    )
+                )
+                st.session_state.cumulative_brief = json.loads(response.text)
+                st.session_state.active_purpose = active_report_purpose
+                st.session_state.active_time_scope = date_window
+                st.session_state.active_channels = channels_str
+                
+                st.session_state.report_library.append({
+                    "id": len(st.session_state.report_library) + 1,
+                    "date": datetime.datetime.now().strftime("%d %b %Y"),
+                    "query": active_q,
+                    "objective": active_report_purpose,
+                    "reach": st.session_state.cumulative_brief.get("total_combined_audience_reach", "N/A"),
+                    "data": st.session_state.cumulative_brief
+                })
+                
+                status.update(label="Executive synthesis complete!", state="complete", expanded=False)
+                
+            except Exception as e:
+                st.error(f"Processing error: {str(e)}")
+
+# --- VIEW 1: LIVE DASHBOARD (WITH LIVE SEARCH LAUNCHER) ---
 if "Dashboard" in main_mode:
     st.subheader("📊 Media tracking dashboard")
+    st.caption("Real-time monitoring view for emerging issues, crisis tracking, and volume spike detection.")
     
-    # Check if a live brief exists to extract dynamic dashboard figures
+    # Dashboard-Native Live Search Launcher
+    with st.expander("⚡ Launch live search from dashboard", expanded=True):
+        dash_q_input = st.text_input("Enter target subject, keyword, or organization query:", placeholder="e.g. \"Tom Oxley\" OR Synchron Stentrode")
+        if st.button("⚡ Run live search"):
+            if dash_q_input.strip():
+                st.session_state.executed_query = dash_q_input.strip()
+                run_synthesis_engine(dash_q_input.strip(), [], False, "", [], "", "", "", "", "", "", "")
+            else:
+                st.error("Please enter a valid search query.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
     if st.session_state.cumulative_brief:
         cb = st.session_state.cumulative_brief
         act_query = st.session_state.get("executed_query", "Active Query Scope")
         act_horizon = st.session_state.get("active_time_scope", date_window)
-        act_reach = cb.get("total_combined_audience_reach", "308.2M Audience")
+        act_reach = cb.get("total_combined_audience_reach", "--")
         item_count = len(cb.get("items", []))
         
         st.caption(f"Real-time analytics grounded in active scope: **`{act_query}`** | Horizon: **`{act_horizon}`**")
@@ -535,7 +669,7 @@ if "Dashboard" in main_mode:
             
     else:
         st.caption(f"Grounded analytics for active selection | Horizon: **`{date_window}`**")
-        st.info("💡 Run a live search in the **Brief** tab or select a topic from your saved deck to generate grounded dashboard analytics.")
+        st.info("💡 Run a live search above or select a topic from your saved deck to generate grounded dashboard analytics.")
         
         dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
         with dash_col1:
@@ -638,129 +772,10 @@ elif "Brief" in main_mode:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- EXECUTION ENGINE ---
     btn_label = "Generate executive brief" if st.session_state.cumulative_brief is None else "Update and expand executive brief (Combine new inputs)"
 
     if st.button(btn_label) or submit_manual:
-        if not search_query_input and not custom_urls_input and not submit_manual and not st.session_state.executed_query:
-            st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
-        elif "Gemini" in api_provider and not gemini_key:
-            st.error("Please enter your Gemini API key in the sidebar.")
-        else:
-            with st.status("Synthesizing executive intelligence...", expanded=True) as status:
-                current_date = datetime.datetime.now().strftime("%B %d, %Y")
-                channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
-                
-                manual_payload_prompt = ""
-                if submit_manual and raw_outlets_batch.strip():
-                    outlets_list = [line.strip() for line in raw_outlets_batch.split("\n") if line.strip()]
-                    mediums_str = ", ".join(man_mediums) if man_mediums else "Mixed Formats (Online/Broadcast/Print)"
-                    outlets_str = ", ".join(outlets_list[:100])
-                    
-                    manual_payload_prompt = f"""
-                    EXPLICIT BATCH MEDIA OUTLETS ENTERED BY ANALYST ({len(outlets_list)} outlets submitted):
-                    - Outlets / Channels / Organisations: {outlets_str}
-                    - Formats Covered: {mediums_str}
-                    - Story Title / Topic: {man_topic}
-                    - Representation Framing: {man_framing}
-                    - Prominence Depth: {man_depth}
-                    - Co-Represented Entities: {man_co_represented}
-                    - Author / Handle: {man_byline if man_byline.strip() else 'not stated'}
-                    - Audience Reach / Followers: {man_reach if man_reach.strip() else 'Not stated'}
-                    - Content Summary: {man_summary}
-                    
-                    SEARCH TOOL TRIGGER INSTRUCTION: Perform an active web search for these specific media outlets ({outlets_str}) in relation to the topic '{man_topic}' or '{st.session_state.executed_query}'. Locate real, resolving web URLs for these outlets. If no exact deep URL is found, pass 'None'.
-                    """
-
-                existing_brief_context = ""
-                if st.session_state.cumulative_brief:
-                    existing_brief_context = f"""
-                    EXISTING REPORT BUFFER (ADDITIVE CUMULATIVE COMBINATION):
-                    - Headline Synthesis: {st.session_state.cumulative_brief.get('headline_synthesis', '')}
-                    - Current Items Analysed: {len(st.session_state.cumulative_brief.get('items', []))}
-                    INSTRUCTION: Synthesise the new search results, custom URLs, or direct input entries TOGETHER with this existing intelligence. Do NOT discard prior valid coverage cards.
-                    """
-                
-                urls_formatted = "\n".join([f"- {u}" for u in custom_urls_input[:100]]) if custom_urls_input else "None provided."
-                active_q = search_query_input if search_query_input else st.session_state.executed_query
-                
-                prompt = f"""
-                Today is {current_date}.
-                You are WWM's Senior Strategic Intelligence Analyst preparing a brief for government ministers, university vice-chancellors, and corporate executive boards.
-                
-                PRIMARY STRATEGIC OBJECTIVE: {active_report_purpose}. 
-                INSTRUCTION: Frame the 'headline_synthesis', 'sentiment_framing_read', and 'engagement_opportunities' specifically to address this objective. 
-                - If objective is 'Demonstrate long-term impact / career promotion & track record', emphasize sustained track record, international authority, cumulative reach, and long-term research translation rather than immediate short-term PR actions.
-                
-                REPORT TIER FORMAT: {report_format_tier}. Calibrate depth, page count, and detail level to match this report type.
-                
-                SPELLING MANDATE: Use strict AUSTRALIAN ENGLISH spelling throughout (e.g. organisation, summarise, characterise, licence, labelling).
-                
-                REPORT OUTPUT LANGUAGE: Synthesise the entire executive brief in {output_language}. Use clean, professional language appropriate for executive leadership.
-                
-                MEDIA & TIME SCOPE:
-                - Recency Scope: {date_window}
-                - Channel Scope: {channels_str}
-                - Media & Social Focus: {social_media_focus}
-                
-                STRICT COMPREHENSIVE SEARCH & MINIMUM THRESHOLDS INSTRUCTION:
-                1. MULTI-PASS COMPREHENSIVE GROUNDING: Perform a thorough search across global press corridors to ensure tier-1 outlets (e.g. The Washington Post, CNN, BBC, Reuters, The Guardian, AFR, ABC News) and major university press releases are consistently captured.
-                2. MINIMUM AUDIENCE THRESHOLDS:
-                   - Traditional Press / Broadcast / Online News: Include ONLY outlets with an audience of at least 100,000 readers, viewers, or listeners. Strictly suppress low-value blogs, personal websites, and unverified content aggregators.
-                   - Social Media Platforms: Include ONLY verified accounts or creators with at least 10,000 subscribers or followers.
-                3. CLEAN URL PROTOCOL: For 'canonical_source_url', pass ONLY exact, verbatim resolving URLs provided in grounding metadata or custom URLs. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'.
-                
-                SCOPE & SOURCES:
-                - Active Strategy Query: {active_q}
-                - Custom Added URLs ({len(custom_urls_input)} provided): {urls_formatted}
-                
-                {manual_payload_prompt}
-                {existing_brief_context}
-                
-                HIGH-VOLUME QUERY MANAGEMENT:
-                Count the exact number of verified items analysed in this payload and state it factually in 'verified_coverage_metric' (e.g. "Media Index: 7 tier-1 and national records analysed; low-value sources below reach thresholds suppressed").
-                Do NOT output dozens of repetitive cards. Present ONLY the top 5 to 8 most influential items across Global Tier-1 Mastheads, National Press, Industry Trade Media, and Official Primary Releases.
-                
-                AUDIENCE REACH & KEY MESSAGES DELIVERED:
-                - Sum total aggregate reach across all news and social channels meeting minimum thresholds and output in 'total_combined_audience_reach' (e.g. "Total Combined Reach: 185.5 Million Audience").
-                - For each coverage outlet, extract or estimate verifiable audience reach.
-                  - If sourced from official rating bodies (Roy Morgan, AMAA, OztAM, CRA, IAB Australia), present figures cleanly (e.g. "1.4 Million Monthly Unique Audience (Roy Morgan)").
-                  - If figures come from publisher media kits or self-disclosures, explicitly append the disclosure tag: "[Publisher Self-Reported / Unverified]".
-                
-                COPYRIGHT & FAIR USE PROTOCOL:
-                Consume and extract ONLY headlines, bylines, dates, lead paragraphs (paras 1-2), and 20-word keyword context snippets.
-                """
-                
-                try:
-                    client = genai.Client(api_key=gemini_key)
-                    response = client.models.generate_content(
-                        model="gemini-3.8-flash",
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            tools=[{"google_search": {}}],
-                            response_mime_type="application/json",
-                            response_schema=WWMExecutiveAnalysisBrief,
-                            temperature=0.0,
-                        )
-                    )
-                    st.session_state.cumulative_brief = json.loads(response.text)
-                    st.session_state.active_purpose = active_report_purpose
-                    st.session_state.active_time_scope = date_window
-                    st.session_state.active_channels = channels_str
-                    
-                    st.session_state.report_library.append({
-                        "id": len(st.session_state.report_library) + 1,
-                        "date": datetime.datetime.now().strftime("%d %b %Y"),
-                        "query": active_q,
-                        "objective": active_report_purpose,
-                        "reach": st.session_state.cumulative_brief.get("total_combined_audience_reach", "N/A"),
-                        "data": st.session_state.cumulative_brief
-                    })
-                    
-                    status.update(label="Executive synthesis complete!", state="complete", expanded=False)
-                    
-                except Exception as e:
-                    st.error(f"Processing error: {str(e)}")
+        run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary)
 
 # --- VIEW 3: REPORT LIBRARY & SAVED 50-QUERY DECK ---
 else:
@@ -787,7 +802,7 @@ else:
             with q_col2:
                 if st.button("Run", key=f"run_deck_{idx}"):
                     st.session_state.executed_query = q
-                    st.info(f"Loaded `{q}` into active scope. Switch to Brief tab to execute.")
+                    run_synthesis_engine(q, [], False, "", [], "", "", "", "", "", "", "")
                     
         st.divider()
         st.markdown("#### Archive report search engine")
