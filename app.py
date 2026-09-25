@@ -175,7 +175,7 @@ class CoverageOutlet(BaseModel):
     author_byline: str = Field(description="Author, journalist, or account handle verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication or post date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
-    canonical_source_url: str = Field(description="Direct, clean resolving web URL verbatim from grounding. Return 'None' if the URL path cannot be verified or resolved.")
+    canonical_source_url: str = Field(description="Direct, clean resolving web URL verbatim from grounding. Write 'None' if unverified or broken.")
     audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
 
 class EventCoverageItem(BaseModel):
@@ -198,21 +198,22 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE ---
+# --- BRANDED PDF ENGINE (FIXED LAYOUT, NO HEADER BLEED & NO ORPHAN BULLETS) ---
 class PDFReport(FPDF):
     def header(self):
+        # Dark Ink Header Banner Block (#14120F)
         self.set_fill_color(20, 18, 15)
-        self.rect(0, 0, 210, 24, 'F')
+        self.rect(0, 0, 210, 20, 'F')
         self.set_font('Helvetica', 'B', 8)
         self.set_text_color(198, 188, 169)
-        self.set_y(8)
+        self.set_y(7)
         self.cell(0, 5, 'WILL WRIGHT MEDIA  |  EXECUTIVE INTELLIGENCE BRIEF', align='R')
 
     def footer(self):
-        self.set_y(-15)
-        self.set_font('Helvetica', '', 8)
+        self.set_y(-12)
+        self.set_font('Helvetica', '', 7)
         self.set_text_color(107, 107, 107)
-        self.cell(0, 10, 'Generated with AI assistance and reviewed by Will Wright Media. Sources are linked; confirm critical details against source before acting.', align='C')
+        self.cell(0, 8, 'Generated with AI assistance and reviewed by Will Wright Media. Sources are linked where verified; confirm critical details against source before acting.', align='C')
 
 def clean_pdf_text(text):
     if not text:
@@ -229,68 +230,76 @@ def generate_pdf_brief(brief, query, lang):
     pdf = PDFReport()
     pdf.set_fill_color(242, 237, 227)
     margin = 15
-    pdf.set_margins(margin, 28, margin)
+    top_margin = 28 # Generous margin to prevent page 2 bleed into header box
+    pdf.set_margins(margin, top_margin, margin)
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=18)
     epw = pdf.epw
     
-    pdf.set_font('Helvetica', 'B', 16)
+    # Document Header Title
+    pdf.set_font('Helvetica', 'B', 15)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.cell(epw, 10, clean_pdf_text(f'Executive Intelligence Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 8, clean_pdf_text(f'Executive Intelligence Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     
-    pdf.set_font('Helvetica', 'I', 9)
+    pdf.set_font('Helvetica', 'I', 8)
     pdf.set_text_color(107, 107, 107)
     pdf.set_x(margin)
-    pdf.cell(epw, 5, clean_pdf_text(f'Scope: {query} | {brief.get("verified_coverage_metric", "")}'), new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(epw, 5, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 4, clean_pdf_text(f'Scope: {query} | {brief.get("verified_coverage_metric", "")}'), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(epw, 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'), new_x="LMARGIN", new_y="NEXT")
     
+    # Hairline Section Divider (#C6BCA9)
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
-    pdf.ln(3)
+    pdf.ln(2)
     pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
     pdf.ln(4)
     
+    # Section 1: Executive Overview
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
     pdf.cell(epw, 6, '1. Executive Overview', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 10)
+    pdf.set_font('Helvetica', '', 9.5)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('headline_synthesis', '')))
+    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(3)
     
+    # Section 2: Quality of Institutional Positioning
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
     pdf.cell(epw, 6, '2. Quality of Institutional Positioning', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 10)
+    pdf.set_font('Helvetica', '', 9.5)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('sentiment_framing_read', '')))
+    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('sentiment_framing_read', '')))
     pdf.ln(3)
     
+    # Section 3: Quotes & Commentary
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
     pdf.cell(epw, 6, '3. Direct Quotes vs. External Commentary', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 10)
+    pdf.set_font('Helvetica', '', 9.5)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
+    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
     pdf.ln(3)
 
+    # Section 4: Strategic Opportunities
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
     pdf.cell(epw, 6, '4. Strategic Engagement Opportunities', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', '', 10)
+    pdf.set_font('Helvetica', '', 9.5)
     pdf.set_text_color(35, 35, 35)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 5, clean_pdf_text(brief.get('engagement_opportunities', '')))
+    pdf.multi_cell(epw, 4.5, clean_pdf_text(brief.get('engagement_opportunities', '')))
     pdf.ln(4)
     
+    # Section 5: Coverage Records
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -298,29 +307,34 @@ def generate_pdf_brief(brief, query, lang):
     pdf.ln(2)
     
     for item in brief.get("items", []):
-        pdf.set_font('Helvetica', 'B', 10)
+        # Strict Orphan Prevention: Add page if near bottom
+        if pdf.get_y() > 240:
+            pdf.add_page()
+            
+        pdf.set_font('Helvetica', 'B', 9.5)
         pdf.set_text_color(20, 18, 15)
         pdf.set_x(margin)
-        pdf.multi_cell(epw, 5, clean_pdf_text(f"* {item.get('event_title', '')} ({item.get('representation_mode', '')})"))
+        title_text = f"• {item.get('event_title', '')} ({item.get('representation_mode', '')})"
+        pdf.multi_cell(epw, 4.5, clean_pdf_text(title_text))
         
-        pdf.set_font('Helvetica', '', 9)
+        pdf.set_font('Helvetica', '', 8.5)
         pdf.set_text_color(35, 35, 35)
         pdf.set_x(margin)
-        pdf.multi_cell(epw, 5, clean_pdf_text(f"Message Penetration: {item.get('key_message_penetration', 'Standard coverage')}"))
+        pdf.multi_cell(epw, 4, clean_pdf_text(f"Message Penetration: {item.get('key_message_penetration', 'Standard coverage')}"))
         pdf.set_x(margin)
-        pdf.multi_cell(epw, 5, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
+        pdf.multi_cell(epw, 4, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
         
         for outlet in item.get('covering_outlets', []):
-            pdf.set_font('Helvetica', 'I', 8)
+            pdf.set_font('Helvetica', 'I', 7.5)
             pdf.set_text_color(107, 107, 107)
             outlet_line = f"  - {outlet.get('outlet_name', '')} ({outlet.get('medium_type', 'Online')}) | Date: {outlet.get('publication_date', '')} | Reach: {outlet.get('audience_reach_metrics', 'Not stated')}"
             pdf.set_x(margin)
-            pdf.multi_cell(epw, 4, clean_pdf_text(outlet_line))
+            pdf.multi_cell(epw, 3.8, clean_pdf_text(outlet_line))
             
         pdf.ln(2)
         pdf.set_draw_color(220, 215, 205)
         pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
-        pdf.ln(3)
+        pdf.ln(2.5)
         
     return bytes(pdf.output())
 
