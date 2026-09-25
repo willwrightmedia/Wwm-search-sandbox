@@ -13,6 +13,7 @@ from fpdf import FPDF
 st.set_page_config(page_title="World Wide Monitor | Executive Intelligence", page_icon="📡", layout="wide")
 
 # CUSTOM CSS - WWM EDITORIAL BRAND PALETTE (#14120F Ink, #F2EDE3 Bone, #6B6B6B Muted)
+# HIGH-CONTRAST FORM INPUT FIX: Forces crisp dark ink text (#14120F) on bone white inputs
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -26,17 +27,17 @@ st.markdown("""
     .brand-title { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
     .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: #C6BCA9; margin-top: 8px; }
 
-    /* HIGH-CONTRAST BONE INPUT FIELDS */
+    /* HIGH-CONTRAST VISIBILITY FOR ALL INPUT FIELDS & PASS 3 TEXTAREAS */
     div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
         background-color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important; border-radius: 2px !important;
     }
-    div[data-baseweb="input"] input, div[data-baseweb="base-input"] input, div[data-baseweb="textarea"] textarea {
-        background-color: #F2EDE3 !important; color: #14120F !important; font-weight: 500 !important; font-size: 0.95rem !important;
+    div[data-baseweb="input"] input, div[data-baseweb="base-input"] input, div[data-baseweb="textarea"] textarea, textarea {
+        background-color: #F2EDE3 !important; color: #14120F !important; font-weight: 600 !important; font-size: 0.95rem !important; opacity: 1 !important;
     }
-    div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder {
-        color: #6B6B6B !important; opacity: 1 !important;
+    div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder, textarea::placeholder {
+        color: #555555 !important; opacity: 0.8 !important;
     }
-    div[data-baseweb="select"] * { color: #14120F !important; }
+    div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
     .stButton>button {
         background-color: transparent !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
@@ -453,7 +454,7 @@ with tab_manual_entry:
             man_topic = st.text_input("Story title / event topic", placeholder="e.g., Commercialisation of Spent Coffee Biochar Infrastructure")
             man_depth = st.selectbox("Prominence / story depth", ["Lead Story / Feature", "Significant Segment", "Passing Mention"])
             man_co_represented = st.text_input("Other co-represented entities / organisations", placeholder="e.g., Macedon Ranges Shire Council, BildGroup, VicRoads")
-            man_reach = st.text_input("Audience reach / followers / circulation (Optional)", placeholder="e.g., 1.2M Monthly Audience (Roy Morgan) or 450,000 [Publisher Self-Reported / Unverified]")
+            man_reach = st.text_input("Audience reach / followers / circulation (Optional)", placeholder="e.g., 1.2 Million Monthly Audience (Roy Morgan) or 450,000 [Publisher Self-Reported / Unverified]")
             man_byline = st.text_input("Author / journalist / account handle (Optional)", placeholder="e.g., Sarah Martin")
             
         man_summary = st.text_area("Content summary and key context snippet", placeholder="Summarise core claims, key quotes, or context discussed during the segment/article...")
@@ -522,11 +523,11 @@ if st.button(btn_label) or submit_manual:
             
             MEDIA & SOCIAL FOCUS MODE: {social_media_focus}.
             
-            STRICT AUDIENCE & NOISE SUPPRESSION GUARDRAILS:
-            1. MINIMUM AUDIENCE THRESHOLDS:
-               - For traditional press, online news, and broadcasts: Include ONLY outlets with at least 100,000 readers, listeners, or viewers. Strictly suppress low-value blogs, personal websites, and unverified content aggregators.
-               - For social media channels: Include ONLY verified accounts or creators with at least 10,000 followers or subscribers. Strictly suppress minor uploads or personal social posts below this threshold.
-            2. PRIORITISE MAINSTREAM TIER-1 PRESS: Actively search for and extract coverage from major global press mastheads (e.g., The Washington Post, CNN, BBC, Reuters, The Guardian, Nikkei, AFR, ABC News, SCMP) and official primary releases.
+            STRICT COMPREHENSIVE SEARCH & MINIMUM THRESHOLDS INSTRUCTION:
+            1. MULTI-PASS COMPREHENSIVE GROUNDING: You MUST perform a thorough search across multiple global press corridors to ensure tier-1 outlets (e.g. The Washington Post, CNN, BBC, Reuters, The Guardian, AFR, ABC News) and major university press releases are consistently captured.
+            2. MINIMUM AUDIENCE THRESHOLDS:
+               - Traditional Press / Broadcast / Online News: Include ONLY outlets with an audience of at least 100,000 readers, viewers, or listeners. Strictly suppress low-value blogs, personal websites, and unverified content aggregators.
+               - Social Media Platforms: Include ONLY verified accounts or creators with at least 10,000 subscribers or followers.
             3. CLEAN URL PROTOCOL: For 'canonical_source_url', pass ONLY exact, verbatim resolving URLs provided in grounding metadata or custom URLs. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'.
             
             SCOPE & SOURCES:
@@ -564,7 +565,7 @@ if st.button(btn_label) or submit_manual:
                         tools=[{"google_search": {}}],
                         response_mime_type="application/json",
                         response_schema=WWMExecutiveAnalysisBrief,
-                        temperature=0.0,
+                        temperature=0.0, # Enforces 100% deterministic, reproducible output
                     )
                 )
                 st.session_state.cumulative_brief = json.loads(response.text)
