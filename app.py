@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 # --- UI CONFIGURATION (WILL WRIGHT MEDIA BRANDING) ---
 st.set_page_config(page_title="World Wide Monitor | Will Wright Media", page_icon="📡", layout="wide")
 
-# CUSTOM CSS - DARK EDITORIAL THEME MATCHING WILLWRIGHT-MEDIA-7.PAGES.DEV
+# CUSTOM CSS - DARK EDITORIAL THEME WITH HIGH-CONTRAST WHITE INPUT FIELDS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -17,7 +17,7 @@ st.markdown("""
     .stApp {
         background-color: #111111 !important;
         color: #e5e5e0 !important;
-        font-family: 'Inter', sans-serif !family;
+        font-family: 'Inter', sans-serif !important;
     }
     
     /* Sidebar Dark Styling */
@@ -61,14 +61,60 @@ st.markdown("""
         margin-top: 8px;
     }
 
-    /* Custom Input Fields */
-    .stTextInput input, .stSelectbox select, .stMultiSelect {
-        background-color: #1a1a1a !important;
-        color: #f5f5f0 !important;
-        border: 1px solid #333333 !important;
-        border-radius: 2px !important;
-    }
+    /* =========================================================
+       COMPREHENSIVE WHITE INPUT FIELDS FIX
+       Targeting all text inputs, password fields, wrappers, & placeholders
+       ========================================================= */
     
+    /* Input Container & Outer Wrappers */
+    div[data-baseweb="input"], 
+    div[data-baseweb="base-input"],
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 4px !important;
+    }
+
+    /* Inner Input Element (Typed text) */
+    div[data-baseweb="input"] input, 
+    div[data-baseweb="base-input"] input {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        font-weight: 500 !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* Input Placeholder Text (Dark Charcoal for High Contrast) */
+    div[data-baseweb="input"] input::placeholder, 
+    div[data-baseweb="base-input"] input::placeholder {
+        color: #6b7280 !important;
+        opacity: 1 !important;
+    }
+
+    /* Password Eye Icon Button Wrapper */
+    div[data-baseweb="input"] button {
+        background-color: #ffffff !important;
+        color: #374151 !important;
+    }
+
+    /* Select Dropdowns & Multiselect Field Contrast */
+    div[data-baseweb="select"] * {
+        color: #111827 !important;
+    }
+
+    /* Focus Highlight */
+    div[data-baseweb="input"]:focus-within, 
+    div[data-baseweb="select"]:focus-within {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    /* Radio Label Typography */
+    div[data-testid="stRadio"] label p {
+        color: #e5e5e0 !important;
+        font-weight: 500 !important;
+    }
+
     /* Primary Outline Buttons (Matching 'START A CONVERSATION') */
     .stButton>button {
         background-color: transparent !important;
