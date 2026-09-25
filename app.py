@@ -10,9 +10,10 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WWM BRANDING) ---
+# --- UI CONFIGURATION (WWM BRANDING & RESPONSIVE DASHBOARD CSS) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
+# CUSTOM CSS - RESPONSIVE MOBILE/TABLET GRID & HIGH-CONTRAST INK PALETTE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -21,11 +22,12 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #1A1814 !important; border-right: 1px solid #2C2822 !important; }
     [data-testid="stSidebar"] * { color: #C6BCA9 !important; }
 
-    .brand-header { background-color: #1A1814; border: 1px solid #2C2822; padding: 36px 40px; border-radius: 2px; margin-bottom: 24px; }
+    .brand-header { background-color: #1A1814; border: 1px solid #2C2822; padding: 28px 32px; border-radius: 2px; margin-bottom: 24px; }
     .brand-tagline { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 12px; }
-    .brand-title { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
-    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: #C6BCA9; margin-top: 8px; }
+    .brand-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.0rem, 4vw, 2.8rem); font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
+    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.0rem, 2vw, 1.2rem); font-style: italic; color: #C6BCA9; margin-top: 8px; }
 
+    /* HIGH-CONTRAST BONE INPUT FIELDS */
     div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
         background-color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important; border-radius: 2px !important;
     }
@@ -37,6 +39,44 @@ st.markdown("""
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
+    /* DYNAMIC DASHBOARD METRIC CARDS (RESPONSIVE NO-WRAP GRID) */
+    .metric-card {
+        background-color: #1A1814;
+        border: 1px solid #2C2822;
+        padding: 18px 12px;
+        border-radius: 2px;
+        text-align: center;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 120px;
+    }
+    .metric-card h4 {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #C6BCA9;
+        margin: 0 0 6px 0;
+        white-space: nowrap;
+    }
+    .metric-card h2 {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+        font-weight: 600;
+        color: #F2EDE3;
+        margin: 0 0 4px 0;
+        white-space: nowrap;
+    }
+    .metric-card caption {
+        font-size: clamp(0.65rem, 1vw, 0.75rem);
+        color: #6B6B6B;
+        margin: 0;
+        white-space: nowrap;
+    }
+
     .stButton>button {
         background-color: transparent !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
         border-radius: 2px !important; padding: 0.75rem 1.8rem !important; font-family: 'Inter', sans-serif !important;
@@ -46,10 +86,28 @@ st.markdown("""
         background-color: #C6BCA9 !important; color: #14120F !important; font-weight: 600 !important;
         padding: 0.8rem 1.8rem !important; border-radius: 2px !important; border: none !important;
     }
-    .metric-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 20px; border-radius: 2px; text-align: center; }
-    .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 36px; border-radius: 2px; }
+    .reset-btn>button {
+        background-color: #2C2822 !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
+        font-weight: 600 !important; padding: 0.6rem 1.2rem !important;
+    }
+    .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 32px; border-radius: 2px; }
     .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 12px 16px; font-size: 0.82rem; color: #6B6B6B; margin-top: 24px; }
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 10px 14px; font-size: 0.8rem; color: #C6BCA9; margin-bottom: 16px; }
+
+    /* MOBILE & TABLET AUTO-REFLOW BREAKPOINTS */
+    @media (max-width: 992px) {
+        div[data-testid="column"] {
+            flex: 1 1 45% !important;
+            min-width: 45% !important;
+            margin-bottom: 12px;
+        }
+    }
+    @media (max-width: 576px) {
+        div[data-testid="column"] {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -93,7 +151,11 @@ with st.sidebar:
     st.subheader("1. Intelligence engine")
     api_provider = st.selectbox(
         "AI engine provider",
-        ["Google Gemini 3 (Native Search Grounding)", "OpenAI GPT-4o (Web Grounded)", "Tavily Search + Gemini Intelligence"],
+        [
+            "Google Gemini 3 (Native Search Grounding)",
+            "OpenAI GPT-4o (Web Grounded)",
+            "Tavily Search + Gemini Intelligence"
+        ],
         index=0
     )
     
@@ -138,7 +200,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.subheader("3. Media channels & horizon")
+    st.subheader("3. Media channels and time horizon")
     
     date_window = st.selectbox(
         "Recency scope",
@@ -158,8 +220,19 @@ with st.sidebar:
     
     selected_sources = st.multiselect(
         "Target channels",
-        ["Global tier-1 press & wires", "Australian press & national broadcasters", "Major social media channels (>10,000 followers)", "Southeast Asian press", "Indian & South Asian press", "Official releases (.gov.au, .edu.au, ASX)"],
-        default=["Global tier-1 press & wires", "Australian press & national broadcasters", "Official releases (.gov.au, .edu.au, ASX)"]
+        [
+            "Global tier-1 press & wires",
+            "Australian press & national broadcasters",
+            "Major social media channels (>10,000 followers)",
+            "Southeast Asian press",
+            "Indian & South Asian press",
+            "Official releases (.gov.au, .edu.au, ASX)"
+        ],
+        default=[
+            "Global tier-1 press & wires",
+            "Australian press & national broadcasters",
+            "Official releases (.gov.au, .edu.au, ASX)"
+        ]
     )
 
     st.divider()
@@ -173,6 +246,19 @@ st.markdown("""
         <div class="brand-subtitle">Strategic media intelligence, live dashboard tracking, and cross-lingual reporting for leadership.</div>
     </div>
 """, unsafe_allow_html=True)
+
+# --- PROMINENT CONTROL & CLEAR TOOLBAR ---
+control_col1, control_col2 = st.columns([3, 1])
+with control_col1:
+    st.info(
+        "ℹ️ **Sequential report building:** World Wide Monitor allows you to build complete media reports step by step. "
+        "You can run live web searches, add specific article links, or directly enter broadcast, print, social, and online outlet records.",
+        icon="ℹ️"
+    )
+with control_col2:
+    st.markdown("<div class='reset-btn'>", unsafe_allow_html=True)
+    st.button("🔄 Start New Search / Clear Buffer", on_click=clear_all_searches, key="header_reset", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
 class CoverageOutlet(BaseModel):
@@ -204,7 +290,7 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE ---
+# --- BRANDED PDF ENGINE WITH FULL SCOPE HEADER ---
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
@@ -435,18 +521,17 @@ if "Dashboard" in main_mode:
     
     dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
     with dash_col1:
-        st.markdown("<div class='metric-card'><h4>Active Volume</h4><h2>184 Hits</h2><caption style='color:#10b981;'>▲ +24% vs past cycle</caption></div>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-card'><h4>Volume</h4><h2>184</h2><caption>▲ +24% vs past cycle</caption></div>", unsafe_allow_html=True)
     with dash_col2:
-        st.markdown("<div class='metric-card'><h4>Audience Reach</h4><h2>308.2M</h2><caption>Verified Tier-1 & Social</caption></div>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-card'><h4>Reach</h4><h2>308.2M</h2><caption>Verified Press & Social</caption></div>", unsafe_allow_html=True)
     with dash_col3:
-        st.markdown("<div class='metric-card'><h4>Dominant Medium</h4><h2>Global Online Press</h2><caption>62% Total Share of Voice</caption></div>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-card'><h4>Top Medium</h4><h2>Online Press</h2><caption>62% Total Share of Voice</caption></div>", unsafe_allow_html=True)
     with dash_col4:
-        st.markdown("<div class='metric-card'><h4>Framing Index</h4><h2>Positive / Authority</h2><caption>100% Expert Alignment</caption></div>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-card'><h4>Framing</h4><h2>Authority</h2><caption>100% Expert Alignment</caption></div>", unsafe_allow_html=True)
         
     st.markdown("<br>", unsafe_allow_html=True)
     st.subheader("Media Volume Spike Trajectory (Past 30 Days)")
     
-    # Live Visual Spike Chart
     dates = pd.date_range(end=datetime.datetime.today(), periods=30)
     spike_data = pd.DataFrame({
         "Date": dates,
@@ -645,7 +730,6 @@ elif "Strategic Executive" in main_mode:
                     st.session_state.active_time_scope = date_window
                     st.session_state.active_channels = channels_str
                     
-                    # Store in report library buffer
                     st.session_state.report_library.append({
                         "id": len(st.session_state.report_library) + 1,
                         "date": datetime.datetime.now().strftime("%d %b %Y"),
