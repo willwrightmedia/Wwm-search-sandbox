@@ -162,7 +162,7 @@ st.markdown("""
 
 st.info(
     "ℹ️ **Sequential Report Building:** World Wide Monitor allows you to build complete media reports step by step. "
-    "You can run live web searches, add specific article links, or directly enter broadcast and print records. "
+    "You can run live web searches, add specific article links, or directly enter mixed broadcast, print, social, and online outlet records. "
     "New inputs continuously expand and refine your report without losing previously analysed information.",
     icon="ℹ️"
 )
@@ -170,11 +170,11 @@ st.info(
 # --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
 class CoverageOutlet(BaseModel):
     outlet_name: str = Field(description="Publisher, broadcaster, social platform, or government newsroom name verbatim.")
-    medium_type: str = Field(description="Selected media formats (e.g., Online, Radio, Television, Print, Social Media).")
+    medium_type: str = Field(description="Media format(s) covering this story (e.g., Online, Radio, TV, Print, Social Media).")
     author_byline: str = Field(description="Author, journalist, or account handle verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication or post date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
-    canonical_source_url: str = Field(description="Direct, clean resolving canonical URL. Write 'Direct Record Input' if entered manually.")
+    canonical_source_url: str = Field(description="Direct, clean resolving canonical URL discovered on the web for this coverage piece.")
     audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
     advertising_value_equivalent: str = Field(description="Estimated Advertising Value Equivalent (AVE) or PR value (e.g. '$14,500 AUD [Estimated AVE]').")
 
@@ -392,19 +392,19 @@ with tab_manual_entry:
     )
     
     with st.form("manual_ingestion_form"):
-        st.caption("Enter up to 100 media outlets, social channels, or government bodies at once (one per line) for targeted coverage tracking.")
+        st.caption("Enter up to 100 mixed media outlets, broadcast networks, social channels, or government bodies at once (one per line). Search will automatically look for matching online links.")
         
         m_col1, m_col2 = st.columns(2)
         with m_col1:
             raw_outlets_batch = st.text_area(
-                "Media Outlets / Social Channels / Government Bodies (Up to 100, one per line):",
+                "Media Outlets / Broadcasters / Social Channels (Up to 100, one per line):",
                 height=110,
                 placeholder="ABC News\nThe Australian\n7.30 Report\n2GB Sydney\nLinkedIn Official Page\nDepartment of Infrastructure"
             )
             man_mediums = st.multiselect(
-                "Selected Formats (Select all applicable):", 
+                "Selected Formats (Optional - leave blank for automatic detection or select all applicable):", 
                 ["Online Press", "Print Newspaper / Magazine", "Radio Broadcast", "Television Broadcast", "Podcast", "Social Media Platform", "Government / Official Release"],
-                default=["Online Press"]
+                default=[]
             )
             man_framing = st.selectbox("Representation / Framing Mode", ["Expert Commentator / Sector Authority", "Positive Framing", "Negative Framing"])
         
@@ -412,8 +412,8 @@ with tab_manual_entry:
             man_topic = st.text_input("Story Title / Event Topic", placeholder="e.g., Commercialisation of Spent Coffee Biochar Infrastructure")
             man_depth = st.selectbox("Prominence / Story Depth", ["Main Focus of Story", "Significant Segment", "Minor Mention"])
             man_co_represented = st.text_input("Other Co-Represented Entities / Organisations", placeholder="e.g., Macedon Ranges Shire Council, BildGroup, VicRoads")
-            man_reach = st.text_input("Audience Reach / Followers / Circulation (if known)", placeholder="e.g., 1.2M Monthly Audience (Roy Morgan) or 450,000 [Publisher Self-Reported / Unverified]")
-            man_ave = st.text_input("Estimated Advertising Value Equivalent / PR Value (if known)", placeholder="e.g., $18,500 AUD [Estimated AVE]")
+            man_reach = st.text_input("Audience Reach / Followers / Circulation (Optional)", placeholder="e.g., 1.2M Monthly Audience (Roy Morgan) or 450,000 [Publisher Self-Reported / Unverified]")
+            man_ave = st.text_input("Estimated Advertising Value Equivalent / PR Value (Optional)", placeholder="e.g., $18,500 AUD [Estimated AVE]")
             man_byline = st.text_input("Author / Journalist / Account Handle (Optional)", placeholder="e.g., Sarah Martin")
             
         man_summary = st.text_area("Content Summary & Key Context Snippet", placeholder="Summarise core claims, key quotes, or context discussed during the segment/article...")
@@ -441,11 +441,11 @@ if st.button(btn_label) or submit_manual:
             manual_payload_prompt = ""
             if submit_manual and raw_outlets_batch.strip():
                 outlets_list = [line.strip() for line in raw_outlets_batch.split("\n") if line.strip()]
-                mediums_str = ", ".join(man_mediums) if man_mediums else "Online Press"
+                mediums_str = ", ".join(man_mediums) if man_mediums else "Mixed Formats (Online/Broadcast/Print)"
                 outlets_str = ", ".join(outlets_list[:100])
                 
                 manual_payload_prompt = f"""
-                EXPLICIT DIRECT MEDIA RECORDS ENTERED BY ANALYST ({len(outlets_list)} outlets submitted):
+                EXPLICIT BATCH MEDIA OUTLETS ENTERED BY ANALYST ({len(outlets_list)} outlets submitted):
                 - Outlets / Channels / Organisations: {outlets_str}
                 - Formats Covered: {mediums_str}
                 - Story Title / Topic: {man_topic}
@@ -456,7 +456,8 @@ if st.button(btn_label) or submit_manual:
                 - Audience Reach / Followers: {man_reach if man_reach.strip() else 'Not stated'}
                 - Advertising Value Equivalent (AVE): {man_ave if man_ave.strip() else 'Not stated'}
                 - Content Summary: {man_summary}
-                INSTRUCTION: Combine these direct media hits into the report items array as verified coverage.
+                
+                SEARCH TOOL TRIGGER INSTRUCTION: Perform an active web search for these specific media outlets ({outlets_str}) in relation to the topic '{man_topic}' or '{st.session_state.executed_query}'. Locate real, resolving web URLs, digital press releases, or broadcast summaries for these outlets and embed their canonical URLs in the 'canonical_source_url' field.
                 """
 
             existing_brief_context = ""
