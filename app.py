@@ -1,6 +1,7 @@
 import json
 import datetime
 import io
+import re
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -174,7 +175,7 @@ class CoverageOutlet(BaseModel):
     author_byline: str = Field(description="Author, journalist, or account handle verbatim. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication or post date verbatim. Write 'not stated' if absent.")
     original_language: str = Field(description="Original language of the coverage item.")
-    canonical_source_url: str = Field(description="Direct, clean resolving canonical URL discovered on the web for this coverage piece.")
+    canonical_source_url: str = Field(description="Direct, clean resolving web URL verbatim from grounding. Return 'None' if the URL path cannot be verified or resolved.")
     audience_reach_metrics: str = Field(description="Audience reach or follower counts. Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
 
 class EventCoverageItem(BaseModel):
@@ -197,10 +198,9 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE (#14120F Ink, #F2EDE3 Bone, Georgia/Helvetica Typography) ---
+# --- BRANDED PDF ENGINE ---
 class PDFReport(FPDF):
     def header(self):
-        # Dark Ink Header Banner Block (#14120F)
         self.set_fill_color(20, 18, 15)
         self.rect(0, 0, 210, 24, 'F')
         self.set_font('Helvetica', 'B', 8)
@@ -221,6 +221,9 @@ def clean_pdf_text(text):
     for orig, repl in replacements.items():
         text = text.replace(orig, repl)
     return text.encode('latin-1', 'replace').decode('latin-1')
+
+def is_valid_url(url):
+    return url and url.strip().lower() not in ["none", "null", "", "direct record input"] and url.strip().startswith("http")
 
 def generate_pdf_brief(brief, query, lang):
     pdf = PDFReport()
@@ -340,11 +343,12 @@ def generate_markdown_brief(brief, query, lang):
         md += f"- **Framing:** {item['representation_mode']} | **Message Penetration:** {item['key_message_penetration']}\n"
         md += f"- **Summary:** {item['core_event_summary']}\n"
         for outlet in item["covering_outlets"]:
-            md += f"  - **{outlet['outlet_name']}** ({outlet['medium_type']}) — *Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}\n"
+            url = outlet.get('canonical_source_url', '')
+            link_str = f" — [Source Link]({url})" if is_valid_url(url) else ""
+            md += f"  - **{outlet['outlet_name']}** ({outlet['medium_type']}) — *Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}{link_str}\n"
             md += f"    - *Audience Reach:* {outlet['audience_reach_metrics']}\n"
-            md += f"    - *Source Link:* [{outlet['canonical_source_url']}]({outlet['canonical_source_url']})\n"
         md += "\n"
-    md += f"\n\n*Generated with AI assistance and reviewed by Will Wright Media. Sources are linked; confirm critical details against source before acting.*"
+    md += f"\n\n*Generated with AI assistance and reviewed by Will Wright Media. Confirm critical details against source before acting.*"
     return md
 
 def generate_docx_brief(brief, query, lang):
@@ -369,7 +373,9 @@ def generate_docx_brief(brief, query, lang):
         for outlet in item["covering_outlets"]:
             p = doc.add_paragraph(style='List Bullet')
             p.add_run(f"{outlet['outlet_name']} ({outlet['medium_type']}) ").bold = True
-            p.add_run(f"- Byline: {outlet['author_byline']} | Date: {outlet['publication_date']} | Reach: {outlet['audience_reach_metrics']} - {outlet['canonical_source_url']}")
+            url = outlet.get('canonical_source_url', '')
+            url_str = f" - {url}" if is_valid_url(url) else ""
+            p.add_run(f"- Byline: {outlet['author_byline']} | Date: {outlet['publication_date']} | Reach: {outlet['audience_reach_metrics']}{url_str}")
             
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -485,7 +491,7 @@ if st.button(btn_label) or submit_manual:
                 - Audience Reach / Followers: {man_reach if man_reach.strip() else 'Not stated'}
                 - Content Summary: {man_summary}
                 
-                SEARCH TOOL TRIGGER INSTRUCTION: Perform an active web search for these specific media outlets ({outlets_str}) in relation to the topic '{man_topic}' or '{st.session_state.executed_query}'. Locate real, resolving web URLs, digital press releases, or broadcast summaries for these outlets and embed their canonical URLs in the 'canonical_source_url' field.
+                SEARCH TOOL TRIGGER INSTRUCTION: Perform an active web search for these specific media outlets ({outlets_str}) in relation to the topic '{man_topic}' or '{st.session_state.executed_query}'. Locate real, resolving web URLs for these outlets. If no exact deep URL is found, pass 'None'.
                 """
 
             existing_brief_context = ""
@@ -511,6 +517,11 @@ if st.button(btn_label) or submit_manual:
             REPORT OUTPUT LANGUAGE: Synthesise the entire executive brief in {output_language}. Use clean, professional language appropriate for executive leadership.
             
             MEDIA & SOCIAL FOCUS MODE: {social_media_focus}.
+            
+            STRICT CLEAN URL PROTOCOL:
+            - For 'canonical_source_url', pass ONLY exact, verbatim resolving URLs provided in grounding metadata or custom URLs.
+            - DO NOT construct, guess, or invent deep URL paths (e.g. do NOT invent '/science/2023/aug/...'). 
+            - IF A DIRECT RESOLVING ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'. Do NOT provide dead links or generic root domain fallbacks if an exact article link is absent.
             
             SCOPE & SOURCES:
             - Active Strategy Query: {active_q}
@@ -615,16 +626,17 @@ if st.session_state.cumulative_brief:
                 st.markdown("**Covering Outlets & Audience Reach Metrics:**")
                 
                 for outlet in item["covering_outlets"]:
+                    url = outlet.get('canonical_source_url', '')
+                    link_html = f"<br>🔗 <a href='{url}' target='_blank'>Review Original Canonical Source Link</a>" if is_valid_url(url) else ""
                     st.markdown(
                         f"📰 **{outlet['outlet_name']}** ({outlet['medium_type']}) | ✍️ *Byline:* {outlet['author_byline']} | 📅 *Date:* {outlet['publication_date']}<br>"
-                        f"📊 *Audience Reach:* **{outlet['audience_reach_metrics']}**<br>"
-                        f"🔗 <a href='{outlet['canonical_source_url']}' target='_blank'>Review Original Canonical Source Link</a>",
+                        f"📊 *Audience Reach:* **{outlet['audience_reach_metrics']}**{link_html}",
                         unsafe_allow_html=True
                     )
     
     st.markdown(f"""
         <div class="disclaimer-box">
-            <b>Executive Verification Note:</b> Generated with AI assistance and reviewed by Will Wright Media. Sources are linked; confirm critical details against source before acting. Output language set to <b>{output_language}</b>.
+            <b>Executive Verification Note:</b> Generated with AI assistance and reviewed by Will Wright Media. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{output_language}</b>.
         </div>
     """, unsafe_allow_html=True)
             
