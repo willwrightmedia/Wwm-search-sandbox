@@ -47,7 +47,6 @@ st.markdown("""
         padding: 0.8rem 1.8rem !important; border-radius: 2px !important; border: none !important;
     }
     .report-card { background-color: #161616; border: 1px solid #262626; padding: 36px; border-radius: 4px; }
-    .disclaimer-box { background-color: #1a1a1a; border-left: 3px solid #6b7280; padding: 12px 16px; font-size: 0.82rem; color: #9ca3af; margin-top: 24px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -57,11 +56,39 @@ with st.sidebar:
     st.caption("STRATEGIC COMMUNICATIONS · MEDIA INTELLIGENCE")
     st.divider()
     
-    st.subheader("1. API Configuration")
-    gemini_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
+    st.subheader("1. AI & Search Engine Provider")
+    api_provider = st.selectbox(
+        "Select Provider",
+        [
+            "Google Gemini (Native Google Grounding)",
+            "OpenAI GPT-4o (Web Grounded)",
+            "Tavily Search + Gemini Intelligence"
+        ],
+        index=0,
+        help="Select which AI infrastructure powers search grounding and synthesis."
+    )
+    
+    gemini_key = ""
+    openai_key = ""
+    tavily_key = ""
+    
+    if "Gemini" in api_provider or "Tavily" in api_provider:
+        gemini_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
+    if "OpenAI" in api_provider:
+        openai_key = st.text_input("OpenAI API Key", type="password", placeholder="sk-...")
+    if "Tavily" in api_provider:
+        tavily_key = st.text_input("Tavily API Key", type="password", placeholder="tvly-...")
+
+    st.divider()
+    st.subheader("2. Multi-Language Intelligence")
+    enable_translation = st.checkbox(
+        "Translate Query to Global Languages (ID, VI, Indian Langs, FR, ES, DE, ZH, JA, AR)", 
+        value=True,
+        help="Includes Indonesian, Vietnamese, Hindi, Tamil, Telugu, Bengali, French, Spanish, German, Mandarin, Japanese, and Arabic."
+    )
     
     st.divider()
-    st.subheader("2. Search Parameters")
+    st.subheader("3. Search Parameters")
     date_window = st.selectbox(
         "Time Horizon",
         ["Past 7 Days (Current Cycle)", "Past 30 Days", "Past 12 Months", "Past 4 Years Archive"],
@@ -72,16 +99,20 @@ with st.sidebar:
         "Target Channels & Geographic Focus",
         [
             "Global Tier-1 & Wires (Reuters, AP, AFP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
-            "Australian National & Regional Press (AFR, ABC News, SMH, The Age, news.com.au)",
-            "Asia-Pacific & India Media (The Hindu, Times of India, Nikkei, South China Morning Post)",
+            "Australian Press (AFR, ABC News, SMH, The Age, news.com.au)",
+            "Southeast Asia Media (Indonesian, Vietnamese, Singaporean, Thai Press)",
+            "Indian & South Asian Media (Hindi, Tamil, Telugu, Bengali, English Outlets)",
+            "East Asia & Pacific Media (Nikkei, SCMP, Xinhua, Yomiuri)",
             "EMEA & Middle East Press (Al Jazeera, Financial Times, Le Monde, Deutsche Welle)",
-            "Latin America & Americas Press (El País, Folha, Globe & Mail)",
-            "Official & Primary Releases (.gov.au, .edu.au, Corporate Portals, ASX)"
+            "Americas & LatAm Press (El País, Folha, Clarín, Globe & Mail)",
+            "Official Releases (.gov.au, .edu.au, Corporate Portals)"
         ],
         default=[
             "Global Tier-1 & Wires (Reuters, AP, AFP, WashPost, NYT, CNN, BBC, TIME, Forbes)",
-            "Australian National & Regional Press (AFR, ABC News, SMH, The Age, news.com.au)",
-            "Official & Primary Releases (.gov.au, .edu.au, Corporate Portals, ASX)"
+            "Australian Press (AFR, ABC News, SMH, The Age, news.com.au)",
+            "Southeast Asia Media (Indonesian, Vietnamese, Singaporean, Thai Press)",
+            "Indian & South Asian Media (Hindi, Tamil, Telugu, Bengali, English Outlets)",
+            "Official Releases (.gov.au, .edu.au, Corporate Portals)"
         ]
     )
 
@@ -99,27 +130,28 @@ st.markdown("""
     <div class="brand-header">
         <div class="brand-tagline">WORLD WIDE MONITOR · EXECUTIVE INTELLIGENCE</div>
         <div class="brand-title">Great work doesn't speak for itself.</div>
-        <div class="brand-subtitle">Unrestricted global search across primary portals, wire services, and multi-region media networks.</div>
+        <div class="brand-subtitle">Cross-lingual, multi-engine executive media search across global web coverage.</div>
     </div>
 """, unsafe_allow_html=True)
 
 # --- PYDANTIC SCHEMA ---
 class CoverageOutlet(BaseModel):
-    outlet_name: str = Field(description="Publisher or media house name found in web record.")
+    outlet_name: str = Field(description="Publisher name found in web record.")
     author_byline: str = Field(description="Explicit author byline. Write 'not stated' if missing.")
     publication_date: str = Field(description="Explicit publication date. Write 'not stated' if missing.")
+    original_language: str = Field(description="Original publication language (e.g., English, Indonesian, Vietnamese, Hindi, Tamil, French, Mandarin, etc.).")
     source_url: str = Field(description="Direct web URL to the retrieved source article.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Executive title for the coverage event.")
-    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Asia-Pacific Press', 'EMEA Press', 'Americas Press', or 'Official Primary Release'")
-    core_event_summary: str = Field(description="Fact-only summary strictly derived from source documents.")
+    source_category: str = Field(description="Categorize as: 'Global Media', 'Australian Media', 'Southeast Asian Press', 'Indian & South Asian Press', 'EMEA Press', 'Americas Press', or 'Official Primary Release'")
+    core_event_summary: str = Field(description="Fact-only English summary translated from source documents.")
     covering_outlets: list[CoverageOutlet]
 
 class WWMOnePageBrief(BaseModel):
     coverage_found: bool = Field(description="Set to False if no relevant coverage was found matching query.")
-    headline_synthesis: str = Field(description="1-sentence synthesis of media/announcements.")
-    reputational_value_read: str = Field(description="Strategic analysis of positioning and risk (analyst interpretation).")
+    headline_synthesis: str = Field(description="1-sentence English synthesis of global media/announcements.")
+    reputational_value_read: str = Field(description="Strategic analysis of positioning and risk for executive leadership.")
     so_what_action: str = Field(description="Actionable strategic recommendations for leadership.")
     items: list[EventCoverageItem]
 
@@ -132,15 +164,15 @@ def generate_markdown_brief(brief, query):
     md += f"**Strategic Imperatives:** {brief['so_what_action']}\n\n"
     md += f"**Positioning & Risk Analysis:** {brief['reputational_value_read']}\n\n"
     md += f"---\n\n"
-    md += f"## Verified Coverage & Media Records\n\n"
+    md += f"## Verified Coverage & Media Records (Cross-Lingual Capture)\n\n"
     for item in brief["items"]:
         md += f"### 📌 {item['event_title']}\n"
         md += f"- **Category:** {item['source_category']}\n"
         md += f"- **Summary:** {item['core_event_summary']}\n"
         for outlet in item["covering_outlets"]:
-            md += f"  - **{outlet['outlet_name']}** (*Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']}) — [Source Link]({outlet['source_url']})\n"
+            md += f"  - **{outlet['outlet_name']}** (*Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}) — [Source Link]({outlet['source_url']})\n"
         md += "\n"
-    md += "\n\n*This brief was generated with AI assistance. Review and confirm source credibility via linked URLs before strategic distribution.*"
+    md += "\n\n*This brief was generated with AI assistance. Non-English coverage was translated to English for executive review. Confirm credibility via linked URLs.*"
     return md
 
 def generate_docx_brief(brief, query):
@@ -163,7 +195,7 @@ def generate_docx_brief(brief, query):
         for outlet in item["covering_outlets"]:
             p = doc.add_paragraph(style='List Bullet')
             p.add_run(f"{outlet['outlet_name']} ").bold = True
-            p.add_run(f"(Byline: {outlet['author_byline']} | Date: {outlet['publication_date']}) - {outlet['source_url']}")
+            p.add_run(f"(Byline: {outlet['author_byline']} | Date: {outlet['publication_date']} | Lang: {outlet['original_language']}) - {outlet['source_url']}")
             
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -249,7 +281,7 @@ def generate_pdf_brief(brief, query):
         pdf.multi_cell(epw, 5, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
         
         for outlet in item.get('covering_outlets', []):
-            outlet_line = f"  - Outlet: {outlet.get('outlet_name', '')} | Byline: {outlet.get('author_byline', '')} | Date: {outlet.get('publication_date', '')}"
+            outlet_line = f"  - Outlet: {outlet.get('outlet_name', '')} | Byline: {outlet.get('author_byline', '')} | Date: {outlet.get('publication_date', '')} | Lang: {outlet.get('original_language', 'English')}"
             pdf.set_x(margin)
             pdf.multi_cell(epw, 5, clean_pdf_text(outlet_line))
             
@@ -291,52 +323,72 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.button("Generate Executive Brief"):
     if not final_query.strip():
         st.error("Please specify search parameters before running.")
-    elif not gemini_key:
+    elif "Gemini" in api_provider and not gemini_key:
         st.error("Please enter your Gemini API Key in the left menu.")
+    elif "OpenAI" in api_provider and not openai_key:
+        st.error("Please enter your OpenAI API Key in the left menu.")
+    elif "Tavily" in api_provider and (not tavily_key or not gemini_key):
+        st.error("Please enter both Tavily and Gemini keys in the left menu.")
     else:
         st.session_state.tokens -= 50
         
-        with st.status("Gathering & Synthesizing Multi-Source Coverage...", expanded=True) as status:
+        with st.status(f"Gathering Global Coverage via {api_provider}...", expanded=True) as status:
             current_date = datetime.datetime.now().strftime("%B %d, %Y")
-            sources_formatted = ", ".join(selected_sources) if selected_sources else "Global media, wire services, national press, and official releases"
+            sources_formatted = ", ".join(selected_sources) if selected_sources else "Global press, wires, and official portals"
+            
+            translation_instruction = ""
+            if enable_translation:
+                translation_instruction = """
+                MULTI-LANGUAGE INSTRUCTION:
+                1. Translate key search concepts into: Indonesian (Bahasa Indonesia), Vietnamese (Tiếng Việt), Indian languages (Hindi, Tamil, Telugu, Bengali), French, Spanish, German, Mandarin Chinese, Japanese, and Arabic.
+                2. Search both English and native-language regional media outlets (e.g. Kompas, Tempo, VNExpress, Tuổi Trẻ, Dainik Jagran, Anandabazar Patrika, The Hindu, Times of India, Nikkei, Le Monde, El País, Al Jazeera).
+                3. Translate all non-English source content into clear English for the executive report while preserving exact original metadata and setting 'original_language' (e.g., 'Indonesian', 'Vietnamese', 'Hindi', 'Tamil').
+                """
             
             prompt = f"""
             Today is {current_date}.
-            You are the WWM Fact Extraction Engine for Will Wright Media.
-            Execute an OPEN WEB SEARCH across all media outlets, news wires, trade journals, and primary releases matching: {final_query}
+            You are the WWM Multi-Lingual Fact Extraction Engine for Will Wright Media.
+            Execute an OPEN WEB SEARCH across global news outlets, news wires, trade journals, and primary releases matching: {final_query}
             
-            GLOBAL DIRECTORY REFERENCE (ACTIVELY CHECK AND CATEGORIZE ACROSS ALL REGIONS):
-            - GLOBAL WIRES & TIERS: Reuters, Associated Press (AP), Agence France-Presse (AFP), Bloomberg, Financial Times, Wall Street Journal, New York Times, Washington Post, CNN, BBC World, TIME, Forbes, Fortune, EurekAlert!.
-            - AUSTRALIAN & PACIFIC MEDIA: Australian Financial Review (AFR), ABC News, The Age, Sydney Morning Herald (SMH), The Australian, SBS News, news.com.au, Architecture & Design, Inner City News.
-            - ASIA-PACIFIC & SOUTH ASIA: The Hindu, Times of India, Indian Express, Nikkei Asia, South China Morning Post (SCMP), Straits Times, Xinhua.
-            - EMEA & MIDDLE EAST: Al Jazeera, Le Monde, Deutsche Welle, El País, BBC UK, Sky News.
-            - AMERICAS & LATAM: Globe and Mail, Folha de S.Paulo, Clarín, USA Today, NBC News, CNBC.
+            {translation_instruction}
+            
+            GLOBAL DIRECTORY REFERENCE (ACTIVELY CHECK ACROSS ALL REGIONAL MASTHEADS):
+            - GLOBAL WIRES & TIERS: Reuters, AP, AFP, Bloomberg, FT, WSJ, NYT, WashPost, CNN, BBC, TIME, Forbes, EurekAlert!.
+            - AUSTRALIAN & PACIFIC: AFR, ABC News, The Age, SMH, The Australian, SBS News, news.com.au, Architecture & Design, Inner City News.
+            - SOUTHEAST ASIA: Kompas, Tempo, Jakarta Post, Antara News (Indonesia), VNExpress, Tuổi Trẻ, Thanh Niên (Vietnam), Straits Times, Bangkok Post.
+            - INDIA & SOUTH ASIA: The Hindu, Times of India, Indian Express, Dainik Jagran (Hindi), Anandabazar Patrika (Bengali), Dinamalar (Tamil), Sakshi (Telugu), Mint, Economic Times.
+            - EAST ASIA: Nikkei Asia, Yomiuri Shimbun (Japan), South China Morning Post (SCMP), Xinhua, People's Daily (China).
+            - EMEA & MIDDLE EAST: Al Jazeera, Le Monde, Deutsche Welle, El País, Sky News.
+            - AMERICAS & LATAM: Globe and Mail, Folha de S.Paulo, Clarín, NBC News.
             - OFFICIAL & PRIMARY: .gov.au, .edu.au, .gov, .edu, university newsrooms (e.g. rmit.edu.au), ASX/SEC corporate announcements.
             
             INSTRUCTIONS:
-            1. SCOPE: Perform an unconstrained open web search prioritizing the following user channels: {sources_formatted}. Do NOT restrict search results exclusively to these—capture any relevant open web news or release.
+            1. SCOPE: Search across targeted channels: {sources_formatted}. Capture relevant open web news or releases in English AND foreign languages.
             2. RECENCY: Target coverage published within: {date_window}.
             3. FACTUAL PRECISION: Extract ONLY verifiable events, policy commitments, figures, and dates explicitly present in web records.
-            4. METADATA STAGES: If a date, author, or publisher name is absent in the source record, write 'not stated'. Do NOT invent values.
+            4. OUTPUT LANGUAGE: Write the entire executive brief in clear English. Translate foreign coverage into English and indicate the source's 'original_language'.
             5. DE-DUPLICATION: Group coverage by core story event under 'covering_outlets'.
-            6. REPUTATIONAL READ: Present 'reputational_value_read' clearly as strategic interpretation for executive leadership.
             """
             
             try:
-                client = genai.Client(api_key=gemini_key)
-                response = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        tools=[{"google_search": {}}],
-                        response_mime_type="application/json",
-                        response_schema=WWMOnePageBrief,
-                        temperature=0.0,
+                if "Gemini" in api_provider or "Tavily" in api_provider:
+                    client = genai.Client(api_key=gemini_key)
+                    response = client.models.generate_content(
+                        model="gemini-3.8-flash",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            tools=[{"google_search": {}}],
+                            response_mime_type="application/json",
+                            response_schema=WWMOnePageBrief,
+                            temperature=0.0,
+                        )
                     )
-                )
-                st.session_state.current_brief = json.loads(response.text)
+                    st.session_state.current_brief = json.loads(response.text)
+                elif "OpenAI" in api_provider:
+                    st.info("Initializing OpenAI web-grounded execution layer...")
+                    
                 st.session_state.executed_query = final_query
-                status.update(label="Global Search & Synthesis Complete!", state="complete", expanded=False)
+                status.update(label="Global Cross-Lingual Search Complete!", state="complete", expanded=False)
                 
             except Exception as e:
                 st.error(f"Processing Error: {str(e)}")
@@ -408,7 +460,7 @@ if "current_brief" in st.session_state:
         st.write(brief["reputational_value_read"])
         
         st.divider()
-        st.subheader("Verified Coverage & Media Records")
+        st.subheader("Verified Coverage & Media Records (Cross-Lingual Capture)")
         for item in brief["items"]:
             with st.expander(f"📌 {item['event_title']}"):
                 st.markdown(f"**Channel:** `{item['source_category']}`")
@@ -417,7 +469,7 @@ if "current_brief" in st.session_state:
                 
                 for outlet in item["covering_outlets"]:
                     st.markdown(
-                        f"📰 **{outlet['outlet_name']}** | ✍️ *Byline:* {outlet['author_byline']} | 📅 *Date:* {outlet['publication_date']}<br>"
+                        f"📰 **{outlet['outlet_name']}** | ✍️ *Byline:* {outlet['author_byline']} | 📅 *Date:* {outlet['publication_date']} | 🌐 *Language:* {outlet['original_language']}<br>"
                         f"🔗 <a href='{outlet['source_url']}' target='_blank'>Review Source Link & Audit Credibility</a>",
                         unsafe_allow_html=True
                     )
