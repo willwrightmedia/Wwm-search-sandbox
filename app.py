@@ -21,7 +21,7 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #1A1814 !important; border-right: 1px solid #2C2822 !important; }
     [data-testid="stSidebar"] * { color: #C6BCA9 !important; }
 
-    .brand-header { background-color: #1A1814; border: 1px solid #2C2822; padding: 36px 40px; border-radius: 2px; margin-bottom: 32px; }
+    .brand-header { background-color: #1A1814; border: 1px solid #2C2822; padding: 36px 40px; border-radius: 2px; margin-bottom: 24px; }
     .brand-tagline { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 12px; }
     .brand-title { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
     .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: #C6BCA9; margin-top: 8px; }
@@ -47,6 +47,10 @@ st.markdown("""
         background-color: #C6BCA9 !important; color: #14120F !important; font-weight: 600 !important;
         padding: 0.8rem 1.8rem !important; border-radius: 2px !important; border: none !important;
     }
+    .reset-btn>button {
+        background-color: #2C2822 !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
+        font-weight: 600 !important; padding: 0.6rem 1.2rem !important;
+    }
     .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 36px; border-radius: 2px; }
     .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 12px 16px; font-size: 0.82rem; color: #6B6B6B; margin-top: 24px; }
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 10px 14px; font-size: 0.8rem; color: #C6BCA9; margin-bottom: 16px; }
@@ -58,6 +62,11 @@ if "cumulative_brief" not in st.session_state:
     st.session_state.cumulative_brief = None
 if "executed_query" not in st.session_state:
     st.session_state.executed_query = ""
+
+def clear_all_searches():
+    st.session_state.cumulative_brief = None
+    st.session_state.executed_query = ""
+    st.rerun()
 
 # --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
@@ -146,10 +155,7 @@ with st.sidebar:
     )
 
     st.divider()
-    if st.button("Reset brief buffer and clear all"):
-        st.session_state.cumulative_brief = None
-        st.session_state.executed_query = ""
-        st.rerun()
+    st.button("Reset Brief Buffer & Clear All", on_click=clear_all_searches, key="sidebar_reset")
 
 # --- BRANDED EXECUTIVE HEADER ---
 st.markdown("""
@@ -160,12 +166,18 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-st.info(
-    "ℹ️ **Sequential report building:** World Wide Monitor allows you to build complete media reports step by step. "
-    "You can run live web searches, add specific article links, or directly enter broadcast, print, social, and online outlet records. "
-    "New inputs continuously expand and refine your report without losing previously analysed information.",
-    icon="ℹ️"
-)
+# --- PROMINENT CONTROL & CLEAR TOOLBAR ---
+control_col1, control_col2 = st.columns([3, 1])
+with control_col1:
+    st.info(
+        "ℹ️ **Sequential report building:** World Wide Monitor allows you to build complete media reports step by step. "
+        "You can run live web searches, add specific article links, or directly enter broadcast, print, social, and online outlet records.",
+        icon="ℹ️"
+    )
+with control_col2:
+    st.markdown("<div class='reset-btn'>", unsafe_allow_html=True)
+    st.button("🔄 Start New Search / Clear Buffer", on_click=clear_all_searches, key="header_reset", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # --- STRICT AUSTRALIAN ENGLISH SCHEMA ---
 class CoverageOutlet(BaseModel):
@@ -197,12 +209,11 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE (CLEAN TOP HEADER, NO BLACK BANNER, STRICT 1-PAGE ENGINE) ---
+# --- BRANDED PDF ENGINE ---
 class PDFReport(FPDF):
     def header(self):
-        # Clean unobtrusive top text header without black fill rectangle
         self.set_font('Helvetica', 'B', 8)
-        self.set_text_color(107, 107, 107) # Muted Graphite
+        self.set_text_color(107, 107, 107)
         self.set_y(8)
         self.cell(0, 5, 'WORLD WIDE MONITOR  |  EXECUTIVE BRIEF', align='R')
 
@@ -225,13 +236,12 @@ def is_valid_url(url):
 
 def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     pdf = PDFReport()
-    pdf.set_fill_color(242, 237, 227) # Bone background (#F2EDE3)
+    pdf.set_fill_color(242, 237, 227)
     margin = 12
     top_margin = 14
     pdf.set_margins(margin, top_margin, margin)
     pdf.add_page()
     
-    # Disable auto page break if strict 1-page is required
     if is_strict_one_page:
         pdf.set_auto_page_break(auto=False)
     else:
@@ -247,7 +257,6 @@ def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     if len(metric_str) > 75:
         metric_str = metric_str[:72] + "..."
 
-    # Title & Metadata
     title_size = 13 if is_strict_one_page else 15
     pdf.set_font('Helvetica', 'B', title_size)
     pdf.set_text_color(35, 35, 35)
@@ -261,20 +270,17 @@ def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     pdf.set_x(margin)
     pdf.multi_cell(epw, 3.5 if is_strict_one_page else 4, clean_pdf_text(f'{brief.get("total_combined_audience_reach", "")}'))
     
-    # Divider
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
     pdf.ln(1.5 if is_strict_one_page else 2)
     pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
     pdf.ln(2.5 if is_strict_one_page else 4)
     
-    # Text sizing adjustments for strict 1-page fit
     h_size = 9.5 if is_strict_one_page else 11
     body_size = 8.5 if is_strict_one_page else 9.5
     lh = 3.6 if is_strict_one_page else 4.5
     gap = 2 if is_strict_one_page else 3
     
-    # Section 1: Executive overview
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -285,7 +291,6 @@ def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(gap)
     
-    # Section 2: Positioning
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -296,7 +301,6 @@ def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('sentiment_framing_read', '')))
     pdf.ln(gap)
     
-    # Section 3: Quotes
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -307,7 +311,6 @@ def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
     pdf.ln(gap)
 
-    # Section 4: Opportunities
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
@@ -318,14 +321,12 @@ def generate_pdf_brief(brief, query, lang, is_strict_one_page=False):
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('engagement_opportunities', '')))
     pdf.ln(gap)
     
-    # Section 5: Coverage Records (Capped for 1-Page Briefs)
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
     pdf.set_x(margin)
     pdf.cell(epw, 4.5 if is_strict_one_page else 6, '5. Tier-1 sourced media records and verified audience reach', new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1.5 if is_strict_one_page else 2)
     
-    # Cap item count strictly if 1-page tier is active
     items_to_render = brief.get("items", [])
     if is_strict_one_page:
         items_to_render = items_to_render[:3]
@@ -633,7 +634,7 @@ if st.session_state.cumulative_brief:
             key="export_format_top"
         )
         exec_query = st.session_state.get("executed_query", "Executive Media Intelligence Scope")
-        is_strict_1page = "Executive leadership brief" in report_format_tier
+        is_strict_1page = "Strict 1 page PDF" in report_format_tier
         
         if "PDF" in export_format:
             st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, output_language, is_strict_1page), f"WWM_Executive_Brief_{output_language}.pdf", "application/pdf", key="dl_pdf_top")
