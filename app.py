@@ -455,7 +455,7 @@ if st.session_state.cumulative_brief:
         st.divider()
         st.subheader("5. Key Media Records")
         for item in brief["items"]:
-            with expander_title := st.expander(f"📌 {item['event_title']}"):
+            with st.expander(f"📌 {item['event_title']}"):
                 st.markdown(f"**Category:** `{item['source_category']}`")
                 st.write(f"**Summary:** {item['core_event_summary']}")
                 st.markdown("**Covering Outlets & Source Links:**")
