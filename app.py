@@ -131,7 +131,7 @@ if st.button("Run Intelligence Search (-50 Tokens)"):
                 
                 # Gemini handles search and structured output natively
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.8-flash",
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         tools=[{"google_search": {}}],  # Native Google Search Tool
