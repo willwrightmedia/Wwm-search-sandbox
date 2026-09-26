@@ -203,7 +203,6 @@ with st.sidebar:
     st.divider()
     st.subheader("3. Media channels and horizon")
     
-    # Extended 30-Year Recency Scope Selector
     date_window_option = st.selectbox(
         "Recency scope",
         [
@@ -347,16 +346,16 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE ---
+# --- BRANDED PDF ENGINE WITH ENHANCED PRINT BORDER SPACING ---
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
         self.set_text_color(107, 107, 107)
-        self.set_y(8)
+        self.set_y(10)
         self.cell(0, 5, 'MEDIERKAT  |  EXECUTIVE BRIEF', align='R')
 
     def footer(self):
-        self.set_y(-10)
+        self.set_y(-14)
         self.set_font('Helvetica', '', 6.5)
         self.set_text_color(107, 107, 107)
         self.cell(0, 5, 'Generated with AI assistance via Medierkat. Sources are linked where verified; confirm critical details against source before acting.', align='C')
@@ -375,15 +374,19 @@ def is_valid_url(url):
 def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str, is_strict_one_page=False):
     pdf = PDFReport()
     pdf.set_fill_color(242, 237, 227)
-    margin = 12
-    top_margin = 14
-    pdf.set_margins(margin, top_margin, margin)
+    
+    # ENFORCED CONSERVATIVE BORDERS FOR STANDARD PRINTERS & ZERO HEADER OVERLAP
+    margin_side = 18  # 18mm side padding (174mm printable width)
+    top_margin = 22   # 22mm top margin prevents text from bleeding into MEDIERKAT header
+    bottom_margin = 20 # 20mm bottom margin protects footer
+    
+    pdf.set_margins(margin_side, top_margin, margin_side)
     pdf.add_page()
     
     if is_strict_one_page:
         pdf.set_auto_page_break(auto=False)
     else:
-        pdf.set_auto_page_break(auto=True, margin=14)
+        pdf.set_auto_page_break(auto=True, margin=bottom_margin)
         
     epw = pdf.epw
     
@@ -394,78 +397,78 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
     title_size = 12 if is_strict_one_page else 14
     pdf.set_font('Helvetica', 'B', title_size)
     pdf.set_text_color(35, 35, 35)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.cell(epw, 5.5 if is_strict_one_page else 7, clean_pdf_text(f'Executive Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     
     pdf.set_font('Helvetica', 'B', 7 if is_strict_one_page else 7.5)
     pdf.set_text_color(107, 107, 107)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.cell(epw, 3.5, clean_pdf_text(f'OBJECTIVE: {purpose_text.upper()}'), new_x="LMARGIN", new_y="NEXT")
     
     pdf.set_font('Helvetica', 'I', 6.5 if is_strict_one_page else 7.5)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'Format: {tier_type}  |  Language: {lang}'))
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'Scope: {clean_query}  |  Recency: {time_scope}  |  Coverage Focus: {cov_scope}'))
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'Channels: {channels_str}'))
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'{brief.get("verified_coverage_metric", "")}  |  {brief.get("total_combined_audience_reach", "")}'))
     
     pdf.set_draw_color(198, 188, 169)
     pdf.set_line_width(0.2)
     pdf.ln(1.5 if is_strict_one_page else 2)
-    pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
+    pdf.line(margin_side, pdf.get_y(), margin_side + epw, pdf.get_y())
     pdf.ln(2.5 if is_strict_one_page else 3.5)
     
     h_size = 9 if is_strict_one_page else 10.5
     body_size = 8 if is_strict_one_page else 9
-    lh = 3.4 if is_strict_one_page else 4.2
-    gap = 1.8 if is_strict_one_page else 2.5
+    lh = 3.3 if is_strict_one_page else 4.2
+    gap = 1.6 if is_strict_one_page else 2.5
     
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.cell(epw, 4 if is_strict_one_page else 5.5, '1. Executive overview', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('headline_synthesis', '')))
     pdf.ln(gap)
     
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.cell(epw, 4 if is_strict_one_page else 5.5, '2. Positioning and reputation', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('sentiment_framing_read', '')))
     pdf.ln(gap)
     
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.cell(epw, 4 if is_strict_one_page else 5.5, '3. Spokesperson quotes and commentary', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('subject_quoted_vs_reported', '')))
     pdf.ln(gap)
 
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.cell(epw, 4 if is_strict_one_page else 5.5, '4. Strategic engagement opportunities', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('Helvetica', '', body_size)
     pdf.set_text_color(35, 35, 35)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.multi_cell(epw, lh, clean_pdf_text(brief.get('engagement_opportunities', '')))
     pdf.ln(gap)
     
     pdf.set_font('Helvetica', 'B', h_size)
     pdf.set_text_color(20, 18, 15)
-    pdf.set_x(margin)
+    pdf.set_x(margin_side)
     pdf.cell(epw, 4 if is_strict_one_page else 5.5, '5. Tier-1 sourced media records and verified audience reach', new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1.2 if is_strict_one_page else 2)
     
@@ -474,20 +477,20 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
         items_to_render = items_to_render[:3]
     
     for item in items_to_render:
-        if not is_strict_one_page and pdf.get_y() > 240:
+        if not is_strict_one_page and pdf.get_y() > 235:
             pdf.add_page()
             
         pdf.set_font('Helvetica', 'B', 8 if is_strict_one_page else 9)
         pdf.set_text_color(20, 18, 15)
-        pdf.set_x(margin)
+        pdf.set_x(margin_side)
         title_text = f"• {item.get('event_title', '')} ({item.get('representation_mode', '')})"
         pdf.multi_cell(epw, 3.6 if is_strict_one_page else 4.2, clean_pdf_text(title_text))
         
         pdf.set_font('Helvetica', '', 7 if is_strict_one_page else 8)
         pdf.set_text_color(35, 35, 35)
-        pdf.set_x(margin)
+        pdf.set_x(margin_side)
         pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f"Key messages: {item.get('key_message_delivered', 'Standard coverage')}"))
-        pdf.set_x(margin)
+        pdf.set_x(margin_side)
         pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f"Summary: {item.get('core_event_summary', '')}"))
         
         for outlet in item.get('covering_outlets', []):
@@ -495,12 +498,12 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
             pdf.set_text_color(107, 107, 107)
             conf_tag = f" {outlet.get('verification_confidence', '')}" if outlet.get('verification_confidence') else ""
             outlet_line = f"  - {outlet.get('outlet_name', '')} ({outlet.get('medium_type', 'Online')}) | Date: {outlet.get('publication_date', '')} | Reach: {outlet.get('audience_reach_metrics', 'Not stated')}{conf_tag}"
-            pdf.set_x(margin)
+            pdf.set_x(margin_side)
             pdf.multi_cell(epw, 3 if is_strict_one_page else 3.5, clean_pdf_text(outlet_line))
             
         pdf.ln(1.2 if is_strict_one_page else 1.8)
         pdf.set_draw_color(220, 215, 205)
-        pdf.line(margin, pdf.get_y(), margin + epw, pdf.get_y())
+        pdf.line(margin_side, pdf.get_y(), margin_side + epw, pdf.get_y())
         pdf.ln(1.2 if is_strict_one_page else 2)
         
     return bytes(pdf.output())
@@ -970,7 +973,7 @@ else:
         - **Master plan ($199.99/mo):** Unlimited searches + Multi-seat export
         """)
 
-# --- DELIVERABLE RENDER (EXPLICITLY DISPLAYING ALL SIDEBAR PARAMETERS) ---
+# --- DELIVERABLE RENDER ---
 if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in main_mode):
     brief = st.session_state.cumulative_brief
     st.markdown("---")
