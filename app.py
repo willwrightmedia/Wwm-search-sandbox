@@ -30,7 +30,7 @@ if "users_db" not in st.session_state:
             "full_name": "Will Wright",
             "is_admin": True,
             "current_plan": "Founder / Kat Engine Admin",
-            "default_engine": "Google Gemini 3 (Native search grounding)",
+            "default_engine": "Google Gemini 3.8 (Native search grounding)",
             "api_key": None,
             "total_searches": 0,
             "created_at": "2026-09-26"
@@ -318,7 +318,7 @@ with st.sidebar:
     api_provider = st.selectbox(
         "AI engine provider",
         [
-            "Google Gemini 3 (Native search grounding)",
+            "Google Gemini 3.8 (Native search grounding)",
             "OpenAI GPT-4o (Web grounded)",
             "Tavily Search + Gemini intelligence"
         ],
@@ -571,7 +571,7 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
     
     return bytes(pdf.output())
 
-# --- REUSABLE EXECUTION ENGINE (HANDLES GCP & AI STUDIO KEYS CLEANLY) ---
+# --- REUSABLE EXECUTION ENGINE (UPDATED TO GEMINI-3.8-FLASH) ---
 def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary):
     active_q = search_query_input if search_query_input else st.session_state.executed_query
     
@@ -587,7 +587,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
     channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
     clean_key = gemini_key.strip()
 
-    # ROUTE A: Try Gemini AI Engine if key is provided
+    # ROUTE A: Try Gemini AI Engine with latest model gemini-3.8-flash
     if clean_key:
         prompt = f"""
         Today is {current_date}.
@@ -600,7 +600,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         try:
             client = genai.Client(api_key=clean_key)
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.8-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     tools=[{"google_search": {}}],
@@ -614,9 +614,8 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             st.success("Executive synthesis complete via Gemini Grounding!")
             return
         except Exception as e:
-            # If the API key is an unsupported GCP token format, fallback gracefully to Sandbox
             if "401" in str(e) or "UNAUTHENTICATED" in str(e) or "ACCESS_TOKEN_TYPE" in str(e):
-                st.warning("⚠️ Google Cloud key format detected. Routing via Free Sandbox Search for high-volume extraction...")
+                st.warning("⚠️ Google Cloud key format detected. Routing via Free Sandbox Search...")
             else:
                 st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
 
