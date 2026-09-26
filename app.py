@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WWM BRANDING) ---
+# --- UI CONFIGURATION (WORLD WIDE MONITOR BRANDING) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
 # CUSTOM CSS - RESPONSIVE CARDS & HIGH-CONTRAST INK PALETTE
@@ -135,7 +135,7 @@ main_mode = st.radio(
 
 # --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
-    st.markdown("### WWM")
+    st.markdown("### WORLD WIDE MONITOR")
     st.caption("GLOBAL MEDIA INSIGHTS")
     st.divider()
     
@@ -277,11 +277,11 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     total_combined_audience_reach: str = Field(description="Summed aggregate verifiable reach across major news and verified social channels (e.g., 'Total Combined Reach: 185.5 Million Audience').")
     headline_synthesis: str = Field(description="1-2 sentence executive overview of overall coverage trajectory.")
     sentiment_framing_read: str = Field(description="1-2 concise lines evaluating framing. Recognize expert authority: if addressing difficult sector topics, frame this POSITIVELY as domain leadership.")
-    subject_quoted_vs_reported: str = Field(description="Concise summary of direct spokesperson quotes vs. what external media or social commentary reported about them.")
+    subject_quoted_vs_reported: str = Field(description="Concise summary of direct spokesperson quotes (use quotation marks ONLY for 100% verbatim quotes from grounding payload; otherwise use reported speech) vs. external commentary.")
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE ---
+# --- BRANDED PDF ENGINE WITH ALL SIDEBAR PARAMETERS ---
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
@@ -293,7 +293,7 @@ class PDFReport(FPDF):
         self.set_y(-10)
         self.set_font('Helvetica', '', 6.5)
         self.set_text_color(107, 107, 107)
-        self.cell(0, 5, 'Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting.', align='C')
+        self.cell(0, 5, 'Generated with AI assistance via World Wide Monitor. Sources are linked where verified; confirm critical details against source before acting.', align='C')
 
 def clean_pdf_text(text):
     if not text:
@@ -466,7 +466,7 @@ def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_sc
             md += f"  - **{outlet['outlet_name']}** ({outlet['medium_type']}) — *Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}{link_str}\n"
             md += f"    - *Audience reach:* {outlet['audience_reach_metrics']}\n"
         md += "\n"
-    md += f"\n\n*Generated with AI assistance and reviewed by WWM. Confirm critical details against source before acting.*"
+    md += f"\n\n*Generated with AI assistance via World Wide Monitor. Confirm critical details against source before acting.*"
     return md
 
 def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str):
@@ -586,6 +586,9 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                - Traditional Press / Broadcast / Online News: Include ONLY outlets with an audience of at least 100,000 readers, viewers, or listeners. Strictly suppress low-value blogs, personal websites, and unverified content aggregators.
                - Social Media Platforms: Include ONLY verified accounts or creators with at least 10,000 subscribers or followers.
             3. CLEAN URL PROTOCOL: For 'canonical_source_url', pass ONLY exact, verbatim resolving URLs provided in grounding metadata or custom URLs. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'.
+            4. VERBATIM QUOTE INTEGRITY PROTOCOL:
+               - In 'subject_quoted_vs_reported', use quotation marks ("...") ONLY if the enclosed text is a 100% verbatim substring match from the grounded search payload.
+               - If an exact quote match cannot be verified, convert the claim to reported speech without quotation marks.
             
             SCOPE & SOURCES:
             - Active Strategy Query: {active_q}
@@ -714,7 +717,6 @@ if "Dashboard" in main_mode:
     st.markdown("<br>", unsafe_allow_html=True)
     st.subheader(f"Media volume spike trajectory ({date_window})")
     
-    # Generate dates labeled specifically with Day, Month, and Year (e.g. 29 Aug 2026)
     end_date = datetime.datetime.today()
     if "7 days" in date_window:
         dates = pd.date_range(end=end_date, periods=7)
@@ -733,7 +735,6 @@ if "Dashboard" in main_mode:
         "Social Channels (Mention count)": [2, 3, 1, 4, 2, 1, 0, 2, 4, 18, 45, 12, 6, 4, 2, 1, 3, 2, 1, 0, 2, 3, 1, 2, 1, 0, 1, 2, 1, 0][:len(dates)]
     })
     
-    # Melt dataframe for Altair rendering
     melted_data = spike_data.melt("Date", var_name="Channel", value_name="Media Mention Count")
     
     chart = alt.Chart(melted_data).mark_line(point=True).encode(
@@ -975,7 +976,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
     
     st.markdown(f"""
         <div class="disclaimer-box">
-            <b>Executive verification note:</b> Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{active_l}</b>.
+            <b>Executive verification note:</b> Generated with AI assistance via World Wide Monitor. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{active_l}</b>.
         </div>
     """, unsafe_allow_html=True)
             
