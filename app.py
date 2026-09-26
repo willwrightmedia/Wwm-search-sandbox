@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WORLD WIDE MONITOR BRANDING) ---
-st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
+# --- UI CONFIGURATION (MEDIERKAT BRANDING & RESPONSIVE DASHBOARD CSS) ---
+st.set_page_config(page_title="Medierkat", page_icon="📡", layout="wide")
 
-# CUSTOM CSS - RESPONSIVE CARDS & HIGH-CONTRAST INK PALETTE
+# CUSTOM CSS - RESPONSIVE CARDS, HIGH-CONTRAST BONE INPUTS & INK PALETTE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -22,11 +22,6 @@ st.markdown("""
     .stApp { background-color: #14120F !important; color: #F2EDE3 !important; font-family: 'Inter', sans-serif !important; }
     [data-testid="stSidebar"] { background-color: #1A1814 !important; border-right: 1px solid #2C2822 !important; }
     [data-testid="stSidebar"] * { color: #C6BCA9 !important; }
-
-    .brand-header { background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 28px; border-radius: 2px; margin-bottom: 20px; }
-    .brand-tagline { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 8px; }
-    .brand-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 400; color: #F2EDE3; margin: 0; line-height: 1.1; }
-    .brand-subtitle { font-family: 'Cormorant Garamond', serif; font-size: clamp(0.95rem, 1.8vw, 1.15rem); font-style: italic; color: #C6BCA9; margin-top: 6px; }
 
     /* HIGH-CONTRAST BONE INPUT FIELDS */
     div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
@@ -99,6 +94,21 @@ st.markdown("""
     .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 28px; border-radius: 2px; }
     .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #6B6B6B; margin-top: 20px; }
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
+
+    /* TABLET & MOBILE REFLOW RULES */
+    @media (max-width: 992px) {
+        div[data-testid="column"] {
+            flex: 1 1 45% !important;
+            min-width: 45% !important;
+            margin-bottom: 12px;
+        }
+    }
+    @media (max-width: 576px) {
+        div[data-testid="column"] {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -113,9 +123,9 @@ if "search_balance" not in st.session_state:
     st.session_state.search_balance = 84
 if "saved_queries" not in st.session_state:
     st.session_state.saved_queries = [
+        "\"Tom Oxley\" OR Synchron Stentrode",
         "\"Rajeev Roychand\" AND RMIT",
         "Spent coffee biochar concrete infrastructure",
-        "Victoria Big Build sustainable materials",
         "Standards Australia biochar aggregate"
     ]
 if "report_library" not in st.session_state:
@@ -135,7 +145,7 @@ main_mode = st.radio(
 
 # --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
-    st.markdown("### WORLD WIDE MONITOR")
+    st.markdown("### MEDIERKAT")
     st.caption("GLOBAL MEDIA INSIGHTS")
     st.divider()
     
@@ -229,12 +239,36 @@ with st.sidebar:
     st.divider()
     st.button("Reset brief buffer and clear all", on_click=clear_all_searches, key="sidebar_reset")
 
-# --- BRANDED EXECUTIVE HEADER ---
+# --- BRANDED EXECUTIVE HEADER (WITH MEDIERKAT SENTRY LOGO) ---
 st.markdown("""
-    <div class="brand-header">
-        <div class="brand-tagline">GLOBAL MEDIA INSIGHTS</div>
-        <div class="brand-title">World Wide Monitor</div>
-        <div class="brand-subtitle">Strategic media intelligence, audience reach analytics, and cross-lingual reporting for leadership.</div>
+    <div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;">
+        <div style="margin-right: 24px; flex-shrink: 0;">
+            <svg width="45" height="75" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
+                <!-- Meerkat sentry head -->
+                <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
+                <!-- Eye -->
+                <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
+                <!-- Upright Torso at Attention -->
+                <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
+                <!-- Paws folded neatly -->
+                <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
+                <!-- Tail for ground balance -->
+                <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
+                <!-- Feet planted -->
+                <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
+            </svg>
+        </div>
+        <div>
+            <div style="font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">
+                GLOBAL MEDIA INSIGHTS
+            </div>
+            <div style="font-family: 'Cormorant Garamond', serif; font-size: 2.6rem; font-weight: 400; color: #F2EDE3; line-height: 1;">
+                Medierkat
+            </div>
+            <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-style: italic; color: #C6BCA9; margin-top: 6px;">
+                Strategic media intelligence, verified reach analytics, and cross-lingual reporting for leadership.
+            </div>
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -242,7 +276,7 @@ st.markdown("""
 control_col1, control_col2 = st.columns([3, 1])
 with control_col1:
     st.info(
-        "ℹ️ **Sequential report building:** World Wide Monitor allows you to build complete media reports step by step. "
+        "ℹ️ **Sequential report building:** Medierkat allows you to build complete media reports step by step. "
         "You can run live web searches, add specific article links, or directly enter broadcast, print, social, and online outlet records.",
         icon="ℹ️"
     )
@@ -260,6 +294,7 @@ class CoverageOutlet(BaseModel):
     original_language: str = Field(description="Original language of the coverage item.")
     canonical_source_url: str = Field(description="Direct, clean resolving web URL verbatim from grounding. Write 'None' if unverified or broken.")
     audience_reach_metrics: str = Field(description="Audience reach or follower counts (Minimum threshold: 100,000 for press; 10,000 for social). Disclose if independently verified or marked '[Publisher Self-Reported / Unverified]'.")
+    verification_confidence: str = Field(description="Flag as '[Verified Tier-1 Source]' or '[Uncorroborated / Single-Source Claim — Human Verification Required]' if originating from a lower-reach or niche publication.")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Factual title describing the coverage event.")
@@ -281,19 +316,19 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE WITH ALL SIDEBAR PARAMETERS ---
+# --- BRANDED PDF ENGINE ---
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
         self.set_text_color(107, 107, 107)
         self.set_y(8)
-        self.cell(0, 5, 'WORLD WIDE MONITOR  |  EXECUTIVE BRIEF', align='R')
+        self.cell(0, 5, 'MEDIERKAT  |  EXECUTIVE BRIEF', align='R')
 
     def footer(self):
         self.set_y(-10)
         self.set_font('Helvetica', '', 6.5)
         self.set_text_color(107, 107, 107)
-        self.cell(0, 5, 'Generated with AI assistance via World Wide Monitor. Sources are linked where verified; confirm critical details against source before acting.', align='C')
+        self.cell(0, 5, 'Generated with AI assistance via Medierkat. Sources are linked where verified; confirm critical details against source before acting.', align='C')
 
 def clean_pdf_text(text):
     if not text:
@@ -427,7 +462,8 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
         for outlet in item.get('covering_outlets', []):
             pdf.set_font('Helvetica', 'I', 6.5 if is_strict_one_page else 7.5)
             pdf.set_text_color(107, 107, 107)
-            outlet_line = f"  - {outlet.get('outlet_name', '')} ({outlet.get('medium_type', 'Online')}) | Date: {outlet.get('publication_date', '')} | Reach: {outlet.get('audience_reach_metrics', 'Not stated')}"
+            conf_tag = f" {outlet.get('verification_confidence', '')}" if outlet.get('verification_confidence') else ""
+            outlet_line = f"  - {outlet.get('outlet_name', '')} ({outlet.get('medium_type', 'Online')}) | Date: {outlet.get('publication_date', '')} | Reach: {outlet.get('audience_reach_metrics', 'Not stated')}{conf_tag}"
             pdf.set_x(margin)
             pdf.multi_cell(epw, 3 if is_strict_one_page else 3.5, clean_pdf_text(outlet_line))
             
@@ -440,7 +476,7 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
 
 # --- MARKDOWN & WORD EXPORTS ---
 def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str):
-    md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n\n"
+    md = f"# CONFIDENTIAL | MEDIERKAT EXECUTIVE BRIEF ({lang.upper()})\n\n"
     md += f"**Strategic objective:** `{purpose_text}`  \n"
     md += f"**Report type:** `{tier_type}` | **Output language:** `{lang}`  \n"
     md += f"**Query scope:** `{query}`  \n"
@@ -463,15 +499,16 @@ def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_sc
         for outlet in item["covering_outlets"]:
             url = outlet.get('canonical_source_url', '')
             link_str = f" — [Source link]({url})" if is_valid_url(url) else ""
-            md += f"  - **{outlet['outlet_name']}** ({outlet['medium_type']}) — *Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}{link_str}\n"
+            conf_str = f" *{outlet.get('verification_confidence', '')}*" if outlet.get('verification_confidence') else ""
+            md += f"  - **{outlet['outlet_name']}** ({outlet['medium_type']}) — *Byline:* {outlet['author_byline']} | *Date:* {outlet['publication_date']} | *Lang:* {outlet['original_language']}{link_str}{conf_str}\n"
             md += f"    - *Audience reach:* {outlet['audience_reach_metrics']}\n"
         md += "\n"
-    md += f"\n\n*Generated with AI assistance via World Wide Monitor. Confirm critical details against source before acting.*"
+    md += f"\n\n*Generated with AI assistance via Medierkat. Confirm critical details against source before acting.*"
     return md
 
 def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str):
     doc = Document()
-    doc.add_heading(f"CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})", level=0)
+    doc.add_heading(f"CONFIDENTIAL | MEDIERKAT EXECUTIVE BRIEF ({lang.upper()})", level=0)
     
     p_meta = doc.add_paragraph()
     p_meta.add_run("Strategic objective: ").bold = True
@@ -563,7 +600,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             
             prompt = f"""
             Today is {current_date}.
-            You are WWM's Senior Strategic Intelligence Analyst preparing a brief for government ministers, university vice-chancellors, and corporate executive boards.
+            You are Medierkat's Senior Strategic Intelligence Analyst preparing a brief for government ministers, university vice-chancellors, and corporate executive boards.
             
             PRIMARY STRATEGIC OBJECTIVE: {active_report_purpose}. 
             INSTRUCTION: Frame the 'headline_synthesis', 'sentiment_framing_read', and 'engagement_opportunities' specifically to address this objective. 
@@ -589,6 +626,9 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             4. VERBATIM QUOTE INTEGRITY PROTOCOL:
                - In 'subject_quoted_vs_reported', use quotation marks ("...") ONLY if the enclosed text is a 100% verbatim substring match from the grounded search payload.
                - If an exact quote match cannot be verified, convert the claim to reported speech without quotation marks.
+            5. SINGLE-SOURCE & UNCORROBORATED CLAIM PROTOCOL:
+               - If a claim or milestone comes from a lower-reach or niche publication, tag 'verification_confidence' as '[Uncorroborated / Single-Source Claim — Human Verification Required]'.
+               - DO NOT interpolate or fabricate unverified trial sizes or patient implant numbers.
             
             SCOPE & SOURCES:
             - Active Strategy Query: {active_q}
@@ -784,7 +824,7 @@ elif "Brief" in main_mode:
 
     with tab_custom_urls:
         st.markdown("##### Add specific article links")
-        st.caption("Paste additional article or post links below (up to 100 URLs, one per line). World Wide Monitor will analyse these documents and combine them into your report.")
+        st.caption("Paste additional article or post links below (up to 100 URLs, one per line). Medierkat will analyse these documents and combine them into your report.")
         raw_urls_text = st.text_area(
             "Paste article URLs:", 
             height=120, 
@@ -895,7 +935,7 @@ else:
         - **Master plan ($199.99/mo):** Unlimited searches + Multi-seat export
         """)
 
-# --- DELIVERABLE RENDER (EXPLICITLY DISPLAYING ALL SIDEBAR PARAMETERS) ---
+# --- DELIVERABLE RENDER ---
 if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in main_mode):
     brief = st.session_state.cumulative_brief
     st.markdown("---")
@@ -913,7 +953,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
     
     header_col1, header_col2 = st.columns([2, 2])
     with header_col1:
-        st.caption("CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF")
+        st.caption("CONFIDENTIAL | MEDIERKAT EXECUTIVE BRIEF")
         st.header(f"Executive brief ({active_l})")
         st.markdown(f"🎯 **Objective:** `{active_purpose}`")
         st.markdown(f"📋 **Report type:** `{active_tier}`")
@@ -931,11 +971,11 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
         )
         
         if "PDF" in export_format:
-            st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans, is_strict_1page), f"WWM_Executive_Brief_{active_l}.pdf", "application/pdf", key="dl_pdf_top")
+            st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans, is_strict_1page), f"Medierkat_Executive_Brief_{active_l}.pdf", "application/pdf", key="dl_pdf_top")
         elif "Word" in export_format:
-            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"WWM_Executive_Brief_{active_l}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
+            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"Medierkat_Executive_Brief_{active_l}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
         else:
-            st.download_button("💚 Download Markdown file", generate_markdown_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"WWM_Executive_Brief_{active_l}.md", "text/markdown", key="dl_md_top")
+            st.download_button("💚 Download Markdown file", generate_markdown_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"Medierkat_Executive_Brief_{active_l}.md", "text/markdown", key="dl_md_top")
     
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -968,15 +1008,16 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
                 for outlet in item["covering_outlets"]:
                     url = outlet.get('canonical_source_url', '')
                     link_html = f"<br>🔗 <a href='{url}' target='_blank'>Review original canonical source link</a>" if is_valid_url(url) else ""
+                    conf_tag = f"<br>⚠️ <i>{outlet.get('verification_confidence', '')}</i>" if "Uncorroborated" in outlet.get('verification_confidence', '') else ""
                     st.markdown(
                         f"📰 **{outlet['outlet_name']}** ({outlet['medium_type']}) | ✍️ *Byline:* {outlet['author_byline']} | 📅 *Date:* {outlet['publication_date']}<br>"
-                        f"📊 *Audience reach:* **{outlet['audience_reach_metrics']}**{link_html}",
+                        f"📊 *Audience reach:* **{outlet['audience_reach_metrics']}**{conf_tag}{link_html}",
                         unsafe_allow_html=True
                     )
     
     st.markdown(f"""
         <div class="disclaimer-box">
-            <b>Executive verification note:</b> Generated with AI assistance via World Wide Monitor. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{active_l}</b>.
+            <b>Executive verification note:</b> Generated with AI assistance via Medierkat. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{active_l}</b>.
         </div>
     """, unsafe_allow_html=True)
             
