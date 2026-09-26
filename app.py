@@ -41,7 +41,7 @@ if "users_db" not in st.session_state:
 if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
-# Custom CSS - HIGH-CONTRAST BONE INPUTS & INK PALETTE (EXACT MEDIERKAT BRANDING)
+# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, DARK INK PALETTE & ANIMATED MEERKAT MASCOT
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -58,7 +58,7 @@ st.markdown("""
         background-color: #F2EDE3 !important; color: #14120F !important; font-weight: 600 !important; font-size: 0.95rem !important; opacity: 1 !important;
     }
     div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder, textarea::placeholder {
-        color: #555555 !important; opacity: 0.8 !important;
+        color: #777777 !important; opacity: 0.8 !important;
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
@@ -123,6 +123,32 @@ st.markdown("""
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
     .admin-card { background-color: #1F1C18; border: 1px solid #C6BCA9; padding: 18px; margin-bottom: 20px; border-radius: 2px; }
 
+    /* ANIMATED MEERKAT SEARCH GRAPHIC */
+    .meerkat-search-container {
+        background-color: #1A1814;
+        border: 1px solid #2C2822;
+        padding: 24px;
+        text-align: center;
+        margin: 20px 0;
+        border-radius: 2px;
+    }
+    .meerkat-anim-box {
+        height: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .meerkat-svg {
+        animation: meerkatCycle 4s infinite ease-in-out;
+    }
+    @keyframes meerkatCycle {
+        0% { transform: translateY(20px) scale(0.8) rotate(15deg); opacity: 0.6; } /* Burrowed / Low */
+        25% { transform: translateY(10px) scale(0.9) rotate(0deg); opacity: 0.8; } /* On All Fours */
+        50% { transform: translateY(-10px) scale(1.15); opacity: 1; }              /* Standing Tall to Attention */
+        75% { transform: translateY(-5px) scale(1.1) rotate(-5deg); opacity: 1; }   /* Looking Out for Threats */
+        100% { transform: translateY(25px) scale(0.7); opacity: 0.4; }             /* Retreating to Burrow */
+    }
+
     /* TABLET & MOBILE REFLOW RULES */
     @media (max-width: 992px) {
         div[data-testid="column"] {
@@ -139,6 +165,35 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
+# Helper function to render the interactive Meerkat Search Animation
+def render_meerkat_search_animation(status_label="Grounded search in progress..."):
+    st.markdown(f"""
+        <div class="meerkat-search-container">
+            <div class="meerkat-anim-box">
+                <svg class="meerkat-svg" width="60" height="90" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Sentry Head -->
+                    <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
+                    <!-- Eye -->
+                    <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
+                    <!-- Torso -->
+                    <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
+                    <!-- Folded Paws -->
+                    <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
+                    <!-- Tail -->
+                    <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
+                    <!-- Planted Feet -->
+                    <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
+                </svg>
+            </div>
+            <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: #F2EDE3; margin-top: 8px;">
+                Meerkat Standing to Attention
+            </div>
+            <div style="font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: #C6BCA9;">
+                {status_label}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ============================================================================
 # 2. AUTHENTICATION WALL (BLANK BY DEFAULT)
@@ -221,12 +276,7 @@ if "user_plan" not in st.session_state:
 if "search_balance" not in st.session_state:
     st.session_state.search_balance = 100 if current_user["is_admin"] else 10
 if "saved_queries" not in st.session_state:
-    st.session_state.saved_queries = [
-        "\"Tom Oxley\" OR Synchron Stentrode",
-        "\"Rajeev Roychand\" AND RMIT",
-        "Spent coffee biochar concrete infrastructure",
-        "Standards Australia biochar aggregate"
-    ]
+    st.session_state.saved_queries = []
 if "report_library" not in st.session_state:
     st.session_state.report_library = []
 
@@ -282,7 +332,6 @@ with st.sidebar:
         index=0
     )
     
-    # Pre-fill Gemini Key automatically for Admin/Founder
     default_key = current_user["api_key"] if current_user["api_key"] else ""
     gemini_key = st.text_input("Gemini API key", value=default_key, type="password", placeholder="AIzaSy...")
 
@@ -294,8 +343,8 @@ with st.sidebar:
             "Primary objective",
             [
                 "Benchmark campaign impact vs key competitors",
-                "Audit competitor share of voice & customer complaints",
-                "Evaluate narrative positioning for upcoming product launch",
+                "Audit competitor share of voice & customer feedback",
+                "Evaluate narrative positioning for upcoming launch",
                 "CMO strategic performance briefing",
                 "Custom strategic objective"
             ],
@@ -305,10 +354,10 @@ with st.sidebar:
         report_purpose_selected = st.selectbox(
             "Primary objective",
             [
-                "Demonstrate long-term impact / career promotion & track record",
+                "Demonstrate long-term impact & track record",
                 "Identify emerging issue / early warning radar",
                 "Track ongoing issue / crisis management",
-                "Institutional board briefing / ministerial reporting",
+                "Institutional board briefing / executive reporting",
                 "Custom strategic objective"
             ],
             index=0
@@ -316,7 +365,7 @@ with st.sidebar:
     
     custom_purpose_input = ""
     if "Custom" in report_purpose_selected:
-        custom_purpose_input = st.text_input("Specify custom objective:", placeholder="e.g. Funding application evidence dossier")
+        custom_purpose_input = st.text_input("Specify custom objective:", placeholder="Enter custom focus...")
         
     active_report_purpose = custom_purpose_input if custom_purpose_input.strip() else report_purpose_selected
 
@@ -325,8 +374,8 @@ with st.sidebar:
         [
             "Executive leadership brief (Strict 1 page PDF — C-Suite and Board)",
             "Strategic advisory report (2 pages PDF — Subject experts)",
-            "Comprehensive media operations report (Up to 4 pages — PR and Media teams)",
-            "Social media intelligence digest (Up to 2 pages — Digital teams)"
+            "Comprehensive operations report (Up to 4 pages — Media/Marketing teams)",
+            "Digital intelligence digest (Up to 2 pages — Digital teams)"
         ],
         index=0
     )
@@ -348,7 +397,6 @@ with st.sidebar:
             "Past 30 days (Past month)",
             "Past 12 months (Past year)",
             "Past 5 years archive",
-            "Past 10 years archive",
             "Custom time horizon"
         ],
         index=2 if is_markat else 3
@@ -385,26 +433,21 @@ with st.sidebar:
     st.divider()
     st.button("Reset brief buffer and clear all", on_click=clear_all_searches, key="sidebar_reset")
 
-# --- BRANDED EXECUTIVE HEADER (WITH DYNAMIC MEERKAT SENTRY LOGO) ---
+# --- BRANDED EXECUTIVE HEADER ---
 app_title = "Markat" if is_markat else "Medierkat"
 app_subtitle = "Strategic marketing performance, competitor benchmarking, and share of voice." if is_markat else "Strategic media intelligence, verified reach analytics, and cross-lingual reporting for leadership."
 app_tagline = "COMPETITOR & CAMPAIGN INTELLIGENCE" if is_markat else "GLOBAL MEDIA INSIGHTS"
+tooltip_text = "Build reports step by step: Run live web searches, add article links, or directly enter broadcast, print, and social media records."
 
 st.markdown(f"""
     <div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;">
         <div style="margin-right: 24px; flex-shrink: 0;">
             <svg width="45" height="75" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
-                <!-- Meerkat sentry head -->
                 <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
-                <!-- Eye -->
                 <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
-                <!-- Upright Torso at Attention -->
                 <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
-                <!-- Paws folded neatly -->
                 <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
-                <!-- Tail for ground balance -->
                 <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
-                <!-- Feet planted -->
                 <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
             </svg>
         </div>
@@ -422,14 +465,9 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- PROMINENT CONTROL TOOLBAR ---
 control_col1, control_col2 = st.columns([3, 1])
 with control_col1:
-    st.info(
-        f"ℹ️ **Sequential report building:** {app_title} allows you to build complete reports step by step. "
-        "You can run live web searches, add specific article links, or directly enter broadcast, print, social, and online outlet records.",
-        icon="ℹ️"
-    )
+    st.markdown(f"##### Active Workspace <span title='{tooltip_text}' style='cursor: pointer; color: #C6BCA9; font-size: 1rem;'>ℹ️</span>", unsafe_allow_html=True)
 with control_col2:
     st.markdown("<div class='reset-btn'>", unsafe_allow_html=True)
     st.button("🔄 Refresh", on_click=clear_all_searches, key="header_reset", use_container_width=True)
@@ -463,7 +501,7 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     headline_synthesis: str = Field(description="1-2 sentence executive overview.")
     sentiment_framing_read: str = Field(description="1-2 lines evaluating framing or competitor positioning.")
     subject_quoted_vs_reported: str = Field(description="Verbatim quotes vs reported speech.")
-    engagement_opportunities: str = Field(description="Strategic commentary identifying marketing or PR opportunities.")
+    engagement_opportunities: str = Field(description="Strategic commentary identifying opportunities.")
     items: list[EventCoverageItem]
 
 # --- BRANDED PDF ENGINE ---
@@ -547,50 +585,56 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
     elif "Gemini" in api_provider and not gemini_key:
         st.error("Please enter your Gemini API key.")
     else:
-        with st.status(f"Synthesizing {app_title} intelligence...", expanded=True) as status:
-            current_date = datetime.datetime.now().strftime("%B %d, %Y")
-            channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
+        # Display the Animated Meerkat Search Container during execution
+        anim_placeholder = st.empty()
+        with anim_placeholder.container():
+            render_meerkat_search_animation(f"Scanning horizon for {app_title} intelligence & threats...")
             
-            prompt = f"""
-            Today is {current_date}.
-            You are {app_title}'s Senior Strategic Intelligence Analyst.
-            PRIMARY STRATEGIC OBJECTIVE: {active_report_purpose}. 
-            REPORT OUTPUT LANGUAGE: Synthesise the entire executive brief in {output_language}.
-            ACTIVE SCOPE QUERY: {search_query_input if search_query_input else st.session_state.executed_query}
-            SPELLING MANDATE: Use strict AUSTRALIAN ENGLISH.
-            """
-            
-            try:
-                client = genai.Client(api_key=gemini_key)
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        tools=[{"google_search": {}}],
-                        response_mime_type="application/json",
-                        response_schema=WWMExecutiveAnalysisBrief,
-                        temperature=0.0,
-                    )
+        current_date = datetime.datetime.now().strftime("%B %d, %Y")
+        channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
+        
+        prompt = f"""
+        Today is {current_date}.
+        You are {app_title}'s Senior Strategic Intelligence Analyst.
+        PRIMARY STRATEGIC OBJECTIVE: {active_report_purpose}. 
+        REPORT OUTPUT LANGUAGE: Synthesise the entire executive brief in {output_language}.
+        ACTIVE SCOPE QUERY: {search_query_input if search_query_input else st.session_state.executed_query}
+        SPELLING MANDATE: Use strict AUSTRALIAN ENGLISH.
+        """
+        
+        try:
+            client = genai.Client(api_key=gemini_key)
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[{"google_search": {}}],
+                    response_mime_type="application/json",
+                    response_schema=WWMExecutiveAnalysisBrief,
+                    temperature=0.0,
                 )
-                st.session_state.cumulative_brief = json.loads(response.text)
-                st.session_state.active_purpose = active_report_purpose
-                st.session_state.active_tier_type = report_format_tier
-                st.session_state.active_lang = output_language
-                st.session_state.active_time_scope = date_window
-                st.session_state.active_cov_scope = social_media_focus
-                st.session_state.active_channels = channels_str
-                
-                st.session_state.report_library.append({
-                    "id": len(st.session_state.report_library) + 1,
-                    "date": datetime.datetime.now().strftime("%d %b %Y"),
-                    "query": search_query_input if search_query_input else st.session_state.executed_query,
-                    "objective": active_report_purpose,
-                    "reach": st.session_state.cumulative_brief.get("total_combined_audience_reach", "N/A"),
-                    "data": st.session_state.cumulative_brief
-                })
-                status.update(label="Synthesis complete!", state="complete", expanded=False)
-            except Exception as e:
-                st.error(f"Processing error: {str(e)}")
+            )
+            st.session_state.cumulative_brief = json.loads(response.text)
+            st.session_state.active_purpose = active_report_purpose
+            st.session_state.active_tier_type = report_format_tier
+            st.session_state.active_lang = output_language
+            st.session_state.active_time_scope = date_window
+            st.session_state.active_cov_scope = social_media_focus
+            st.session_state.active_channels = channels_str
+            
+            st.session_state.report_library.append({
+                "id": len(st.session_state.report_library) + 1,
+                "date": datetime.datetime.now().strftime("%d %b %Y"),
+                "query": search_query_input if search_query_input else st.session_state.executed_query,
+                "objective": active_report_purpose,
+                "reach": st.session_state.cumulative_brief.get("total_combined_audience_reach", "N/A"),
+                "data": st.session_state.cumulative_brief
+            })
+            anim_placeholder.empty() # Clear search animation upon completion
+            st.success("Executive synthesis complete!")
+        except Exception as e:
+            anim_placeholder.empty()
+            st.error(f"Processing error: {str(e)}")
 
 # --- VIEW 1: LIVE DASHBOARD ---
 if "Dashboard" in main_mode:
@@ -598,7 +642,7 @@ if "Dashboard" in main_mode:
     st.caption("Real-time monitoring view for market spikes, campaign reach, and competitor benchmarking.")
     
     with st.expander("⚡ Launch intelligence synthesis from dashboard", expanded=True):
-        dash_search_query = st.text_input("Enter query terms:", placeholder="e.g. \"Tom Oxley\" OR Synchron Stentrode")
+        dash_search_query = st.text_input("Enter query terms:", placeholder="e.g. Enter brand, individual, or topic...")
         if st.button("⚡ Execute synthesis"):
             st.session_state.executed_query = dash_search_query
             run_synthesis_engine(dash_search_query, [], False, "", [], "", "", "", "", "", "", "")
@@ -621,9 +665,9 @@ if "Dashboard" in main_mode:
 elif "Brief" in main_mode:
     tab_search, tab_custom_urls = st.tabs(["🔍 Live search", "🔗 Added links"])
     with tab_search:
-        search_query_input = st.text_input("Search terms (AND/OR/NOT supported):", placeholder="e.g. Rajeev Roychand RMIT")
+        search_query_input = st.text_input("Search terms (AND/OR/NOT supported):", placeholder="e.g. Enter target terms...")
     with tab_custom_urls:
-        raw_urls_text = st.text_area("Paste URLs (Up to 100):", height=100)
+        raw_urls_text = st.text_area("Paste URLs (Up to 100):", height=100, placeholder="https://www.example.com/article...")
         custom_urls_input = [line.strip() for line in raw_urls_text.split("\n") if line.strip().startswith("http")]
 
     if st.button("Generate executive brief"):
@@ -650,6 +694,13 @@ else:
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("#### Active 50-Query Deck")
+    new_deck_query = st.text_input("Add new topic to 50-query deck:", placeholder="Enter brand, topic, or keyword...")
+    if st.button("➕ Add topic to saved deck"):
+        if new_deck_query.strip() and len(st.session_state.saved_queries) < 50:
+            st.session_state.saved_queries.append(new_deck_query.strip())
+            st.success("Topic added to deck!")
+            st.rerun()
+
     for idx, q in enumerate(st.session_state.saved_queries, 1):
         st.markdown(f"**{idx}.** `{q}`")
 
