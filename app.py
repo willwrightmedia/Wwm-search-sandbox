@@ -10,10 +10,10 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WWM BRANDING & DYNAMIC METRICS) ---
+# --- UI CONFIGURATION (WWM BRANDING & RESPONSIVE DASHBOARD CSS) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
-# CUSTOM CSS - RESPONSIVE CARDS & HIGH-CONTRAST INK PALETTE
+# CUSTOM CSS - ULTRA-RESPONSIVE CARD GRID, NO-OVERFLOW TEXT, & INK BRAND PALETTE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -39,7 +39,7 @@ st.markdown("""
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
-    /* RESPONSIVE METRIC CARDS */
+    /* RESPONSIVE METRIC CARDS - ZERO OVERFLOW & AUTO BREAKPOINTS */
     .metric-card {
         background-color: #1A1814;
         border: 1px solid #2C2822;
@@ -52,6 +52,7 @@ st.markdown("""
         justify-content: center;
         align-items: center;
         min-height: 110px;
+        box-sizing: border-box;
         overflow: hidden;
     }
     .metric-card h4 {
@@ -61,29 +62,23 @@ st.markdown("""
         text-transform: uppercase;
         color: #C6BCA9;
         margin: 0 0 4px 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        word-break: break-word;
         max-width: 100%;
     }
     .metric-card h2 {
         font-family: 'Inter', sans-serif;
-        font-size: clamp(1.1rem, 2vw, 1.5rem);
+        font-size: clamp(1.0rem, 1.8vw, 1.4rem);
         font-weight: 600;
         color: #F2EDE3;
         margin: 0 0 4px 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        word-break: break-word;
         max-width: 100%;
     }
     .metric-card caption {
         font-size: clamp(0.6rem, 0.85vw, 0.7rem);
         color: #6B6B6B;
         margin: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        word-break: break-word;
         max-width: 100%;
     }
 
@@ -103,6 +98,21 @@ st.markdown("""
     .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 28px; border-radius: 2px; }
     .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #6B6B6B; margin-top: 20px; }
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
+
+    /* TABLET & MOBILE REFLOW RULES */
+    @media (max-width: 992px) {
+        div[data-testid="column"] {
+            flex: 1 1 45% !important;
+            min-width: 45% !important;
+            margin-bottom: 12px;
+        }
+    }
+    @media (max-width: 576px) {
+        div[data-testid="column"] {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -509,7 +519,7 @@ def generate_docx_brief(brief, query, lang, purpose_text, time_scope, channels_s
     buffer.seek(0)
     return buffer
 
-# --- REUSABLE EXECUTION FUNCTION FOR DASHBOARD & BRIEF VIEWS ---
+# --- REUSABLE EXECUTION FUNCTION FOR ALL INGESTION MODES ---
 def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary):
     if not search_query_input and not custom_urls_input and not submit_manual and not st.session_state.executed_query:
         st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
@@ -631,20 +641,40 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             except Exception as e:
                 st.error(f"Processing error: {str(e)}")
 
-# --- VIEW 1: LIVE DASHBOARD (WITH LIVE SEARCH LAUNCHER) ---
+# --- VIEW 1: LIVE DASHBOARD (WITH TRIPLE INGESTION PARITY) ---
 if "Dashboard" in main_mode:
     st.subheader("📊 Media tracking dashboard")
     st.caption("Real-time monitoring view for emerging issues, crisis tracking, and volume spike detection.")
     
-    # Dashboard-Native Live Search Launcher
-    with st.expander("⚡ Launch live search from dashboard", expanded=True):
-        dash_q_input = st.text_input("Enter target subject, keyword, or organization query:", placeholder="e.g. \"Tom Oxley\" OR Synchron Stentrode")
-        if st.button("⚡ Run live search"):
-            if dash_q_input.strip():
-                st.session_state.executed_query = dash_q_input.strip()
-                run_synthesis_engine(dash_q_input.strip(), [], False, "", [], "", "", "", "", "", "", "")
-            else:
-                st.error("Please enter a valid search query.")
+    # Complete Triple Ingestion Deck on Dashboard
+    with st.expander("⚡ Launch intelligence synthesis from dashboard", expanded=True):
+        dash_tab_search, dash_tab_urls, dash_tab_manual = st.tabs([
+            "🔍 Live search", 
+            "🔗 Added links", 
+            "📝 Direct input"
+        ])
+        
+        dash_search_query = ""
+        dash_custom_urls = []
+        
+        with dash_tab_search:
+            dash_search_query = st.text_input("Enter query terms:", placeholder="e.g. \"Tom Oxley\" OR Synchron Stentrode")
+            
+        with dash_tab_urls:
+            raw_dash_urls = st.text_area("Paste article URLs (Up to 100):", height=100, placeholder="https://www.theguardian.com/...")
+            dash_custom_urls = [line.strip() for line in raw_dash_urls.split("\n") if line.strip().startswith("http")]
+            
+        with dash_tab_manual:
+            with st.form("dash_manual_form"):
+                d_outlets = st.text_area("Outlets / Broadcasters / Social channels (Up to 100):", height=80, placeholder="ABC News\nThe Australian")
+                d_topic = st.text_input("Topic / Event title:", placeholder="e.g. Stentrode Clinical Trial Expansion")
+                d_summary = st.text_area("Content summary snippet:", placeholder="Key quotes or claims...")
+                d_submit = st.form_submit_button("➕ Submit direct input")
+
+        if st.button("⚡ Execute dashboard synthesis") or d_submit:
+            active_q = dash_search_query if dash_search_query.strip() else st.session_state.executed_query
+            st.session_state.executed_query = active_q
+            run_synthesis_engine(dash_search_query.strip(), dash_custom_urls, d_submit, d_outlets if 'd_outlets' in locals() else "", [], d_topic if 'd_topic' in locals() else "", "Expert Commentator / Sector Authority", "Lead Story / Feature", "", "", "", d_summary if 'd_summary' in locals() else "")
 
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -663,13 +693,13 @@ if "Dashboard" in main_mode:
         with dash_col2:
             st.markdown(f"<div class='metric-card'><h4>Reach</h4><h2>{act_reach}</h2><caption>Verified press & social</caption></div>", unsafe_allow_html=True)
         with dash_col3:
-            st.markdown("<div class='metric-card'><h4>Medium</h4><h2>Online</h2><caption>Dominant coverage channel</caption></div>", unsafe_allow_html=True)
+            st.markdown("<div class='metric-card'><h4>Medium</h4><h2>Online</h2><caption>Dominant channel</caption></div>", unsafe_allow_html=True)
         with dash_col4:
-            st.markdown("<div class='metric-card'><h4>Framing</h4><h2>Authority</h2><caption>Expert alignment index</caption></div>", unsafe_allow_html=True)
+            st.markdown("<div class='metric-card'><h4>Framing</h4><h2>Authority</h2><caption>Expert alignment</caption></div>", unsafe_allow_html=True)
             
     else:
         st.caption(f"Grounded analytics for active selection | Horizon: **`{date_window}`**")
-        st.info("💡 Run a live search above or select a topic from your saved deck to generate grounded dashboard analytics.")
+        st.info("💡 Launch a synthesis above or select a topic from your saved deck to generate grounded dashboard analytics.")
         
         dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
         with dash_col1:
