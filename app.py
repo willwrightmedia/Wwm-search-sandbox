@@ -203,11 +203,42 @@ with st.sidebar:
     st.divider()
     st.subheader("3. Media channels and horizon")
     
-    date_window = st.selectbox(
+    # Extended 30-Year Recency Scope Selector
+    date_window_option = st.selectbox(
         "Recency scope",
-        ["Past 7 days (Current cycle)", "Past 30 days", "Past 12 months", "Past 4 years archive"],
+        [
+            "Past 24 hours (Current cycle)",
+            "Past 7 days (Past week)",
+            "Past 30 days (Past month)",
+            "Past 12 months (Past year)",
+            "Past 5 years archive",
+            "Past 10 years archive",
+            "Past 20 years archive",
+            "Past 30 years archive",
+            "Custom time horizon"
+        ],
         index=3
     )
+
+    custom_horizon_str = ""
+    if "Custom time horizon" in date_window_option:
+        custom_mode = st.radio("Custom range method:", ["Exact date range", "Relative duration"], horizontal=True)
+        if custom_mode == "Exact date range":
+            c_col1, c_col2 = st.columns(2)
+            with c_col1:
+                start_d = st.date_input("Start date", value=datetime.date(2020, 1, 1))
+            with c_col2:
+                end_d = st.date_input("End date", value=datetime.date.today())
+            custom_horizon_str = f"Custom range ({start_d.strftime('%d %b %Y')} to {end_d.strftime('%d %b %Y')})"
+        else:
+            r_col1, r_col2 = st.columns(2)
+            with r_col1:
+                rel_num = st.number_input("Past duration", min_value=1, max_value=365, value=18)
+            with r_col2:
+                rel_unit = st.selectbox("Unit", ["Days", "Weeks", "Months", "Years"], index=2)
+            custom_horizon_str = f"Custom range (Past {rel_num} {rel_unit.lower()})"
+
+    date_window = custom_horizon_str if custom_horizon_str else date_window_option
 
     social_media_focus = st.selectbox(
         "Coverage scope",
@@ -758,14 +789,18 @@ if "Dashboard" in main_mode:
     st.subheader(f"Media volume spike trajectory ({date_window})")
     
     end_date = datetime.datetime.today()
-    if "7 days" in date_window:
+    if "24 hours" in date_window:
+        dates = pd.date_range(end=end_date, periods=24, freq="h")
+    elif "7 days" in date_window:
         dates = pd.date_range(end=end_date, periods=7)
     elif "30 days" in date_window:
         dates = pd.date_range(end=end_date, periods=30)
     elif "12 months" in date_window:
         dates = pd.date_range(end=end_date, periods=12, freq="ME")
+    elif "5 years" in date_window:
+        dates = pd.date_range(end=end_date, periods=20, freq="QE")
     else:
-        dates = pd.date_range(end=end_date, periods=16, freq="QE")
+        dates = pd.date_range(end=end_date, periods=30, freq="YE")
         
     date_labels = [d.strftime("%d %b %Y") for d in dates]
     
@@ -935,7 +970,7 @@ else:
         - **Master plan ($199.99/mo):** Unlimited searches + Multi-seat export
         """)
 
-# --- DELIVERABLE RENDER ---
+# --- DELIVERABLE RENDER (EXPLICITLY DISPLAYING ALL SIDEBAR PARAMETERS) ---
 if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in main_mode):
     brief = st.session_state.cumulative_brief
     st.markdown("---")
