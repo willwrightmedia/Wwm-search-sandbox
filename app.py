@@ -4,6 +4,7 @@ import io
 import re
 import streamlit as st
 import pandas as pd
+import altair as alt
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
@@ -13,7 +14,7 @@ from fpdf import FPDF
 # --- UI CONFIGURATION (WWM BRANDING) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
-# CUSTOM CSS - WWM EDITORIAL BRAND PALETTE (#14120F Ink, #F2EDE3 Bone, #6B6B6B Muted)
+# CUSTOM CSS - RESPONSIVE CARDS & HIGH-CONTRAST INK PALETTE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -280,7 +281,7 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE WITH ALL SIDEBAR PARAMETERS ---
+# --- BRANDED PDF ENGINE ---
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
@@ -330,7 +331,6 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
     pdf.set_x(margin)
     pdf.cell(epw, 5.5 if is_strict_one_page else 7, clean_pdf_text(f'Executive Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     
-    # Scoping block capturing all sidebar options
     pdf.set_font('Helvetica', 'B', 7 if is_strict_one_page else 7.5)
     pdf.set_text_color(107, 107, 107)
     pdf.set_x(margin)
@@ -438,7 +438,7 @@ def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, 
         
     return bytes(pdf.output())
 
-# --- MARKDOWN & WORD EXPORTS WITH ALL SIDEBAR PARAMETERS ---
+# --- MARKDOWN & WORD EXPORTS ---
 def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str):
     md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n\n"
     md += f"**Strategic objective:** `{purpose_text}`  \n"
@@ -714,14 +714,43 @@ if "Dashboard" in main_mode:
     st.markdown("<br>", unsafe_allow_html=True)
     st.subheader(f"Media volume spike trajectory ({date_window})")
     
-    dates = pd.date_range(end=datetime.datetime.today(), periods=30)
-    spike_data = pd.DataFrame({
-        "Date": dates,
-        "Tier-1 Press": [5, 4, 6, 8, 4, 3, 2, 5, 8, 42, 85, 31, 14, 8, 6, 4, 5, 7, 3, 2, 4, 6, 5, 4, 3, 2, 4, 5, 3, 2],
-        "Social Channels": [2, 3, 1, 4, 2, 1, 0, 2, 4, 18, 45, 12, 6, 4, 2, 1, 3, 2, 1, 0, 2, 3, 1, 2, 1, 0, 1, 2, 1, 0]
-    }).set_index("Date")
+    # Generate dates labeled specifically with Day, Month, and Year (e.g. 29 Aug 2026)
+    end_date = datetime.datetime.today()
+    if "7 days" in date_window:
+        dates = pd.date_range(end=end_date, periods=7)
+    elif "30 days" in date_window:
+        dates = pd.date_range(end=end_date, periods=30)
+    elif "12 months" in date_window:
+        dates = pd.date_range(end=end_date, periods=12, freq="ME")
+    else:
+        dates = pd.date_range(end=end_date, periods=16, freq="QE")
+        
+    date_labels = [d.strftime("%d %b %Y") for d in dates]
     
-    st.line_chart(spike_data)
+    spike_data = pd.DataFrame({
+        "Date": date_labels,
+        "Tier-1 Press (Mention count)": [5, 4, 6, 8, 4, 3, 2, 5, 8, 42, 85, 31, 14, 8, 6, 4, 5, 7, 3, 2, 4, 6, 5, 4, 3, 2, 4, 5, 3, 2][:len(dates)],
+        "Social Channels (Mention count)": [2, 3, 1, 4, 2, 1, 0, 2, 4, 18, 45, 12, 6, 4, 2, 1, 3, 2, 1, 0, 2, 3, 1, 2, 1, 0, 1, 2, 1, 0][:len(dates)]
+    })
+    
+    # Melt dataframe for Altair rendering
+    melted_data = spike_data.melt("Date", var_name="Channel", value_name="Media Mention Count")
+    
+    chart = alt.Chart(melted_data).mark_line(point=True).encode(
+        x=alt.X("Date:O", title="Timeline (Day, Month, Year)", sort=None),
+        y=alt.Y("Media Mention Count:Q", title="Media Mention Count"),
+        color=alt.Color("Channel:N", scale=alt.Scale(domain=["Tier-1 Press (Mention count)", "Social Channels (Mention count)"], range=["#C6BCA9", "#3b82f6"])),
+        tooltip=["Date", "Channel", "Media Mention Count"]
+    ).properties(height=320).configure_axis(
+        labelColor="#C6BCA9",
+        titleColor="#F2EDE3",
+        gridColor="#2C2822"
+    ).configure_legend(
+        labelColor="#F2EDE3",
+        titleColor="#C6BCA9"
+    )
+    
+    st.altair_chart(chart, use_container_width=True)
 
 # --- VIEW 2: STRATEGIC BRIEF EXECUTION ---
 elif "Brief" in main_mode:
