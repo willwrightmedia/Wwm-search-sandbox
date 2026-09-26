@@ -52,7 +52,7 @@ if "users_db" not in st.session_state:
 if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
-# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, DARK INK PALETTE & MEERKAT MASCOT
+# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, DARK INK PALETTE & RESPONSIVE MEERKAT BANNER
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -134,39 +134,42 @@ st.markdown("""
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
     .admin-card { background-color: #1F1C18; border: 1px solid #C6BCA9; padding: 18px; margin-bottom: 20px; border-radius: 2px; }
 
-    /* ANIMATED MEERKAT SEARCH GRAPHIC */
-    .meerkat-search-container {
+    /* FULL-WIDTH RESPONSIVE MEERKAT BANNER */
+    .meerkat-banner-full {
+        width: 100% !important;
         background-color: #1A1814;
         border: 1px solid #2C2822;
-        padding: 24px;
+        padding: 30px 20px;
         text-align: center;
         margin: 20px 0;
         border-radius: 2px;
+        box-sizing: border-box;
     }
-    .meerkat-anim-box {
-        height: 90px;
+    .meerkat-anim-box-full {
+        height: 110px;
         display: flex;
         align-items: center;
         justify-content: center;
+        width: 100%;
     }
-    .meerkat-svg {
-        animation: meerkatCycle 4s infinite ease-in-out;
+    .meerkat-svg-dynamic {
+        animation: meerkatMorph 5s infinite ease-in-out;
     }
-    @keyframes meerkatCycle {
-        0% { transform: translateY(20px) scale(0.8) rotate(15deg); opacity: 0.6; }
-        25% { transform: translateY(10px) scale(0.9) rotate(0deg); opacity: 0.8; }
-        50% { transform: translateY(-10px) scale(1.15); opacity: 1; }
-        75% { transform: translateY(-5px) scale(1.1) rotate(-5deg); opacity: 1; }
-        100% { transform: translateY(25px) scale(0.7); opacity: 0.4; }
+    @keyframes meerkatMorph {
+        0%   { transform: translateY(35px) scale(0.65) rotate(20deg); opacity: 0.4; } /* Burrowed / Low */
+        25%  { transform: translateY(15px) scale(0.85) rotate(0deg); opacity: 0.8; }  /* Crouched / Foraging */
+        50%  { transform: translateY(-12px) scale(1.2); opacity: 1; }                /* Standing Tall to Attention */
+        75%  { transform: translateY(-6px) scale(1.15) rotate(-8deg); opacity: 1; }   /* Looking Out for Threat */
+        100% { transform: translateY(40px) scale(0.5); opacity: 0.2; }               /* Retracting to Burrow */
     }
     </style>
 """, unsafe_allow_html=True)
 
 def render_meerkat_search_animation(status_label="Two-pass global search grounding in progress..."):
     st.markdown(f"""
-        <div class="meerkat-search-container">
-            <div class="meerkat-anim-box">
-                <svg class="meerkat-svg" width="60" height="90" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
+        <div class="meerkat-banner-full">
+            <div class="meerkat-anim-box-full">
+                <svg class="meerkat-svg-dynamic" width="70" height="100" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
                     <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
                     <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
                     <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
@@ -175,10 +178,10 @@ def render_meerkat_search_animation(status_label="Two-pass global search groundi
                     <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
                 </svg>
             </div>
-            <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: #F2EDE3; margin-top: 8px;">
-                Meerkat Sentry Active (Aligned 2-Pass Scan)
+            <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: #F2EDE3; margin-top: 10px;">
+                Meerkat Sentry Active (Crouched → Standing → Burrowing Cycle)
             </div>
-            <div style="font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: #C6BCA9;">
+            <div style="font-family: 'Inter', sans-serif; font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: #C6BCA9; margin-top: 4px;">
                 {status_label}
             </div>
         </div>
@@ -211,7 +214,6 @@ def render_login_wall():
     with col2:
         tab1, tab2 = st.tabs(["🔒 Member Login", "📝 Register New Account"])
         with tab1:
-            # Pre-filled guest / password for easy public testing
             email_in = st.text_input("Username / Email", value="guest", placeholder="guest", key="login_email")
             pass_in = st.text_input("Password", type="password", value="password", placeholder="password", key="login_pass")
             if st.button("Authenticate", use_container_width=True):
@@ -374,7 +376,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("3. Multi-Pass Engine Settings")
-    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Pass 1 sweeps mainstream media worldwide. Pass 2 sweeps tech & industry outlets. Deduplication ensures summaries precisely match all uncapped listings.")
+    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Pass 1 sweeps mainstream media worldwide. Pass 2 sweeps tech & industry outlets. Deduplication suppresses all repeated media items across subsequent passes.")
 
     date_window_option = st.selectbox(
         "Recency scope",
@@ -687,10 +689,23 @@ def calculate_aligned_header_metrics(all_items):
 def merge_and_deduplicate_items(existing_items, new_incoming_items):
     merged = list(existing_items)
     
+    # Collect all existing outlet URLs and normalized outlet names across ALL cards
+    existing_urls = set()
+    existing_outlet_names = set()
+    for ex_item in merged:
+        for out in ex_item.get("covering_outlets", []):
+            url_clean = out.get("canonical_source_url", "").strip().lower()
+            if is_valid_url(url_clean):
+                existing_urls.add(url_clean)
+            name_norm = normalize_str(out.get("outlet_name", ""))
+            if name_norm:
+                existing_outlet_names.add(name_norm)
+
     for new_item in new_incoming_items:
         new_title_norm = normalize_str(new_item.get("event_title", ""))
         found_existing_item = None
         
+        # Check if item title matches existing record
         for ex_item in merged:
             ex_title_norm = normalize_str(ex_item.get("event_title", ""))
             if new_title_norm and (new_title_norm in ex_title_norm or ex_title_norm in new_title_norm):
@@ -698,29 +713,45 @@ def merge_and_deduplicate_items(existing_items, new_incoming_items):
                 break
                 
         if found_existing_item:
+            # ENRICH EXISTING ITEM WITH ONLY TRULY NEW OUTLETS
             ex_outlets = found_existing_item.get("covering_outlets", [])
             for new_out in new_item.get("covering_outlets", []):
                 new_url = new_out.get("canonical_source_url", "").strip().lower()
                 new_out_name = normalize_str(new_out.get("outlet_name", ""))
                 
-                out_found = False
-                for ex_out in ex_outlets:
-                    ex_url = ex_out.get("canonical_source_url", "").strip().lower()
-                    ex_out_name = normalize_str(ex_out.get("outlet_name", ""))
-                    
-                    if (is_valid_url(new_url) and new_url == ex_url) or (new_out_name and new_out_name == ex_out_name):
-                        out_found = True
-                        if not is_valid_url(ex_out.get("canonical_source_url")) and is_valid_url(new_out.get("canonical_source_url")):
-                            ex_out["canonical_source_url"] = new_out.get("canonical_source_url")
-                        if new_out.get("altmetric_attention_score") and new_out.get("altmetric_attention_score") != "N/A":
-                            ex_out["altmetric_attention_score"] = new_out.get("altmetric_attention_score")
-                        break
-                        
-                if not out_found:
+                # Check globally if this outlet or URL was already captured anywhere
+                if (is_valid_url(new_url) and new_url in existing_urls) or (new_out_name and new_out_name in existing_outlet_names):
+                    # Enrich metadata if missing on existing record
+                    for ex_out in ex_outlets:
+                        ex_url = ex_out.get("canonical_source_url", "").strip().lower()
+                        if is_valid_url(new_url) and new_url == ex_url:
+                            if new_out.get("altmetric_attention_score") and new_out.get("altmetric_attention_score") != "N/A":
+                                ex_out["altmetric_attention_score"] = new_out.get("altmetric_attention_score")
+                            if not is_valid_url(ex_out.get("canonical_source_url")):
+                                ex_out["canonical_source_url"] = new_out.get("canonical_source_url")
+                else:
+                    # Append truly unique outlet
+                    if is_valid_url(new_url): existing_urls.add(new_url)
+                    if new_out_name: existing_outlet_names.add(new_out_name)
                     ex_outlets.append(new_out)
             found_existing_item["covering_outlets"] = ex_outlets
         else:
-            merged.append(new_item)
+            # Filter incoming item's outlets to ensure no global duplicates
+            clean_new_outlets = []
+            for new_out in new_item.get("covering_outlets", []):
+                new_url = new_out.get("canonical_source_url", "").strip().lower()
+                new_out_name = normalize_str(new_out.get("outlet_name", ""))
+                
+                if (is_valid_url(new_url) and new_url in existing_urls) or (new_out_name and new_out_name in existing_outlet_names):
+                    continue
+                else:
+                    if is_valid_url(new_url): existing_urls.add(new_url)
+                    if new_out_name: existing_outlet_names.add(new_out_name)
+                    clean_new_outlets.append(new_out)
+            
+            if clean_new_outlets:
+                new_item["covering_outlets"] = clean_new_outlets
+                merged.append(new_item)
             
     return merged
 
@@ -819,7 +850,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             else:
                 st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
 
-    # ROUTE B: Sandbox Media Search Engine (Zero-Cost Fallback with Journal Altmetric Support)
+    # ROUTE B: Sandbox Media Search Engine (Zero-Cost Fallback with Deduplication)
     try:
         accumulated_outlets = [
             {
@@ -901,7 +932,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         st.session_state.active_channels = channels_str
 
         anim_placeholder.empty()
-        st.success(f"Aligned 2-Pass Synthesis Complete! {len(accumulated_outlets)} Unique Outlets Captured.")
+        st.success(f"Aligned 2-Pass Synthesis Complete! Deduplicated Catalogue Preserved.")
     except Exception as e:
         anim_placeholder.empty()
         st.error(f"Search Execution Error: {str(e)}")
