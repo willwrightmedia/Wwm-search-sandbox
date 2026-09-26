@@ -10,10 +10,10 @@ from pydantic import BaseModel, Field
 from docx import Document
 from fpdf import FPDF
 
-# --- UI CONFIGURATION (WWM BRANDING & RESPONSIVE DASHBOARD CSS) ---
+# --- UI CONFIGURATION (WWM BRANDING) ---
 st.set_page_config(page_title="World Wide Monitor", page_icon="📡", layout="wide")
 
-# CUSTOM CSS - ULTRA-RESPONSIVE CARD GRID, NO-OVERFLOW TEXT, & INK BRAND PALETTE
+# CUSTOM CSS - WWM EDITORIAL BRAND PALETTE (#14120F Ink, #F2EDE3 Bone, #6B6B6B Muted)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -39,7 +39,7 @@ st.markdown("""
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
 
-    /* RESPONSIVE METRIC CARDS - ZERO OVERFLOW & AUTO BREAKPOINTS */
+    /* RESPONSIVE METRIC CARDS */
     .metric-card {
         background-color: #1A1814;
         border: 1px solid #2C2822;
@@ -98,21 +98,6 @@ st.markdown("""
     .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 28px; border-radius: 2px; }
     .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #6B6B6B; margin-top: 20px; }
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
-
-    /* TABLET & MOBILE REFLOW RULES */
-    @media (max-width: 992px) {
-        div[data-testid="column"] {
-            flex: 1 1 45% !important;
-            min-width: 45% !important;
-            margin-bottom: 12px;
-        }
-    }
-    @media (max-width: 576px) {
-        div[data-testid="column"] {
-            flex: 1 1 100% !important;
-            min-width: 100% !important;
-        }
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -295,7 +280,7 @@ class WWMExecutiveAnalysisBrief(BaseModel):
     engagement_opportunities: str = Field(description="Strategic commentary identifying public, media, social media, and policy channels for further outreach and impact.")
     items: list[EventCoverageItem]
 
-# --- BRANDED PDF ENGINE ---
+# --- BRANDED PDF ENGINE WITH ALL SIDEBAR PARAMETERS ---
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 8)
@@ -320,7 +305,7 @@ def clean_pdf_text(text):
 def is_valid_url(url):
     return url and url.strip().lower() not in ["none", "null", "", "direct record input"] and url.strip().startswith("http")
 
-def generate_pdf_brief(brief, query, lang, purpose_text, time_scope, channels_str, is_strict_one_page=False):
+def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str, is_strict_one_page=False):
     pdf = PDFReport()
     pdf.set_fill_color(242, 237, 227)
     margin = 12
@@ -336,8 +321,8 @@ def generate_pdf_brief(brief, query, lang, purpose_text, time_scope, channels_st
     epw = pdf.epw
     
     clean_query = query.strip()
-    if len(clean_query) > 55:
-        clean_query = clean_query[:52] + "..."
+    if len(clean_query) > 50:
+        clean_query = clean_query[:47] + "..."
 
     title_size = 12 if is_strict_one_page else 14
     pdf.set_font('Helvetica', 'B', title_size)
@@ -345,6 +330,7 @@ def generate_pdf_brief(brief, query, lang, purpose_text, time_scope, channels_st
     pdf.set_x(margin)
     pdf.cell(epw, 5.5 if is_strict_one_page else 7, clean_pdf_text(f'Executive Brief ({lang})'), new_x="LMARGIN", new_y="NEXT")
     
+    # Scoping block capturing all sidebar options
     pdf.set_font('Helvetica', 'B', 7 if is_strict_one_page else 7.5)
     pdf.set_text_color(107, 107, 107)
     pdf.set_x(margin)
@@ -352,7 +338,11 @@ def generate_pdf_brief(brief, query, lang, purpose_text, time_scope, channels_st
     
     pdf.set_font('Helvetica', 'I', 6.5 if is_strict_one_page else 7.5)
     pdf.set_x(margin)
-    pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'Scope: {clean_query}  |  Horizon: {time_scope}  |  Channels: {channels_str}'))
+    pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'Format: {tier_type}  |  Language: {lang}'))
+    pdf.set_x(margin)
+    pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'Scope: {clean_query}  |  Recency: {time_scope}  |  Coverage Focus: {cov_scope}'))
+    pdf.set_x(margin)
+    pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'Channels: {channels_str}'))
     pdf.set_x(margin)
     pdf.multi_cell(epw, 3.2 if is_strict_one_page else 3.8, clean_pdf_text(f'{brief.get("verified_coverage_metric", "")}  |  {brief.get("total_combined_audience_reach", "")}'))
     
@@ -448,12 +438,14 @@ def generate_pdf_brief(brief, query, lang, purpose_text, time_scope, channels_st
         
     return bytes(pdf.output())
 
-# --- MARKDOWN & WORD EXPORTS ---
-def generate_markdown_brief(brief, query, lang, purpose_text, time_scope, channels_str):
+# --- MARKDOWN & WORD EXPORTS WITH ALL SIDEBAR PARAMETERS ---
+def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str):
     md = f"# CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})\n\n"
     md += f"**Strategic objective:** `{purpose_text}`  \n"
+    md += f"**Report type:** `{tier_type}` | **Output language:** `{lang}`  \n"
     md += f"**Query scope:** `{query}`  \n"
-    md += f"**Time horizon:** `{time_scope}` | **Channels:** `{channels_str}`  \n"
+    md += f"**Recency scope:** `{time_scope}` | **Coverage focus:** `{cov_scope}`  \n"
+    md += f"**Target channels:** `{channels_str}`  \n"
     md += f"**Coverage index:** {brief.get('verified_coverage_metric', 'Verified scope')}  \n"
     md += f"**Reach metric:** {brief.get('total_combined_audience_reach', '')}\n\n"
     md += f"## 1. Executive summary and strategic read\n"
@@ -477,18 +469,24 @@ def generate_markdown_brief(brief, query, lang, purpose_text, time_scope, channe
     md += f"\n\n*Generated with AI assistance and reviewed by WWM. Confirm critical details against source before acting.*"
     return md
 
-def generate_docx_brief(brief, query, lang, purpose_text, time_scope, channels_str):
+def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str):
     doc = Document()
     doc.add_heading(f"CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF ({lang.upper()})", level=0)
     
     p_meta = doc.add_paragraph()
     p_meta.add_run("Strategic objective: ").bold = True
     p_meta.add_run(f"{purpose_text}\n")
+    p_meta.add_run("Report type: ").bold = True
+    p_meta.add_run(f"{tier_type} | ")
+    p_meta.add_run("Language: ").bold = True
+    p_meta.add_run(f"{lang}\n")
     p_meta.add_run("Query scope: ").bold = True
     p_meta.add_run(f"{query}\n")
-    p_meta.add_run("Time horizon: ").bold = True
+    p_meta.add_run("Recency scope: ").bold = True
     p_meta.add_run(f"{time_scope} | ")
-    p_meta.add_run("Channels: ").bold = True
+    p_meta.add_run("Coverage focus: ").bold = True
+    p_meta.add_run(f"{cov_scope}\n")
+    p_meta.add_run("Target channels: ").bold = True
     p_meta.add_run(f"{channels_str}\n")
     p_meta.add_run("Coverage index: ").bold = True
     p_meta.add_run(f"{brief.get('verified_coverage_metric', 'Verified scope')}\n")
@@ -519,7 +517,7 @@ def generate_docx_brief(brief, query, lang, purpose_text, time_scope, channels_s
     buffer.seek(0)
     return buffer
 
-# --- REUSABLE EXECUTION FUNCTION FOR ALL INGESTION MODES ---
+# --- REUSABLE EXECUTION FUNCTION ---
 def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary):
     if not search_query_input and not custom_urls_input and not submit_manual and not st.session_state.executed_query:
         st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
@@ -624,7 +622,10 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 )
                 st.session_state.cumulative_brief = json.loads(response.text)
                 st.session_state.active_purpose = active_report_purpose
+                st.session_state.active_tier_type = report_format_tier
+                st.session_state.active_lang = output_language
                 st.session_state.active_time_scope = date_window
+                st.session_state.active_cov_scope = social_media_focus
                 st.session_state.active_channels = channels_str
                 
                 st.session_state.report_library.append({
@@ -641,12 +642,11 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             except Exception as e:
                 st.error(f"Processing error: {str(e)}")
 
-# --- VIEW 1: LIVE DASHBOARD (WITH TRIPLE INGESTION PARITY) ---
+# --- VIEW 1: LIVE DASHBOARD ---
 if "Dashboard" in main_mode:
     st.subheader("📊 Media tracking dashboard")
     st.caption("Real-time monitoring view for emerging issues, crisis tracking, and volume spike detection.")
     
-    # Complete Triple Ingestion Deck on Dashboard
     with st.expander("⚡ Launch intelligence synthesis from dashboard", expanded=True):
         dash_tab_search, dash_tab_urls, dash_tab_manual = st.tabs([
             "🔍 Live search", 
@@ -865,25 +865,30 @@ else:
         - **Master plan ($199.99/mo):** Unlimited searches + Multi-seat export
         """)
 
-# --- DELIVERABLE RENDER (SHARED ACROSS VIEWS) ---
+# --- DELIVERABLE RENDER (EXPLICITLY DISPLAYING ALL SIDEBAR PARAMETERS) ---
 if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in main_mode):
     brief = st.session_state.cumulative_brief
     st.markdown("---")
     
     active_purpose = st.session_state.get("active_purpose", active_report_purpose)
+    active_tier = st.session_state.get("active_tier_type", report_format_tier)
+    active_l = st.session_state.get("active_lang", output_language)
     active_time = st.session_state.get("active_time_scope", date_window)
+    active_cov = st.session_state.get("active_cov_scope", social_media_focus)
     active_chans = st.session_state.get("active_channels", ", ".join(selected_sources))
     exec_query = st.session_state.get("executed_query", "Executive Media Intelligence Scope")
-    is_strict_1page = "Strict 1 page PDF" in report_format_tier
+    is_strict_1page = "Strict 1 page PDF" in active_tier
     
     st.markdown("<div class='report-card'>", unsafe_allow_html=True)
     
     header_col1, header_col2 = st.columns([2, 2])
     with header_col1:
         st.caption("CONFIDENTIAL | WORLD WIDE MONITOR EXECUTIVE BRIEF")
-        st.header(f"Executive brief ({output_language})")
+        st.header(f"Executive brief ({active_l})")
         st.markdown(f"🎯 **Objective:** `{active_purpose}`")
-        st.markdown(f"⏳ **Horizon:** `{active_time}` | 📡 **Channels:** `{active_chans}`")
+        st.markdown(f"📋 **Report type:** `{active_tier}`")
+        st.markdown(f"⏳ **Recency scope:** `{active_time}` | 🌐 **Coverage focus:** `{active_cov}`")
+        st.markdown(f"📡 **Target channels:** `{active_chans}`")
         if brief.get("verified_coverage_metric"):
             st.caption(f"📊 **Coverage scope:** {brief['verified_coverage_metric']}")
             st.caption(f"📈 **Audience reach:** {brief.get('total_combined_audience_reach', '')}")
@@ -896,11 +901,11 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
         )
         
         if "PDF" in export_format:
-            st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, output_language, active_purpose, active_time, active_chans, is_strict_1page), f"WWM_Executive_Brief_{output_language}.pdf", "application/pdf", key="dl_pdf_top")
+            st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans, is_strict_1page), f"WWM_Executive_Brief_{active_l}.pdf", "application/pdf", key="dl_pdf_top")
         elif "Word" in export_format:
-            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, output_language, active_purpose, active_time, active_chans), f"WWM_Executive_Brief_{output_language}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
+            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"WWM_Executive_Brief_{active_l}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
         else:
-            st.download_button("💚 Download Markdown file", generate_markdown_brief(brief, exec_query, output_language, active_purpose, active_time, active_chans), f"WWM_Executive_Brief_{output_language}.md", "text/markdown", key="dl_md_top")
+            st.download_button("💚 Download Markdown file", generate_markdown_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"WWM_Executive_Brief_{active_l}.md", "text/markdown", key="dl_md_top")
     
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -941,7 +946,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
     
     st.markdown(f"""
         <div class="disclaimer-box">
-            <b>Executive verification note:</b> Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{output_language}</b>.
+            <b>Executive verification note:</b> Generated with AI assistance and reviewed by WWM. Sources are linked where verified; confirm critical details against source before acting. Output language set to <b>{active_l}</b>.
         </div>
     """, unsafe_allow_html=True)
             
