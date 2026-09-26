@@ -66,6 +66,7 @@ st.markdown("""
 # 2. IN-MEMORY DATABASE & SESSION STATE
 # ============================================================================
 
+# Credentials defined in memory for authentication checks only
 FOUNDER_EMAIL = "will@willwrightmedia.com"
 FOUNDER_PASSWORD = "MyPa$$wordI5Hard"
 FOUNDER_API_KEY = "AQ.Ab8RN6JvY9bawEOyAp-SNM2vJ1jwjtFjAdNgh2bxg_Othfr7HA"
@@ -89,7 +90,7 @@ if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
 # ============================================================================
-# 3. AUTHENTICATION WALL (LOGIN / SIGNUP)
+# 3. AUTHENTICATION WALL (BLANK BY DEFAULT)
 # ============================================================================
 
 def login_page():
@@ -100,8 +101,9 @@ def login_page():
     
     with tab1:
         st.subheader("Login to Your Workspace")
-        email_input = st.text_input("Email Address", value=FOUNDER_EMAIL)
-        password_input = st.text_input("Password", type="password", value=FOUNDER_PASSWORD)
+        # Cleared default values so fields load completely blank for public visitors
+        email_input = st.text_input("Email Address", value="", placeholder="name@company.com")
+        password_input = st.text_input("Password", type="password", value="", placeholder="••••••••")
         
         if st.button("Log In", type="primary"):
             user = st.session_state.users_db.get(email_input)
@@ -114,9 +116,9 @@ def login_page():
                 
     with tab2:
         st.subheader("Create Free Sandbox Account")
-        new_name = st.text_input("Full Name")
-        new_email = st.text_input("Email")
-        new_pass = st.text_input("Choose Password", type="password")
+        new_name = st.text_input("Full Name", value="")
+        new_email = st.text_input("Email", value="")
+        new_pass = st.text_input("Choose Password", type="password", value="")
         
         if st.button("Sign Up (Unlimited Sandbox)"):
             if new_email in st.session_state.users_db:
