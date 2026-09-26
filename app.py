@@ -18,10 +18,9 @@ from duckduckgo_search import DDGS
 # ============================================================================
 st.set_page_config(page_title="Kat Intelligence Engine", page_icon="🦦", layout="wide")
 
-# Persistent Founder Credentials (Blank by default on public UI)
+# Persistent Founder Credentials (No preloaded API key)
 FOUNDER_EMAIL = "will@willwrightmedia.com"
 FOUNDER_PASSWORD = "MyPa$$wordI5Hard"
-FOUNDER_API_KEY = "AQ.Ab8RN6JvY9bawEOyAp-SNM2vJ1jwjtFjAdNgh2bxg_Othfr7HA"
 
 if "users_db" not in st.session_state:
     st.session_state.users_db = {
@@ -32,7 +31,7 @@ if "users_db" not in st.session_state:
             "is_admin": True,
             "current_plan": "Founder / Kat Engine Admin",
             "default_engine": "Google Gemini 3 (Native search grounding)",
-            "api_key": FOUNDER_API_KEY,
+            "api_key": None,  # Removed default API key
             "total_searches": 0,
             "created_at": "2026-09-26"
         }
@@ -142,11 +141,11 @@ st.markdown("""
         animation: meerkatCycle 4s infinite ease-in-out;
     }
     @keyframes meerkatCycle {
-        0% { transform: translateY(20px) scale(0.8) rotate(15deg); opacity: 0.6; } /* Burrowed / Low */
-        25% { transform: translateY(10px) scale(0.9) rotate(0deg); opacity: 0.8; } /* On All Fours */
-        50% { transform: translateY(-10px) scale(1.15); opacity: 1; }              /* Standing Tall to Attention */
-        75% { transform: translateY(-5px) scale(1.1) rotate(-5deg); opacity: 1; }   /* Looking Out for Threats */
-        100% { transform: translateY(25px) scale(0.7); opacity: 0.4; }             /* Retreating to Burrow */
+        0% { transform: translateY(20px) scale(0.8) rotate(15deg); opacity: 0.6; }
+        25% { transform: translateY(10px) scale(0.9) rotate(0deg); opacity: 0.8; }
+        50% { transform: translateY(-10px) scale(1.15); opacity: 1; }
+        75% { transform: translateY(-5px) scale(1.1) rotate(-5deg); opacity: 1; }
+        100% { transform: translateY(25px) scale(0.7); opacity: 0.4; }
     }
 
     /* TABLET & MOBILE REFLOW RULES */
@@ -172,17 +171,11 @@ def render_meerkat_search_animation(status_label="Grounded search in progress...
         <div class="meerkat-search-container">
             <div class="meerkat-anim-box">
                 <svg class="meerkat-svg" width="60" height="90" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Sentry Head -->
                     <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
-                    <!-- Eye -->
                     <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
-                    <!-- Torso -->
                     <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
-                    <!-- Folded Paws -->
                     <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
-                    <!-- Tail -->
                     <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
-                    <!-- Planted Feet -->
                     <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
                 </svg>
             </div>
@@ -332,8 +325,8 @@ with st.sidebar:
         index=0
     )
     
-    default_key = current_user["api_key"] if current_user["api_key"] else ""
-    gemini_key = st.text_input("Gemini API key", value=default_key, type="password", placeholder="AIzaSy...")
+    # Blank default API key field
+    gemini_key = st.text_input("Gemini API key", value="", type="password", placeholder="AIzaSy...")
 
     st.divider()
     st.subheader("2. Objective and scope")
@@ -465,12 +458,13 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
+# Updated control toolbar with "Reset" button label
 control_col1, control_col2 = st.columns([3, 1])
 with control_col1:
     st.markdown(f"##### Active Workspace <span title='{tooltip_text}' style='cursor: pointer; color: #C6BCA9; font-size: 1rem;'>ℹ️</span>", unsafe_allow_html=True)
 with control_col2:
     st.markdown("<div class='reset-btn'>", unsafe_allow_html=True)
-    st.button("🔄 Refresh", on_click=clear_all_searches, key="header_reset", use_container_width=True)
+    st.button("🔄 Reset", on_click=clear_all_searches, key="header_reset", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- STRICT AUSTRALIAN ENGLISH SCHEMAS ---
@@ -583,9 +577,8 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
     if not search_query_input and not custom_urls_input and not submit_manual and not st.session_state.executed_query:
         st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
     elif "Gemini" in api_provider and not gemini_key:
-        st.error("Please enter your Gemini API key.")
+        st.error("Please enter your Gemini API key in the sidebar.")
     else:
-        # Display the Animated Meerkat Search Container during execution
         anim_placeholder = st.empty()
         with anim_placeholder.container():
             render_meerkat_search_animation(f"Scanning horizon for {app_title} intelligence & threats...")
@@ -630,11 +623,14 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 "reach": st.session_state.cumulative_brief.get("total_combined_audience_reach", "N/A"),
                 "data": st.session_state.cumulative_brief
             })
-            anim_placeholder.empty() # Clear search animation upon completion
+            anim_placeholder.empty()
             st.success("Executive synthesis complete!")
         except Exception as e:
             anim_placeholder.empty()
-            st.error(f"Processing error: {str(e)}")
+            if "401" in str(e) or "UNAUTHENTICATED" in str(e):
+                st.error("🔑 **Authentication Error:** Invalid Gemini API Key provided. Please check your API key in the sidebar (it should start with `AIzaSy...`).")
+            else:
+                st.error(f"Processing error: {str(e)}")
 
 # --- VIEW 1: LIVE DASHBOARD ---
 if "Dashboard" in main_mode:
