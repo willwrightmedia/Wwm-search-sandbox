@@ -1,5 +1,12 @@
-streamlit
-google-genai
-pydantic
-python-docx
-fpdf2
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+cryptography>=42.0.0
+python-multipart>=0.0.9
+duckduckgo-search>=5.0.0
+google-genai>=2.9.0
+python-dotenv>=1.0.1
+requests>=2.31.0
