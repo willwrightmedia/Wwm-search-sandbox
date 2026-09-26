@@ -665,7 +665,7 @@ def calculate_aligned_header_metrics(all_items):
             nums = re.findall(r'([\d,]+)\s*(million|k|m)?', reach_str.lower())
             for val, unit in nums:
                 clean_val_str = val.replace(',', '').strip()
-                if clean_val_str: # Safe float parsing wrapper
+                if clean_val_str:
                     try:
                         clean_v = float(clean_val_str)
                         if unit in ['million', 'm']: clean_v *= 1000000
