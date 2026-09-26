@@ -52,7 +52,7 @@ if "users_db" not in st.session_state:
 if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
-# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, DARK INK PALETTE & RESPONSIVE MEERKAT BANNER
+# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, DARK INK PALETTE & MEERKAT SPINNER OVERRIDE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -134,58 +134,22 @@ st.markdown("""
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
     .admin-card { background-color: #1F1C18; border: 1px solid #C6BCA9; padding: 18px; margin-bottom: 20px; border-radius: 2px; }
 
-    /* FULL-WIDTH RESPONSIVE MEERKAT BANNER */
-    .meerkat-banner-full {
-        width: 100% !important;
-        background-color: #1A1814;
-        border: 1px solid #2C2822;
-        padding: 30px 20px;
-        text-align: center;
-        margin: 20px 0;
-        border-radius: 2px;
-        box-sizing: border-box;
+    /* OVERRIDE STREAMLIT TOP LOADING STATUS ICON WITH MEERKAT POSES */
+    [data-testid="stStatusWidget"] svg {
+        display: none !important;
     }
-    .meerkat-anim-box-full {
-        height: 110px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
+    [data-testid="stStatusWidget"]::before {
+        content: "🦦";
+        font-size: 1.2rem;
+        animation: meerkatPoses 3s infinite ease-in-out;
     }
-    .meerkat-svg-dynamic {
-        animation: meerkatMorph 5s infinite ease-in-out;
-    }
-    @keyframes meerkatMorph {
-        0%   { transform: translateY(35px) scale(0.65) rotate(20deg); opacity: 0.4; } /* Burrowed / Low */
-        25%  { transform: translateY(15px) scale(0.85) rotate(0deg); opacity: 0.8; }  /* Crouched / Foraging */
-        50%  { transform: translateY(-12px) scale(1.2); opacity: 1; }                /* Standing Tall to Attention */
-        75%  { transform: translateY(-6px) scale(1.15) rotate(-8deg); opacity: 1; }   /* Looking Out for Threat */
-        100% { transform: translateY(40px) scale(0.5); opacity: 0.2; }               /* Retracting to Burrow */
+    @keyframes meerkatPoses {
+        0%   { transform: translateY(2px) scale(0.85); opacity: 0.6; } /* Crouched / Foraging */
+        50%  { transform: translateY(-3px) scale(1.15); opacity: 1.0; } /* Standing to Attention */
+        100% { transform: translateY(3px) scale(0.7); opacity: 0.4; }  /* Burrowing */
     }
     </style>
 """, unsafe_allow_html=True)
-
-def render_meerkat_search_animation(status_label="Two-pass global search grounding in progress..."):
-    st.markdown(f"""
-        <div class="meerkat-banner-full">
-            <div class="meerkat-anim-box-full">
-                <svg class="meerkat-svg-dynamic" width="70" height="100" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
-                    <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
-                    <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
-                    <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
-                    <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
-                    <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
-                </svg>
-            </div>
-            <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: #F2EDE3; margin-top: 10px;">
-                Meerkat Sentry Active (Crouched → Standing → Burrowing Cycle)
-            </div>
-            <div style="font-family: 'Inter', sans-serif; font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: #C6BCA9; margin-top: 4px;">
-                {status_label}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
 
 # ============================================================================
 # 2. AUTHENTICATION WALL (GUEST / PASSWORD PRE-FILLED FOR PUBLIC TESTING)
@@ -376,7 +340,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("3. Multi-Pass Engine Settings")
-    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Pass 1 sweeps mainstream media worldwide. Pass 2 sweeps tech & industry outlets. Deduplication suppresses all repeated media items across subsequent passes.")
+    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Pass 1 sweeps mainstream media worldwide. Pass 2 sweeps tech & industry outlets. Strict deduplication suppresses aggregators like EurekAlert! when primary news outlets exist.")
 
     date_window_option = st.selectbox(
         "Recency scope",
@@ -689,7 +653,7 @@ def calculate_aligned_header_metrics(all_items):
 def merge_and_deduplicate_items(existing_items, new_incoming_items):
     merged = list(existing_items)
     
-    # Collect all existing outlet URLs and normalized outlet names across ALL cards
+    # Track existing URLs, outlet names, and press aggregators (like EurekAlert)
     existing_urls = set()
     existing_outlet_names = set()
     for ex_item in merged:
@@ -705,7 +669,6 @@ def merge_and_deduplicate_items(existing_items, new_incoming_items):
         new_title_norm = normalize_str(new_item.get("event_title", ""))
         found_existing_item = None
         
-        # Check if item title matches existing record
         for ex_item in merged:
             ex_title_norm = normalize_str(ex_item.get("event_title", ""))
             if new_title_norm and (new_title_norm in ex_title_norm or ex_title_norm in new_title_norm):
@@ -713,15 +676,16 @@ def merge_and_deduplicate_items(existing_items, new_incoming_items):
                 break
                 
         if found_existing_item:
-            # ENRICH EXISTING ITEM WITH ONLY TRULY NEW OUTLETS
             ex_outlets = found_existing_item.get("covering_outlets", [])
             for new_out in new_item.get("covering_outlets", []):
                 new_url = new_out.get("canonical_source_url", "").strip().lower()
                 new_out_name = normalize_str(new_out.get("outlet_name", ""))
                 
-                # Check globally if this outlet or URL was already captured anywhere
+                # Filter out press release aggregators if primary masthead exists
+                if "eurekalert" in new_out_name and any("guardian" in name or "reuters" in name or "journal" in name for name in existing_outlet_names):
+                    continue
+
                 if (is_valid_url(new_url) and new_url in existing_urls) or (new_out_name and new_out_name in existing_outlet_names):
-                    # Enrich metadata if missing on existing record
                     for ex_out in ex_outlets:
                         ex_url = ex_out.get("canonical_source_url", "").strip().lower()
                         if is_valid_url(new_url) and new_url == ex_url:
@@ -730,18 +694,18 @@ def merge_and_deduplicate_items(existing_items, new_incoming_items):
                             if not is_valid_url(ex_out.get("canonical_source_url")):
                                 ex_out["canonical_source_url"] = new_out.get("canonical_source_url")
                 else:
-                    # Append truly unique outlet
                     if is_valid_url(new_url): existing_urls.add(new_url)
                     if new_out_name: existing_outlet_names.add(new_out_name)
                     ex_outlets.append(new_out)
             found_existing_item["covering_outlets"] = ex_outlets
         else:
-            # Filter incoming item's outlets to ensure no global duplicates
             clean_new_outlets = []
             for new_out in new_item.get("covering_outlets", []):
                 new_url = new_out.get("canonical_source_url", "").strip().lower()
                 new_out_name = normalize_str(new_out.get("outlet_name", ""))
                 
+                if "eurekalert" in new_out_name and any("guardian" in name or "reuters" in name or "journal" in name for name in existing_outlet_names):
+                    continue
                 if (is_valid_url(new_url) and new_url in existing_urls) or (new_out_name and new_out_name in existing_outlet_names):
                     continue
                 else:
@@ -763,179 +727,173 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
         return
 
-    anim_placeholder = st.empty()
-    with anim_placeholder.container():
-        render_meerkat_search_animation(f"Running Aligned 2-Pass Grounding... Pass 1: Global Mainstream • Pass 2: Tech/Journal Altmetric Scan")
+    with st.status("Executing 2-Pass Grounded Synthesis... Pass 1: Mainstream • Pass 2: Altmetric Journal Sweep", expanded=False):
+        current_date = datetime.datetime.now().strftime("%B %d, %Y")
+        channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
+        clean_key = gemini_key.strip()
 
-    current_date = datetime.datetime.now().strftime("%B %d, %Y")
-    channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
-    clean_key = gemini_key.strip()
+        existing_items = []
+        if st.session_state.cumulative_brief and st.session_state.cumulative_brief.get("items"):
+            existing_items = st.session_state.cumulative_brief.get("items")
 
-    existing_items = []
-    if st.session_state.cumulative_brief and st.session_state.cumulative_brief.get("items"):
-        existing_items = st.session_state.cumulative_brief.get("items")
+        # ROUTE A: 2-Pass Gemini Grounding Engine
+        if clean_key:
+            accumulated_items = list(existing_items)
+            try:
+                client = genai.Client(api_key=clean_key)
+                
+                # PASS 1: Mainstream Media Worldwide across all countries
+                pass1_prompt = f"""
+                Today is {current_date}. [PASS 1: MAINSTREAM MEDIA WORLDWIDE SWEEP]
+                You are {app_title}'s Senior Strategic Intelligence Analyst.
+                SEARCH TARGET: "{active_q}"
+                Execute grounding search across major mainstream news mastheads, wire services, and national broadcasters.
+                EXCLUDE support/login pages. Format strictly as JSON matching schema.
+                """
+                response1 = client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=pass1_prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[{"google_search": {}}],
+                        response_mime_type="application/json",
+                        response_schema=WWMExecutiveAnalysisBrief,
+                        temperature=0.0,
+                    )
+                )
+                pass1_data = json.loads(response1.text)
+                if pass1_data.get("items"):
+                    accumulated_items = merge_and_deduplicate_items(accumulated_items, pass1_data.get("items"))
 
-    # ROUTE A: 2-Pass Gemini Grounding Engine
-    if clean_key:
-        accumulated_items = list(existing_items)
+                # PASS 2: Tech & Scientific Journal Scan (with Altmetric Scores)
+                pass2_prompt = f"""
+                Today is {current_date}. [PASS 2: TECH & PEER-REVIEWED JOURNAL ALTMETRIC SWEEP]
+                You are {app_title}'s Senior Strategic Intelligence Analyst.
+                SEARCH TARGET: "{active_q}"
+                Analyze the 20-word context window surrounding "{active_q}".
+                Ground across tech publications, trade journals, and peer-reviewed scientific journals (e.g. Journal of Cleaner Production, Elsevier, ScienceDirect, Nature).
+                IF A PEER-REVIEWED JOURNAL IS CAPTURED, EXTRACT OR CALCULATE ITS ESTIMATED ALTMETRIC ATTENTION SCORE IN 'altmetric_attention_score' (e.g. '685 (Top 1% Global Attention)').
+                Format strictly as JSON matching schema.
+                """
+                response2 = client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=pass2_prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[{"google_search": {}}],
+                        response_mime_type="application/json",
+                        response_schema=WWMExecutiveAnalysisBrief,
+                        temperature=0.1,
+                    )
+                )
+                pass2_data = json.loads(response2.text)
+                if pass2_data.get("items"):
+                    accumulated_items = merge_and_deduplicate_items(accumulated_items, pass2_data.get("items"))
+
+                metric_str, reach_str = calculate_aligned_header_metrics(accumulated_items)
+
+                st.session_state.cumulative_brief = pass2_data
+                st.session_state.cumulative_brief["items"] = accumulated_items
+                st.session_state.cumulative_brief["verified_coverage_metric"] = metric_str
+                st.session_state.cumulative_brief["total_combined_audience_reach"] = reach_str
+                
+                st.session_state.active_purpose = active_report_purpose
+                st.session_state.active_tier_type = report_format_tier
+                st.session_state.active_lang = output_language
+                st.session_state.active_time_scope = date_window
+                st.session_state.active_cov_scope = social_media_focus
+                st.session_state.active_channels = channels_str
+                
+                st.success(f"2-Pass Aligned Synthesis Complete! {len(accumulated_items)} Unique Media Records Captured.")
+                return
+            except Exception as e:
+                if "401" in str(e) or "UNAUTHENTICATED" in str(e) or "ACCESS_TOKEN_TYPE" in str(e):
+                    st.warning("⚠️ Google Cloud key format detected. Routing via Free Sandbox Media Search...")
+                else:
+                    st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
+
+        # ROUTE B: Sandbox Media Search Engine
         try:
-            client = genai.Client(api_key=clean_key)
+            accumulated_outlets = [
+                {
+                    "outlet_name": "The Guardian (Digital Daily Masthead)",
+                    "medium_type": "Online Press",
+                    "author_byline": "Donna Lu",
+                    "publication_date": "August 22, 2023",
+                    "original_language": output_language,
+                    "canonical_source_url": "https://www.theguardian.com/environment/2023/aug/22/coffee-grounds-concrete-rmit",
+                    "audience_reach_metrics": "130,000,000 monthly unique visitors",
+                    "altmetric_attention_score": "N/A",
+                    "verification_confidence": "[Verified Tier-1 Source]"
+                },
+                {
+                    "outlet_name": "Reuters (International News Wire)",
+                    "medium_type": "Online Press & Wire",
+                    "author_byline": "not stated",
+                    "publication_date": "May 27, 2024",
+                    "original_language": output_language,
+                    "canonical_source_url": "https://www.reuters.com",
+                    "audience_reach_metrics": "70,000,000 monthly global audience",
+                    "altmetric_attention_score": "N/A",
+                    "verification_confidence": "[Verified Tier-1 Source]"
+                },
+                {
+                    "outlet_name": "SBS (Special Broadcasting Service)",
+                    "medium_type": "National Public Broadcaster",
+                    "author_byline": "Shyna Kalra",
+                    "publication_date": "July 30, 2024",
+                    "original_language": output_language,
+                    "canonical_source_url": "https://www.sbs.com.au",
+                    "audience_reach_metrics": "12,000,000 monthly active digital users",
+                    "altmetric_attention_score": "N/A",
+                    "verification_confidence": "[Verified Tier-1 Source]"
+                },
+                {
+                    "outlet_name": "Journal of Cleaner Production (ScienceDirect)",
+                    "medium_type": "Peer-Reviewed Scientific Journal",
+                    "author_byline": "Dr. Rajeev Roychand et al.",
+                    "publication_date": "September 20, 2023",
+                    "original_language": output_language,
+                    "canonical_source_url": "https://www.sciencedirect.com/journal/journal-of-cleaner-production",
+                    "audience_reach_metrics": "200,000 academic & industrial subscribers",
+                    "altmetric_attention_score": "685 (Top 1% Global Research Attention)",
+                    "verification_confidence": "[Verified Tier-1 Source]"
+                }
+            ]
+
+            new_item = {
+                "event_title": f"RMIT Team Develops 30% Stronger Coffee-Biochar Concrete: {active_q}",
+                "source_category": "Mainstream International Mastheads & Academic Journals",
+                "prominence_depth": "Lead Feature",
+                "representation_mode": "Positive / Innovation Champion",
+                "key_message_delivered": "Using pyrolyzed spent coffee grounds to replace up to 15 percent of sand increases concrete strength by 30 percent.",
+                "co_represented_entities": "RMIT University, Victorian Government, BildGroup",
+                "core_event_summary": f"Extensive international coverage of Dr. Rajeev Roychand's research published in the Journal of Cleaner Production demonstrating an oxygen-free pyrolysis technique.",
+                "covering_outlets": accumulated_outlets
+            }
             
-            # PASS 1: Mainstream Media Worldwide across all countries
-            pass1_prompt = f"""
-            Today is {current_date}. [PASS 1: MAINSTREAM MEDIA WORLDWIDE SWEEP]
-            You are {app_title}'s Senior Strategic Intelligence Analyst.
-            SEARCH TARGET: "{active_q}"
-            Execute grounding search across major mainstream news mastheads, wire services, and national broadcasters.
-            EXCLUDE support/login pages. Format strictly as JSON matching schema.
-            """
-            response1 = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=pass1_prompt,
-                config=types.GenerateContentConfig(
-                    tools=[{"google_search": {}}],
-                    response_mime_type="application/json",
-                    response_schema=WWMExecutiveAnalysisBrief,
-                    temperature=0.0,
-                )
-            )
-            pass1_data = json.loads(response1.text)
-            if pass1_data.get("items"):
-                accumulated_items = merge_and_deduplicate_items(accumulated_items, pass1_data.get("items"))
+            all_items = merge_and_deduplicate_items(existing_items, [new_item])
+            metric_str, reach_str = calculate_aligned_header_metrics(all_items)
 
-            # PASS 2: Tech & Scientific Journal Scan (with Altmetric Scores)
-            pass2_prompt = f"""
-            Today is {current_date}. [PASS 2: TECH & PEER-REVIEWED JOURNAL ALTMETRIC SWEEP]
-            You are {app_title}'s Senior Strategic Intelligence Analyst.
-            SEARCH TARGET: "{active_q}"
-            Analyze the 20-word context window surrounding "{active_q}".
-            Ground across tech publications, trade journals, and peer-reviewed scientific journals (e.g. Journal of Cleaner Production, Elsevier, ScienceDirect, Nature).
-            IF A PEER-REVIEWED JOURNAL IS CAPTURED, EXTRACT OR CALCULATE ITS ESTIMATED ALTMETRIC ATTENTION SCORE IN 'altmetric_attention_score' (e.g. '685 (Top 1% Global Attention)').
-            Format strictly as JSON matching schema.
-            """
-            response2 = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=pass2_prompt,
-                config=types.GenerateContentConfig(
-                    tools=[{"google_search": {}}],
-                    response_mime_type="application/json",
-                    response_schema=WWMExecutiveAnalysisBrief,
-                    temperature=0.1,
-                )
-            )
-            pass2_data = json.loads(response2.text)
-            if pass2_data.get("items"):
-                accumulated_items = merge_and_deduplicate_items(accumulated_items, pass2_data.get("items"))
-
-            metric_str, reach_str = calculate_aligned_header_metrics(accumulated_items)
-
-            st.session_state.cumulative_brief = pass2_data
-            st.session_state.cumulative_brief["items"] = accumulated_items
-            st.session_state.cumulative_brief["verified_coverage_metric"] = metric_str
-            st.session_state.cumulative_brief["total_combined_audience_reach"] = reach_str
-            
+            st.session_state.cumulative_brief = {
+                "coverage_found": True,
+                "verified_coverage_metric": metric_str,
+                "total_combined_audience_reach": reach_str,
+                "headline_synthesis": f"Extensive global news coverage and academic citation for '{active_q}' demonstrates high-impact research translation across tier-1 mastheads and peer-reviewed journals.",
+                "sentiment_framing_read": f"Coverage surrounding '{active_q}' is overwhelmingly positive, positioning the research team as pioneering sustainable construction innovators.",
+                "subject_quoted_vs_reported": f"Public commentary highlights Dr. Roychand's research converting organic waste into structural biochar.",
+                "engagement_opportunities": f"Strategic opportunity identified to leverage high Altmetric journal scores into international university partnerships and government infrastructure grants.",
+                "demographic_audience_profile": "Materials scientists, civil engineers, sustainability officers, construction contractors, and policy leaders across Australasia, North America, and Europe.",
+                "items": all_items
+            }
             st.session_state.active_purpose = active_report_purpose
             st.session_state.active_tier_type = report_format_tier
             st.session_state.active_lang = output_language
             st.session_state.active_time_scope = date_window
             st.session_state.active_cov_scope = social_media_focus
             st.session_state.active_channels = channels_str
-            
-            anim_placeholder.empty()
-            st.success(f"2-Pass Aligned Synthesis Complete! {len(accumulated_items)} Unique Media Records Captured.")
-            return
+
+            st.success(f"Aligned 2-Pass Synthesis Complete! Deduplicated Catalogue Preserved.")
         except Exception as e:
-            if "401" in str(e) or "UNAUTHENTICATED" in str(e) or "ACCESS_TOKEN_TYPE" in str(e):
-                st.warning("⚠️ Google Cloud key format detected. Routing via Free Sandbox Media Search...")
-            else:
-                st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
-
-    # ROUTE B: Sandbox Media Search Engine (Zero-Cost Fallback with Deduplication)
-    try:
-        accumulated_outlets = [
-            {
-                "outlet_name": "The Guardian (Digital Daily Masthead)",
-                "medium_type": "Online Press",
-                "author_byline": "Donna Lu",
-                "publication_date": "August 22, 2023",
-                "original_language": output_language,
-                "canonical_source_url": "https://www.theguardian.com/environment/2023/aug/22/coffee-grounds-concrete-rmit",
-                "audience_reach_metrics": "130,000,000 monthly unique visitors",
-                "altmetric_attention_score": "N/A",
-                "verification_confidence": "[Verified Tier-1 Source]"
-            },
-            {
-                "outlet_name": "Reuters (International News Wire)",
-                "medium_type": "Online Press & Wire",
-                "author_byline": "not stated",
-                "publication_date": "May 27, 2024",
-                "original_language": output_language,
-                "canonical_source_url": "https://www.reuters.com",
-                "audience_reach_metrics": "70,000,000 monthly global audience",
-                "altmetric_attention_score": "N/A",
-                "verification_confidence": "[Verified Tier-1 Source]"
-            },
-            {
-                "outlet_name": "SBS (Special Broadcasting Service)",
-                "medium_type": "National Public Broadcaster",
-                "author_byline": "Shyna Kalra",
-                "publication_date": "July 30, 2024",
-                "original_language": output_language,
-                "canonical_source_url": "https://www.sbs.com.au",
-                "audience_reach_metrics": "12,000,000 monthly active digital users",
-                "altmetric_attention_score": "N/A",
-                "verification_confidence": "[Verified Tier-1 Source]"
-            },
-            {
-                "outlet_name": "Journal of Cleaner Production (ScienceDirect)",
-                "medium_type": "Peer-Reviewed Scientific Journal",
-                "author_byline": "Dr. Rajeev Roychand et al.",
-                "publication_date": "September 20, 2023",
-                "original_language": output_language,
-                "canonical_source_url": "https://www.sciencedirect.com/journal/journal-of-cleaner-production",
-                "audience_reach_metrics": "200,000 academic & industrial subscribers",
-                "altmetric_attention_score": "685 (Top 1% Global Research Attention)",
-                "verification_confidence": "[Verified Tier-1 Source]"
-            }
-        ]
-
-        new_item = {
-            "event_title": f"RMIT Team Develops 30% Stronger Coffee-Biochar Concrete: {active_q}",
-            "source_category": "Mainstream International Mastheads & Academic Journals",
-            "prominence_depth": "Lead Feature",
-            "representation_mode": "Positive / Innovation Champion",
-            "key_message_delivered": "Using pyrolyzed spent coffee grounds to replace up to 15 percent of sand increases concrete strength by 30 percent.",
-            "co_represented_entities": "RMIT University, Victorian Government, BildGroup",
-            "core_event_summary": f"Extensive international coverage of Dr. Rajeev Roychand's research published in the Journal of Cleaner Production demonstrating an oxygen-free pyrolysis technique.",
-            "covering_outlets": accumulated_outlets
-        }
-        
-        all_items = merge_and_deduplicate_items(existing_items, [new_item])
-        metric_str, reach_str = calculate_aligned_header_metrics(all_items)
-
-        st.session_state.cumulative_brief = {
-            "coverage_found": True,
-            "verified_coverage_metric": metric_str,
-            "total_combined_audience_reach": reach_str,
-            "headline_synthesis": f"Extensive global news coverage and academic citation for '{active_q}' demonstrates high-impact research translation across tier-1 mastheads and peer-reviewed journals.",
-            "sentiment_framing_read": f"Coverage surrounding '{active_q}' is overwhelmingly positive, positioning the research team as pioneering sustainable construction innovators.",
-            "subject_quoted_vs_reported": f"Public commentary highlights Dr. Roychand's research converting organic waste into structural biochar.",
-            "engagement_opportunities": f"Strategic opportunity identified to leverage high Altmetric journal scores into international university partnerships and government infrastructure grants.",
-            "demographic_audience_profile": "Materials scientists, civil engineers, sustainability officers, construction contractors, and policy leaders across Australasia, North America, and Europe.",
-            "items": all_items
-        }
-        st.session_state.active_purpose = active_report_purpose
-        st.session_state.active_tier_type = report_format_tier
-        st.session_state.active_lang = output_language
-        st.session_state.active_time_scope = date_window
-        st.session_state.active_cov_scope = social_media_focus
-        st.session_state.active_channels = channels_str
-
-        anim_placeholder.empty()
-        st.success(f"Aligned 2-Pass Synthesis Complete! Deduplicated Catalogue Preserved.")
-    except Exception as e:
-        anim_placeholder.empty()
-        st.error(f"Search Execution Error: {str(e)}")
+            st.error(f"Search Execution Error: {str(e)}")
 
 # --- VIEW 1: LIVE DASHBOARD ---
 if "Dashboard" in main_mode:
