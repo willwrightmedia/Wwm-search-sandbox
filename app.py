@@ -163,7 +163,7 @@ def render_meerkat_search_animation(status_label="Two-pass global search groundi
                 </svg>
             </div>
             <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: #F2EDE3; margin-top: 8px;">
-                Meerkat Sentry Active (2-Pass Global & Sector Scan)
+                Meerkat Sentry Active (Deduplicated Multi-Pass Scan)
             </div>
             <div style="font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: #C6BCA9;">
                 {status_label}
@@ -360,7 +360,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("3. Multi-Pass Engine Settings")
-    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes: Pass 1 sweeps mainstream media worldwide across all countries. Pass 2 automatically targets tech & industry outlets based on the 20-word context window.")
+    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Pass 1 sweeps mainstream media worldwide. Pass 2 sweeps tech & industry outlets based on 20-word context windows. Duplicates are filtered while new details (URLs/reach) enrich existing records.")
 
     date_window_option = st.selectbox(
         "Recency scope",
@@ -410,7 +410,7 @@ with st.sidebar:
 app_title = "Markat" if is_markat else "Medierkat"
 app_subtitle = "Strategic marketing performance, competitor benchmarking, and share of voice." if is_markat else "Strategic media intelligence, verified reach analytics, and cross-lingual reporting for leadership."
 app_tagline = "COMPETITOR & CAMPAIGN INTELLIGENCE" if is_markat else "GLOBAL MEDIA INSIGHTS"
-tooltip_text = "Build reports step by step: Pass 1 scans mainstream media worldwide in all countries. Pass 2 scans tech & industry outlets based on the 20-word context window."
+tooltip_text = "Build reports step by step: Multi-pass search continuously appends new media items without adding duplicates or removing prior records. Missing metadata (links/reach) is automatically enriched."
 
 st.markdown(f"""
     <div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;">
@@ -633,7 +633,56 @@ def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope,
     buffer.seek(0)
     return buffer
 
-# --- REUSABLE EXECUTION ENGINE (2-PASS AUTOMATED WORLDWIDE & INDUSTRY SWEEP) ---
+# --- HELPER FUNCS FOR STRICT DEDUPLICATION & METADATA ENRICHMENT ---
+def normalize_str(s):
+    return re.sub(r'[^a-z0-9]', '', str(s).lower())
+
+def merge_and_deduplicate_items(existing_items, new_incoming_items):
+    merged = list(existing_items)
+    
+    for new_item in new_incoming_items:
+        new_title_norm = normalize_str(new_item.get("event_title", ""))
+        found_existing_item = None
+        
+        # Check if item title matches existing record
+        for ex_item in merged:
+            ex_title_norm = normalize_str(ex_item.get("event_title", ""))
+            if new_title_norm and (new_title_norm in ex_title_norm or ex_title_norm in new_title_norm):
+                found_existing_item = ex_item
+                break
+                
+        if found_existing_item:
+            # ENRICH EXISTING ITEM WITH NEW OUTLET DETAILS WITHOUT DUPLICATING
+            ex_outlets = found_existing_item.get("covering_outlets", [])
+            for new_out in new_item.get("covering_outlets", []):
+                new_url = new_out.get("canonical_source_url", "").strip().lower()
+                new_out_name = normalize_str(new_out.get("outlet_name", ""))
+                
+                out_found = False
+                for ex_out in ex_outlets:
+                    ex_url = ex_out.get("canonical_source_url", "").strip().lower()
+                    ex_out_name = normalize_str(ex_out.get("outlet_name", ""))
+                    
+                    if (is_valid_url(new_url) and new_url == ex_url) or (new_out_name and new_out_name == ex_out_name):
+                        out_found = True
+                        # ENRICH METADATA IF MISSING
+                        if not is_valid_url(ex_out.get("canonical_source_url")) and is_valid_url(new_out.get("canonical_source_url")):
+                            ex_out["canonical_source_url"] = new_out.get("canonical_source_url")
+                        if ex_out.get("author_byline") in ["not stated", "Journalist / Newsroom Desk", ""] and new_out.get("author_byline"):
+                            ex_out["author_byline"] = new_out.get("author_byline")
+                        if "Roy Morgan" not in ex_out.get("audience_reach_metrics", "") and "Roy Morgan" in new_out.get("audience_reach_metrics", ""):
+                            ex_out["audience_reach_metrics"] = new_out.get("audience_reach_metrics")
+                        break
+                        
+                if not out_found:
+                    ex_outlets.append(new_out)
+            found_existing_item["covering_outlets"] = ex_outlets
+        else:
+            merged.append(new_item)
+            
+    return merged
+
+# --- REUSABLE EXECUTION ENGINE (DEDUPLICATED 2-PASS AUTOMATED SWEEP) ---
 def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary, num_passes=2):
     active_q = search_query_input if search_query_input else st.session_state.executed_query
     
@@ -643,7 +692,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
 
     anim_placeholder = st.empty()
     with anim_placeholder.container():
-        render_meerkat_search_animation(f"Running 2-Pass Sentry Grounding... Pass 1: Global Mainstream Sweep • Pass 2: Sector Context Sweep")
+        render_meerkat_search_animation(f"Running Deduplicated Multi-Pass Sentry Grounding... Pass 1: Global Mainstream • Pass 2: Sector Context")
 
     current_date = datetime.datetime.now().strftime("%B %d, %Y")
     channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
@@ -667,7 +716,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             
             STRICT PASS 1 MANDATE:
             - Execute a multi-country grounding search across all major mainstream news mastheads, wire services, national broadcasters, and premier international press corridors (US, UK, Australia, Europe, Asia, Americas, Middle East, Africa).
-            - EXCLUDE support/login utility pages. Extract ONLY genuine news coverage items. Format strictly as JSON.
+            - EXCLUDE support/login utility pages. Extract ONLY genuine news coverage items. Format strictly as JSON matching schema.
             """
             response1 = client.models.generate_content(
                 model="gemini-3.8-flash",
@@ -681,7 +730,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             )
             pass1_data = json.loads(response1.text)
             if pass1_data.get("items"):
-                accumulated_items.extend(pass1_data.get("items"))
+                accumulated_items = merge_and_deduplicate_items(accumulated_items, pass1_data.get("items"))
 
             # PASS 2: Tech & Industry Outlets based on 20-word contextual window around terms
             pass2_prompt = f"""
@@ -693,7 +742,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             - Analyze the 20-word context window surrounding "{active_q}".
             - Identify the exact industry, technology, scientific, academic, or commercial domain.
             - Execute a dedicated grounding search across all relevant specialized tech publications, trade journals, academic newsrooms, and industry-specific mastheads globally.
-            - Extract ONLY genuine sector coverage. Format strictly as JSON.
+            - Extract ONLY genuine sector coverage. Format strictly as JSON matching schema.
             """
             response2 = client.models.generate_content(
                 model="gemini-3.8-flash",
@@ -707,11 +756,11 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             )
             pass2_data = json.loads(response2.text)
             if pass2_data.get("items"):
-                accumulated_items.extend(pass2_data.get("items"))
+                accumulated_items = merge_and_deduplicate_items(accumulated_items, pass2_data.get("items"))
 
             st.session_state.cumulative_brief = pass2_data
             st.session_state.cumulative_brief["items"] = accumulated_items
-            st.session_state.cumulative_brief["verified_coverage_metric"] = f"Media Index: {len(accumulated_items)} verified global & industry media items captured across 2 passes"
+            st.session_state.cumulative_brief["verified_coverage_metric"] = f"Media Index: {len(accumulated_items)} unique verified global & industry media items captured across 2 passes"
             
             st.session_state.active_purpose = active_report_purpose
             st.session_state.active_tier_type = report_format_tier
@@ -721,30 +770,31 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             st.session_state.active_channels = channels_str
             
             anim_placeholder.empty()
-            st.success(f"2-Pass Global & Industry Synthesis Complete! {len(accumulated_items)} Total Verified Media Items Captured.")
+            st.success(f"2-Pass Global & Industry Synthesis Complete! {len(accumulated_items)} Unique Verified Media Items Retained.")
             return
         except Exception as e:
             if "401" in str(e) or "UNAUTHENTICATED" in str(e) or "ACCESS_TOKEN_TYPE" in str(e):
-                st.warning("⚠️ Google Cloud key format detected. Routing via 2-Pass Free Sandbox Media Search...")
+                st.warning("⚠️ Google Cloud key format detected. Routing via Deduplicated Free Sandbox Media Search...")
             else:
                 st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
 
-    # ROUTE B: 2-Pass Sandbox Media Search Engine (Zero-Cost Fallback)
+    # ROUTE B: 2-Pass Sandbox Media Search Engine (Filtered Direct Query Extraction with Deduplication)
     try:
         accumulated_outlets = []
+        seen_urls = set()
         noise_keywords = ["support", "login", "hotmail", "signin", "account", "microsoft", "help", "contact us"]
         
         with DDGS() as ddgs:
-            # Pass 1: Global Mainstream News
             raw_res1 = list(ddgs.text(f"{active_q} mainstream global news press release", max_results=10))
-            # Pass 2: Tech & Industry Coverage (20-word context sweep)
             raw_res2 = list(ddgs.text(f"{active_q} technology industry trade journal research", max_results=10))
             
             for item in raw_res1 + raw_res2:
                 title = item.get("title", "")
-                url = item.get("href", "")
+                url = item.get("href", "").strip()
                 
-                if not any(noise in title.lower() or noise in url.lower() for noise in noise_keywords):
+                # Check for duplicate URL or utility noise
+                if is_valid_url(url) and url not in seen_urls and not any(noise in title.lower() or noise in url.lower() for noise in noise_keywords):
+                    seen_urls.add(url)
                     domain_match = re.search(r'https?://(?:www\.)?([^/]+)', url)
                     publisher = domain_match.group(1).capitalize() if domain_match else "Global Media Outlet"
                     
@@ -767,14 +817,14 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             "key_message_delivered": f"Active commercial, technical, and institutional coverage for {active_q}.",
             "co_represented_entities": "Global Industry Stakeholders & Partners",
             "core_event_summary": f"2-pass media indexing across worldwide mainstream mastheads and 20-word context industry trade outlets confirms strong reach for {active_q}.",
-            "covering_outlets": accumulated_outlets[:12]
+            "covering_outlets": accumulated_outlets[:15]
         }
         
-        all_items = list(existing_items) + [new_item]
+        all_items = merge_and_deduplicate_items(existing_items, [new_item])
 
         st.session_state.cumulative_brief = {
             "coverage_found": True,
-            "verified_coverage_metric": f"Media Index: {len(accumulated_outlets)} verified global & trade media records captured across 2 search passes",
+            "verified_coverage_metric": f"Media Index: {len(accumulated_outlets)} unique global & trade media records captured across 2 search passes",
             "total_combined_audience_reach": f"Total Combined Reach: {18.5 + (len(all_items)*3.2):.1f} Million Audience",
             "headline_synthesis": f"Sustained mainstream and industry media coverage for '{active_q}' demonstrates strong global reach and sector leadership across major publications.",
             "sentiment_framing_read": f"Media framing surrounding '{active_q}' is overwhelmingly positive, recognizing expert authority and innovative sector contribution.",
@@ -791,7 +841,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         st.session_state.active_channels = channels_str
 
         anim_placeholder.empty()
-        st.success(f"2-Pass Global & Industry Synthesis Complete! {len(accumulated_outlets)} Genuine Media Outlets Captured.")
+        st.success(f"2-Pass Global & Industry Synthesis Complete! {len(accumulated_outlets)} Unique Genuine Media Outlets Captured.")
     except Exception as e:
         anim_placeholder.empty()
         st.error(f"Search Execution Error: {str(e)}")
