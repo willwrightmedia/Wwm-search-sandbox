@@ -23,6 +23,19 @@ FOUNDER_PASSWORD = "MyPa$$wordI5Hard"
 
 if "users_db" not in st.session_state:
     st.session_state.users_db = {
+        # Default Public Guest Account for easy testing
+        "guest": {
+            "email": "guest",
+            "password": "password",
+            "full_name": "Guest Visitor",
+            "is_admin": False,
+            "current_plan": "Pro Sandbox Tier",
+            "default_engine": "DuckDuckGo Search / Gemini",
+            "api_key": None,
+            "total_searches": 0,
+            "created_at": "2026-09-27"
+        },
+        # Admin Founder Account
         FOUNDER_EMAIL: {
             "email": FOUNDER_EMAIL,
             "password": FOUNDER_PASSWORD,
@@ -172,7 +185,7 @@ def render_meerkat_search_animation(status_label="Two-pass global search groundi
     """, unsafe_allow_html=True)
 
 # ============================================================================
-# 2. AUTHENTICATION WALL
+# 2. AUTHENTICATION WALL (GUEST / PASSWORD PRE-FILLED FOR PUBLIC TESTING)
 # ============================================================================
 def render_login_wall():
     st.markdown("""
@@ -196,10 +209,11 @@ def render_login_wall():
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        tab1, tab2 = st.tabs(["🔒 Member Login", "📝 Free Sandbox Access"])
+        tab1, tab2 = st.tabs(["🔒 Member Login", "📝 Register New Account"])
         with tab1:
-            email_in = st.text_input("Email Address", value="", placeholder="name@company.com", key="login_email")
-            pass_in = st.text_input("Password", type="password", value="", placeholder="••••••••", key="login_pass")
+            # Pre-filled guest / password for easy public testing
+            email_in = st.text_input("Username / Email", value="guest", placeholder="guest", key="login_email")
+            pass_in = st.text_input("Password", type="password", value="password", placeholder="password", key="login_pass")
             if st.button("Authenticate", use_container_width=True):
                 user = st.session_state.users_db.get(email_in)
                 if user and user["password"] == pass_in:
@@ -635,7 +649,7 @@ def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope,
     buffer.seek(0)
     return buffer
 
-# --- HELPER FUNCS FOR DEDUPLICATION & ALIGNED HEADER SUMMARIES ---
+# --- HELPER FUNCS FOR STRICT FLOAT-SAFE DEDUPLICATION & ALIGNED HEADER SUMMARIES ---
 def normalize_str(s):
     return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
@@ -648,13 +662,17 @@ def calculate_aligned_header_metrics(all_items):
         total_outlets_count += len(outlets)
         for out in outlets:
             reach_str = out.get("audience_reach_metrics", "")
-            # Extract numerical numbers from reach string
             nums = re.findall(r'([\d,]+)\s*(million|k|m)?', reach_str.lower())
             for val, unit in nums:
-                clean_v = float(val.replace(',', ''))
-                if unit in ['million', 'm']: clean_v *= 1000000
-                elif unit == 'k': clean_v *= 1000
-                total_audience_sum += clean_v
+                clean_val_str = val.replace(',', '').strip()
+                if clean_val_str: # Safe float parsing wrapper
+                    try:
+                        clean_v = float(clean_val_str)
+                        if unit in ['million', 'm']: clean_v *= 1000000
+                        elif unit == 'k': clean_v *= 1000
+                        total_audience_sum += clean_v
+                    except ValueError:
+                        pass
                 
     if total_audience_sum >= 1000000:
         reach_display = f"Total Combined Reach: {total_audience_sum/1000000:.1f} Million Audience"
@@ -738,7 +756,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             You are {app_title}'s Senior Strategic Intelligence Analyst.
             SEARCH TARGET: "{active_q}"
             Execute grounding search across major mainstream news mastheads, wire services, and national broadcasters.
-            EXCLUDE support/login pages. Format strictly as JSON.
+            EXCLUDE support/login pages. Format strictly as JSON matching schema.
             """
             response1 = client.models.generate_content(
                 model="gemini-3.8-flash",
@@ -762,7 +780,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             Analyze the 20-word context window surrounding "{active_q}".
             Ground across tech publications, trade journals, and peer-reviewed scientific journals (e.g. Journal of Cleaner Production, Elsevier, ScienceDirect, Nature).
             IF A PEER-REVIEWED JOURNAL IS CAPTURED, EXTRACT OR CALCULATE ITS ESTIMATED ALTMETRIC ATTENTION SCORE IN 'altmetric_attention_score' (e.g. '685 (Top 1% Global Attention)').
-            Format strictly as JSON.
+            Format strictly as JSON matching schema.
             """
             response2 = client.models.generate_content(
                 model="gemini-3.8-flash",
