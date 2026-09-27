@@ -1707,13 +1707,6 @@ with st.sidebar:
         )
 
     st.divider()
-    st.checkbox(
-        "Add repeat searches to current results",
-        value=False,
-        key="accumulate_results",
-        help="Off: each search starts fresh. On: searching the same terms again adds "
-        "new finds to the current brief, without duplicates.",
-    )
     st.button(
         "Reset brief and clear all", on_click=clear_all_searches, key="sidebar_reset"
     )
@@ -1876,7 +1869,45 @@ def search_ready(query):
 
 
 # ---------------------------------------------------------------- Medierkat
-def medierkat_search_prompt(query, angle, custom_urls):
+INITIAL_PASSES = 2
+DEEPER = (
+    ". Dig deeper than a first search: look for smaller, regional or less prominent "
+    "sources that a quick search would miss"
+)
+
+
+def channel_labels(channels):
+    return [c for c in selected_channels if c in channels] or list(channels)
+
+
+def plan_passes(channels, extra_round=None):
+    """A new search splits the selected channels across two passes.
+    Each 'Find more' runs one pass on a single channel, rotating through them."""
+    labels = channel_labels(channels)
+    if extra_round is None:
+        half = (len(labels) + 1) // 2
+        groups = [g for g in (labels[:half], labels[half:]) if g][:INITIAL_PASSES]
+        return [(" + ".join(g), "; and ".join(channels[c] for c in g)) for g in groups]
+    label = labels[extra_round % len(labels)]
+    return [(label, channels[label] + DEEPER)]
+
+
+def next_extra_label(channels, brief):
+    labels = channel_labels(channels)
+    return labels[(brief or {}).get("extra_rounds", 0) % len(labels)]
+
+
+def already_found_block(names):
+    names = list(dict.fromkeys(str(n) for n in names if n and not is_empty(n)))[:40]
+    if not names:
+        return ""
+    return (
+        "\nThese sources have already been found, so look for different ones: "
+        + "; ".join(names)
+    )
+
+
+def medierkat_search_prompt(query, angle, custom_urls, avoid=""):
     start, end = window_bounds()
     markets = ", ".join(media_markets) if media_markets else "Global"
     url_hint = (
@@ -1901,7 +1932,7 @@ what it said, and whether spokespeople were quoted directly.
 Group coverage by the underlying news event or milestone (e.g. an official media release
 and the stories that followed it).
 Report only what the search results show. If nothing is found in the window, say so
-plainly.{url_hint}"""
+plainly.{url_hint}{avoid}"""
 
 
 def medierkat_extraction_prompt(
@@ -1995,19 +2026,23 @@ dates or figures that are not present:
     return structured_call(client, model, prompt, BriefSummary, temperature=0.2)
 
 
-def run_medierkat(query, custom_urls=None):
+def run_medierkat(query, custom_urls=None, more=False):
     custom_urls = custom_urls or []
     query = (query or "").strip()
     if not search_ready(query):
         return
-    passes = [
-        (label, MEDIERKAT_CHANNELS[label]) for label in selected_channels
-    ] or list(MEDIERKAT_CHANNELS.items())
-    keep = st.session_state.get("accumulate_results") and query == (
-        st.session_state.cumulative_brief or {}
-    ).get("query")
-    accumulated = (
-        list((st.session_state.cumulative_brief or {}).get("items", [])) if keep else []
+    previous = st.session_state.cumulative_brief or {}
+    more = more and previous.get("query") == query
+    extra_round = previous.get("extra_rounds", 0) if more else None
+    passes = plan_passes(MEDIERKAT_CHANNELS, extra_round)
+    accumulated = list(previous.get("items", [])) if more else []
+    before = sum(len(it["covering_outlets"]) for it in accumulated)
+    avoid = (
+        already_found_block(
+            [o.get("outlet_name") for it in accumulated for o in it["covering_outlets"]]
+        )
+        if more
+        else ""
     )
     allowed_keys = {normalize_url(u) for u in custom_urls if is_valid_url(u)}
     failures = []
@@ -2016,12 +2051,18 @@ def run_medierkat(query, custom_urls=None):
         client, model, notice, fatal = connect_gemini(status)
         if fatal is None:
             for idx, (label, angle) in enumerate(passes, 1):
-                status.update(label=f"Pass {idx} of {len(passes)}: {label}")
+                status.update(
+                    label=(
+                        f"Extra search: {label}"
+                        if more
+                        else f"Pass {idx} of {len(passes)}: {label}"
+                    )
+                )
                 try:
                     research_text, sources = grounded_call(
                         client,
                         model,
-                        medierkat_search_prompt(query, angle, custom_urls),
+                        medierkat_search_prompt(query, angle, custom_urls, avoid),
                     )
                     allowed_keys |= {normalize_url(u) for _, u in sources}
                     if not research_text.strip():
@@ -2080,12 +2121,16 @@ def run_medierkat(query, custom_urls=None):
                     "items": accumulated,
                     "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"),
                     "settings": settings,
+                    "extra_rounds": (extra_round + 1) if more else 0,
                 }
                 status.update(
                     label=f"Complete: {len(accumulated)} coverage milestones",
                     state="complete",
                 )
     show_run_messages(notice, fatal, failures, len(passes))
+    if more and fatal is None and len(failures) < len(passes):
+        added = sum(len(it["covering_outlets"]) for it in accumulated) - before
+        report_added(added, "media item", passes[0][0])
 
 
 # ---------------------------------------------------------------- Markat
@@ -2156,7 +2201,7 @@ def resolve_scope(detected, brand):
     }
 
 
-def markat_search_prompt(brand, angle, scope, custom_urls):
+def markat_search_prompt(brand, angle, scope, custom_urls, avoid=""):
     start, end = window_bounds()
     comps = ", ".join(scope["competitors"]) or "its main competitors"
     if scope["countries"]:
@@ -2197,7 +2242,7 @@ prospective customers, and any engagement numbers shown (upvotes, comments, like
 views).
 Do not record the usernames or personal details of individual people.
 Report only what the search results show. If nothing is found in the window, say so
-plainly.{url_hint}"""
+plainly.{url_hint}{avoid}"""
 
 
 def markat_extraction_prompt(
@@ -2305,17 +2350,32 @@ figures or campaigns that are not present:
     return structured_call(client, model, prompt, MarkatSummary, temperature=0.2)
 
 
-def run_markat(query, custom_urls=None):
+def run_markat(query, custom_urls=None, more=False):
     custom_urls = custom_urls or []
     brand = (query or "").strip()
     if not search_ready(brand):
         return
-    passes = [(label, MARKAT_CHANNELS[label]) for label in selected_channels] or list(
-        MARKAT_CHANNELS.items()
-    )
     previous = st.session_state.markat_brief or {}
-    keep = st.session_state.get("accumulate_results") and brand == previous.get("query")
-    topics = list(previous.get("topics", [])) if keep else []
+    more = more and previous.get("query") == brand
+    extra_round = previous.get("extra_rounds", 0) if more else None
+    passes = plan_passes(MARKAT_CHANNELS, extra_round)
+    topics = list(previous.get("topics", [])) if more else []
+    before = sum(len(t["sources"]) for t in topics)
+    avoid = (
+        already_found_block(
+            [
+                (
+                    s.get("source_url")
+                    if is_valid_url(s.get("source_url"))
+                    else f"{s.get('platform')} {s.get('community_or_account')}"
+                )
+                for t in topics
+                for s in t["sources"]
+            ]
+        )
+        if more
+        else ""
+    )
     allowed_keys = {normalize_url(u) for u in custom_urls if is_valid_url(u)}
     failures = []
 
@@ -2323,7 +2383,9 @@ def run_markat(query, custom_urls=None):
         client, model, notice, fatal = connect_gemini(status)
         if fatal is None:
             detected = None
-            if scope_mode == "Auto-detect" or not competitor_input.strip():
+            if more:
+                pass  # reuse the market scope from the first search
+            elif scope_mode == "Auto-detect" or not competitor_input.strip():
                 status.update(
                     label="Assessing where the company operates and who its "
                     "competitors are"
@@ -2334,16 +2396,22 @@ def run_markat(query, custom_urls=None):
                     failures.append(
                         ("Market scope", explain_gemini_error(e, model), str(e))
                     )
-            scope = resolve_scope(detected, brand)
+            scope = previous["scope"] if more else resolve_scope(detected, brand)
             brands = [brand] + scope["competitors"]
 
             for idx, (label, angle) in enumerate(passes, 1):
-                status.update(label=f"Pass {idx} of {len(passes)}: {label}")
+                status.update(
+                    label=(
+                        f"Extra search: {label}"
+                        if more
+                        else f"Pass {idx} of {len(passes)}: {label}"
+                    )
+                )
                 try:
                     research_text, sources = grounded_call(
                         client,
                         model,
-                        markat_search_prompt(brand, angle, scope, custom_urls),
+                        markat_search_prompt(brand, angle, scope, custom_urls, avoid),
                     )
                     allowed_keys |= {normalize_url(u) for _, u in sources}
                     if not research_text.strip():
@@ -2398,15 +2466,26 @@ def run_markat(query, custom_urls=None):
                     "topics": topics,
                     "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"),
                     "settings": settings,
+                    "extra_rounds": (extra_round + 1) if more else 0,
                 }
                 status.update(
                     label=f"Complete: {len(topics)} discussion topics", state="complete"
                 )
     show_run_messages(notice, fatal, failures, len(passes))
+    if more and fatal is None and len(failures) < len(passes):
+        added = sum(len(t["sources"]) for t in topics) - before
+        report_added(added, "social source", passes[0][0])
 
 
-def run_search(query, custom_urls=None):
-    (run_markat if is_markat else run_medierkat)(query, custom_urls)
+def report_added(added, noun, label):
+    if added > 0:
+        st.success(f"Added {added} new {noun}{'s' if added != 1 else ''} from {label}.")
+    else:
+        st.info(f"No new results from {label} this time. Try Find more again.")
+
+
+def run_search(query, custom_urls=None, more=False):
+    (run_markat if is_markat else run_medierkat)(query, custom_urls, more)
 
 
 # ============================================================================
@@ -2438,6 +2517,37 @@ if st.session_state.pending_query:
     st.session_state.pending_query = None
     st.session_state.executed_query = q
     run_search(q)
+
+
+def request_find_more():
+    st.session_state.find_more_requested = True
+
+
+# Run a requested "Find more" before drawing the button, so its label is always current
+if st.session_state.get("find_more_requested"):
+    st.session_state.find_more_requested = False
+    requested = (
+        st.session_state.markat_brief
+        if is_markat
+        else st.session_state.cumulative_brief
+    )
+    if requested:
+        run_search(requested["query"], more=True)
+
+current_results = (
+    st.session_state.markat_brief if is_markat else st.session_state.cumulative_brief
+)
+if current_results:
+    next_channel = next_extra_label(
+        MARKAT_CHANNELS if is_markat else MEDIERKAT_CHANNELS, current_results
+    )
+    st.button(
+        f"➕ Find more: {next_channel}",
+        key="find_more",
+        on_click=request_find_more,
+        help="Runs one extra search on this channel and adds only new, "
+        "non-duplicate results to the current brief.",
+    )
 
 
 # ============================================================================
@@ -2710,106 +2820,4 @@ MARKAT_SECTIONS = [
     ("Reception of marketing campaigns", "campaign_reception"),
     ("Brand vs competitors", "competitor_comparison"),
     ("Pain points and praise", "pain_points_and_praise"),
-    ("Opportunities and risks", "opportunities"),
-]
-
-
-def generate_markat_markdown(brief, limit):
-    s, scope = brief["settings"], brief["scope"]
-    md = f"# MARKAT CUSTOMER SENTIMENT BRIEF ({s['lang']})\n\n"
-    md += (
-        f"**Brand:** {brief['query']}  \n**Market scope:** {scope['label']} "
-        f"({scope['source']})  \n"
-    )
-    md += f"**Competitors:** {', '.join(scope['competitors']) or 'not identified'}  \n"
-    md += (
-        f"**Objective:** {s['purpose']}  \n**Time frame:** {s['time']}  "
-        f"\n**Channels:** {s['channels']}\n\n"
-    )
-    for i, (title, key) in enumerate(MARKAT_SECTIONS, 1):
-        md += f"## {i}. {title}\n\n{brief.get(key, '')}\n\n"
-    topics = ordered_topics(brief)[:limit]
-    md += (
-        f"---\n\n## {len(MARKAT_SECTIONS) + 1}. Discussion topics ({len(topics)} "
-        "shown)\n\n"
-    )
-    for t in topics:
-        flag = " · marketing campaign" if t.get("is_marketing_campaign") else ""
-        md += (
-            f"### [{t.get('period', '')}] {t.get('brand', '')}: "
-            f"{t.get('topic_title', '')} ({t.get('sentiment', '')}{flag})\n"
-        )
-        md += (
-            f"- **Customers:** {t.get('customer_type', '')} | **Countries:** "
-            f"{', '.join(t.get('countries', [])) or 'not stated'}\n"
-        )
-        md += f"- **What drove it:** {t.get('sentiment_drivers', '')}\n"
-        for v in t.get("representative_views", []):
-            md += f"- *Typical view:* {v}\n"
-        for src in t.get("sources", []):
-            md += markat_source_line(src) + "\n"
-        md += "\n"
-    md += (
-        "\n*Generated with AI assistance via Kat Intelligence Engine. Views are "
-        "paraphrased; confirm against sources.*\n"
-    )
-    return md
-
-
-def generate_markat_docx(brief, limit):
-    s, scope = brief["settings"], brief["scope"]
-    doc = Document()
-    doc.add_heading(f"MARKAT CUSTOMER SENTIMENT BRIEF ({s['lang']})", level=0)
-    meta = doc.add_paragraph()
-    for label, val in (
-        ("Brand: ", brief["query"]),
-        ("Market scope: ", f"{scope['label']} ({scope['source']})"),
-        ("Competitors: ", ", ".join(scope["competitors"]) or "not identified"),
-        ("Objective: ", s["purpose"]),
-        ("Time frame: ", s["time"]),
-        ("Channels: ", s["channels"]),
-    ):
-        meta.add_run(label).bold = True
-        meta.add_run(f"{val}\n")
-    for i, (title, key) in enumerate(MARKAT_SECTIONS, 1):
-        doc.add_heading(f"{i}. {title}", level=1)
-        doc.add_paragraph(brief.get(key, ""))
-    topics = ordered_topics(brief)[:limit]
-    doc.add_heading(
-        f"{len(MARKAT_SECTIONS) + 1}. Discussion topics ({len(topics)} shown)", level=1
-    )
-    for t in topics:
-        doc.add_heading(
-            f"[{t.get('period', '')}] {t.get('brand', '')}: {t.get('topic_title', '')} "
-            f"({t.get('sentiment', '')})",
-            level=2,
-        )
-        doc.add_paragraph(
-            f"Customers: {t.get('customer_type', '')}. What drove it: "
-            f"{t.get('sentiment_drivers', '')}"
-        )
-        for v in t.get("representative_views", []):
-            doc.add_paragraph(f"Typical view: {v}", style="List Bullet")
-        for src in t.get("sources", []):
-            url = (
-                src.get("source_url")
-                if is_valid_url(src.get("source_url"))
-                else "no verified link"
-            )
-            doc.add_paragraph(
-                f"{src.get('platform', '')} · {src.get('community_or_account', '')} "
-                f"({src.get('post_date', '')}) — {url}",
-                style="List Bullet",
-            )
-    buf = io.BytesIO()
-    doc.save(buf)
-    buf.seek(0)
-    return buf
-
-
-def generate_markat_pdf(brief, limit):
-    s, scope = brief["settings"], brief["scope"]
-    pdf = PDFReport()
-    pdf.brand, pdf.kind = "MARKAT", "CUSTOMER SENTIMENT BRIEF"
-    pdf.set_margins(18, 22, 18)
-   
+    ("Opportunities and risks", "opport
