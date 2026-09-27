@@ -39,7 +39,11 @@ Instead of audience figures, which are usually estimates, each coverage mileston
 | 2 | Minimal | Promoted through owned channels only (own newsroom, paid wires such as Business Wire) |
 | 1 | None | No coverage or promotion found |
 
-Earned outlets score by tier (national or international 4, regional, metro or leading trade 2.5, niche trade 1, aggregators 0.5), weighted by prominence (feature 1.5x, segment 1x, mention 0.6x). Owned channels (the organisation's newsroom, paid wires like Business Wire, release reposting sites) don't add to the score. Government, minister and regulator announcements count as modest third-party endorsements (1.5 points), so an official-only milestone grades 3 to 5 rather than 2. Each milestone also gets a grade per country where it appeared. Reports also split coverage into **earned vs owned**, and tag each milestone by type (research finding, expert commentary, partnership or funding, launch, award, issue).
+Earned outlets score by tier: general national or international news 4, regional or metro news 2.5, major trade or specialist 2, niche trade 1, aggregators 0.5. The total is weighted by prominence (feature 1.5x, segment 1x, mention 0.6x).
+
+**Breadth counts.** People follow a small number of outlets and formats, so coverage across different media reaches different audiences. Each additional medium (TV, radio, podcast, print, online, trade, wire) adds a bonus, and repeat coverage only counts for less within the same tier and the same medium, where audiences overlap. Grade 10 needs general national or international news. Grade 9 needs that too, unless coverage is broad: three or more media types and six or more earned outlets. Owned channels (the organisation's newsroom, paid wires such as Business Wire, release reposting sites such as ScienceDaily and EurekAlert) add nothing. Government, minister and regulator announcements count as modest endorsements, so an official-only milestone grades 3 to 5.
+
+**The grading learns.** An outlet register records how every outlet has been classified across all searches. The agreed classification is applied every time, so the same outlet is always graded the same way, and older briefs update as the register improves. Well-known outlets start with a head start. The admin console lists every outlet, where you can correct a tier or type: your corrections always win. Download the register now and then, since Streamlit Community Cloud clears the app's files on restart, and restore it afterwards.
 
 ## How Markat scopes a search
 
@@ -84,6 +88,12 @@ It also identifies sub-brands in those markets (e.g. Belong for Telstra) and the
 - Search coverage depends on what Google's index surfaces. Private groups, closed accounts and much of TikTok and Instagram are not indexed.
 - Sentiment is assessed by AI and should be checked against the linked sources.
 - Saved searches and briefs in the Library last only for the current session.
+
+## Background searches and notifications
+
+- Searches run on the server in the background. You can switch tabs, lock your phone or refresh the page, and the results will be waiting when you return.
+- Refreshing doesn't log you out, and your current briefs are restored. Share the app's base address with testers, not the address shown after you log in: that includes your login token.
+- Tick "Notify me when a search finishes" in the sidebar to get a chime, a changed tab title and (with your browser's permission) a system notification when results arrive. If email is set up in Secrets (SMTP settings), you can also get an email.
 
 ## Access
 
