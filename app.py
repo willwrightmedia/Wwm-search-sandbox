@@ -207,11 +207,20 @@ def domain_of(url):
     return urlparse(url.strip()).netloc.lower().removeprefix("www.") if is_valid_url(url) else ""
 
 
+MONTH_OR_DAY_RE = re.compile(
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b\d{4}-\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
+    re.I,
+)
+
+
 def parse_date(value):
+    """Returns a Timestamp only when the value includes at least a month; a bare year is not treated as 1 January."""
     if not value or str(value).strip().lower() in {"not stated", "unknown", "n/a", "none"}:
         return None
+    if not MONTH_OR_DAY_RE.search(str(value)):
+        return None
     try:
-        d = pd.to_datetime(str(value), errors="coerce")
+        d = pd.to_datetime(str(value), errors="coerce", dayfirst=True)
     except Exception:
         return None
     if d is None or pd.isna(d):
@@ -264,73 +273,208 @@ def calculate_header_metrics(items):
     return metric, reach, total
 
 
-def title_tokens(title):
-    return {w for w in re.findall(r"[a-z0-9]+", str(title).lower()) if len(w) > 2 and w not in TITLE_STOPWORDS}
-
-
-def title_overlap(a, b):
-    ta, tb = title_tokens(a), title_tokens(b)
-    if not ta or not tb:
-        return 0.0
-    return len(ta & tb) / min(len(ta), len(tb))
-
-
-def outlet_key(out):
-    url = out.get("canonical_source_url", "")
-    return normalize_url(url) if is_valid_url(url) else "name:" + normalize_str(out.get("outlet_name", ""))
-
-
 def is_official(out):
     return "official" in str(out.get("medium_type", "")).lower() or "release" in str(out.get("medium_type", "")).lower()
 
 
 # ============================================================================
-# 5. CAMPAIGN MERGING (per-campaign dedup, no hardcoded topic keywords)
+# 5. DEDUPLICATION & CAMPAIGN MERGING
 # ============================================================================
+DOMAIN_SUFFIXES = {"com", "net", "org", "edu", "gov", "co", "ac", "au", "uk", "nz", "io", "info", "id", "sg", "us", "ca", "in", "my", "vn"}
+EMPTY_VALUES = {"", "none", "null", "n/a", "not stated", "not available", "unknown"}
+
+
+def light_stem(word):
+    for suffix in ("ing", "ed", "es", "s"):
+        if len(word) > len(suffix) + 3 and word.endswith(suffix):
+            return word[: -len(suffix)]
+    return word
+
+
+def text_tokens(*texts):
+    words = re.findall(r"[a-z0-9]+", " ".join(str(t or "") for t in texts).lower())
+    return {light_stem(w) for w in words if len(w) > 2 and w not in TITLE_STOPWORDS}
+
+
+def token_overlap(a, b):
+    if not a or not b:
+        return 0.0
+    return len(a & b) / min(len(a), len(b))
+
+
+def is_empty(value):
+    return str(value if value is not None else "").strip().lower() in EMPTY_VALUES
+
+
+def canon_outlet_name(name):
+    s = re.sub(r"\(.*?\)|\[.*?\]", "", str(name or "").lower())
+    s = re.sub(r"[^a-z0-9]", "", s)
+    return s.removeprefix("the")
+
+
+def domain_root(url):
+    dom = domain_of(url)
+    for prefix in ("m.", "amp.", "mobile.", "edition."):
+        dom = dom.removeprefix(prefix)
+    labels = [label for label in dom.split(".") if label and label not in DOMAIN_SUFFIXES]
+    return labels[-1].removeprefix("the") if labels else ""
+
+
+def outlet_identities(out):
+    ids = {canon_outlet_name(out.get("outlet_name")), domain_root(out.get("canonical_source_url", ""))}
+    return {i for i in ids if i}
+
+
+def same_outlet(a, b):
+    """Same article URL, same outlet name, or a name that matches the other's web domain."""
+    ua, ub = normalize_url(a.get("canonical_source_url")), normalize_url(b.get("canonical_source_url"))
+    if ua and ua == ub:
+        return True
+    ia, ib = outlet_identities(a), outlet_identities(b)
+    if ia & ib:
+        return True
+    for x in ia:
+        for y in ib:
+            short, long_ = sorted((x, y), key=len)
+            if len(short) >= 3 and long_.startswith(short):
+                return True
+    return False
+
+
+def article_urls(item):
+    return {normalize_url(o.get("canonical_source_url")) for o in item.get("covering_outlets", [])
+            if is_valid_url(o.get("canonical_source_url"))}
+
+
+def month_gap(date_a, date_b):
+    """Months between two milestone dates. None if either has no year; month-less dates count as same-year matches."""
+    ya, ma = extract_year_month_tuple(date_a)
+    yb, mb = extract_year_month_tuple(date_b)
+    if not ya or not yb:
+        return None, False
+    if not ma or not mb:
+        return (0 if ya == yb else 99), False
+    return abs((ya * 12 + ma) - (yb * 12 + mb)), True
+
+
 def items_match(a, b):
-    same_month = extract_year_month_tuple(a.get("campaign_milestone_date")) == extract_year_month_tuple(b.get("campaign_milestone_date"))
-    overlap = title_overlap(a.get("event_title"), b.get("event_title"))
-    urls_a = {outlet_key(o) for o in a.get("covering_outlets", []) if is_valid_url(o.get("canonical_source_url"))}
-    urls_b = {outlet_key(o) for o in b.get("covering_outlets", []) if is_valid_url(o.get("canonical_source_url"))}
-    shared_url = bool(urls_a & urls_b)
-    return shared_url or (same_month and overlap >= 0.3) or overlap >= 0.6
+    if article_urls(a) & article_urls(b):
+        return True
+    gap, precise = month_gap(a.get("campaign_milestone_date"), b.get("campaign_milestone_date"))
+    title_sim = token_overlap(text_tokens(a.get("event_title")), text_tokens(b.get("event_title")))
+    if gap is None:
+        return title_sim >= 0.6
+    if gap > 1:
+        return False
+    body_sim = token_overlap(
+        text_tokens(a.get("event_title"), a.get("key_message_delivered"), a.get("core_event_summary")),
+        text_tokens(b.get("event_title"), b.get("key_message_delivered"), b.get("core_event_summary")),
+    )
+    shared_outlets = sum(1 for oa in a.get("covering_outlets", []) for ob in b.get("covering_outlets", []) if same_outlet(oa, ob))
+    if not precise:
+        return title_sim >= 0.4 or shared_outlets >= 2
+    return title_sim >= 0.25 or body_sim >= 0.35 or shared_outlets >= 2
+
+
+def merge_outlet_record(existing, new):
+    if not is_valid_url(existing.get("canonical_source_url")) and is_valid_url(new.get("canonical_source_url")):
+        existing["canonical_source_url"] = new["canonical_source_url"]
+        existing["verification_confidence"] = new.get("verification_confidence", existing.get("verification_confidence"))
+    for field in ("author_byline", "publication_date", "audience_reach_metrics", "doi", "medium_type"):
+        if is_empty(existing.get(field)) and not is_empty(new.get(field)):
+            existing[field] = new[field]
+    if new.get("is_peer_reviewed_journal"):
+        existing["is_peer_reviewed_journal"] = True
+
+
+def add_outlets(target, outlets, used_urls=None):
+    """Add outlets to a campaign, merging any that are already listed. used_urls stops one article appearing in two campaigns."""
+    own_urls = article_urls(target)
+    for o in outlets:
+        url = normalize_url(o.get("canonical_source_url"))
+        if used_urls is not None and url and url in used_urls and url not in own_urls:
+            continue
+        match = next((ex for ex in target["covering_outlets"] if same_outlet(ex, o)), None)
+        if match:
+            merge_outlet_record(match, o)
+        else:
+            target["covering_outlets"].append(o)
+        if url:
+            own_urls.add(url)
+            if used_urls is not None:
+                used_urls.add(url)
+
+
+def merge_items(target, src, used_urls=None):
+    add_outlets(target, src.get("covering_outlets", []), used_urls)
+    ta = extract_year_month_tuple(target.get("campaign_milestone_date"))
+    sa = extract_year_month_tuple(src.get("campaign_milestone_date"))
+    if (not ta[0] and sa[0]) or (not ta[1] and sa[1]) or (ta[1] and sa[1] and sa < ta):
+        target["campaign_milestone_date"] = src.get("campaign_milestone_date")
+    for field in ("key_message_delivered", "core_event_summary", "co_represented_entities", "source_category"):
+        if is_empty(target.get(field)) and not is_empty(src.get(field)):
+            target[field] = src[field]
+    if is_empty(target.get("reddit_community_sentiment_summary")) and not is_empty(src.get("reddit_community_sentiment_summary")):
+        target["reddit_community_sentiment_summary"] = src["reddit_community_sentiment_summary"]
+
+
+def next_campaign_id(items):
+    nums = [int(m.group(1)) for it in items if (m := re.fullmatch(r"C(\d+)", str(it.get("campaign_id", ""))))]
+    return f"C{max(nums, default=0) + 1}"
 
 
 def merge_and_deduplicate_campaigns(existing_items, incoming_items):
     merged = copy.deepcopy(existing_items)
-    for new_item in copy.deepcopy(incoming_items):
-        match = next((m for m in merged if items_match(m, new_item)), None)
-        if match is None:
-            # dedupe within the new item itself
-            seen, clean = set(), []
-            for o in new_item.get("covering_outlets", []):
-                k = outlet_key(o)
-                if k and k not in seen:
-                    seen.add(k)
-                    clean.append(o)
-            if clean:
-                new_item["covering_outlets"] = clean
-                merged.append(new_item)
-            continue
+    for it in merged:
+        it.setdefault("campaign_id", next_campaign_id(merged))
+    used_urls = set().union(*(article_urls(it) for it in merged)) if merged else set()
 
-        seen = {outlet_key(o) for o in match.get("covering_outlets", [])}
-        for o in new_item.get("covering_outlets", []):
-            k = outlet_key(o)
-            if k and k not in seen:
-                seen.add(k)
-                match["covering_outlets"].append(o)
-            elif k in seen and is_valid_url(o.get("canonical_source_url")):
-                # upgrade an existing un-linked entry if this one has a verified link
-                for ex in match["covering_outlets"]:
-                    if outlet_key(ex) == k and not is_valid_url(ex.get("canonical_source_url")):
-                        ex["canonical_source_url"] = o["canonical_source_url"]
-        if match.get("reddit_community_sentiment_summary", "N/A") == "N/A":
-            match["reddit_community_sentiment_summary"] = new_item.get("reddit_community_sentiment_summary", "N/A")
+    for new_item in copy.deepcopy(incoming_items):
+        claimed = str(new_item.pop("existing_campaign_id", "NEW") or "NEW").strip().upper()
+        target = next((m for m in merged if m.get("campaign_id") == claimed), None)
+        if target is not None:
+            gap, _ = month_gap(target.get("campaign_milestone_date"), new_item.get("campaign_milestone_date"))
+            if gap is not None and gap > 12:
+                target = None  # model's link is implausible; fall back to our own matching
+        if target is None:
+            target = next((m for m in merged if items_match(m, new_item)), None)
+
+        if target is not None:
+            merge_items(target, new_item, used_urls)
+        else:
+            outlets = new_item.get("covering_outlets", [])
+            new_item["covering_outlets"] = []
+            new_item["campaign_id"] = next_campaign_id(merged)
+            add_outlets(new_item, outlets, used_urls)
+            if new_item["covering_outlets"]:
+                merged.append(new_item)
+
+    # Final sweep: merge campaigns that only became recognisable as the same event after later passes added detail.
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(merged)):
+            for j in range(i + 1, len(merged)):
+                if items_match(merged[i], merged[j]):
+                    merge_items(merged[i], merged[j])
+                    del merged[j]
+                    changed = True
+                    break
+            if changed:
+                break
 
     for m in merged:
         m["covering_outlets"].sort(key=lambda o: 0 if is_official(o) else 1)
     merged.sort(key=lambda x: extract_year_month_tuple(x.get("campaign_milestone_date")), reverse=True)
     return merged
+
+
+def existing_campaigns_block(items):
+    rows = []
+    for it in items[:60]:
+        outlets = ", ".join(o.get("outlet_name", "") for o in it.get("covering_outlets", [])[:10])
+        rows.append(f"{it.get('campaign_id')} | {it.get('campaign_milestone_date', '')} | {it.get('event_title', '')} | already listed: {outlets}")
+    return "\n".join(rows) or "(none yet)"
 
 
 # ============================================================================
@@ -417,6 +561,7 @@ class CoverageOutlet(BaseModel):
 
 
 class EventCoverageItem(BaseModel):
+    existing_campaign_id: str = Field(default="NEW", description="ID of the existing campaign this is the same news event as (e.g. 'C2'), or 'NEW'.")
     event_title: str
     campaign_milestone_date: str = Field(description="Month and year of the milestone, e.g. 'August 2023'.")
     source_category: str = ""
@@ -525,6 +670,8 @@ with st.sidebar:
                  "Major social media & Reddit discussions", "Official releases (.gov.au, .edu.au, ASX)"],
     )
     st.divider()
+    st.checkbox("Add repeat searches to current results", value=False, key="accumulate_results",
+                help="Off: each search starts fresh. On: searching the same terms again adds new finds to the current brief, without duplicates.")
     st.button("Reset brief and clear all", on_click=clear_all_searches, key="sidebar_reset")
 
 
@@ -576,7 +723,7 @@ Group coverage by the underlying news event or milestone (e.g. an official media
 Report only what the search results show. If nothing is found in the window, say so plainly.{url_hint}"""
 
 
-def build_extraction_prompt(query, research_text, sources, custom_urls):
+def build_extraction_prompt(query, research_text, sources, custom_urls, existing_items):
     src_lines = "\n".join(f"- {url}  ({title})" for title, url in sources)
     src_lines += "\n" + "\n".join(f"- {u}  (user supplied)" for u in custom_urls[:100]) if custom_urls else ""
     return f"""Convert the research notes below into JSON matching the schema, for the query "{query}".
@@ -591,6 +738,13 @@ RULES
 6. {'Summarise Reddit/community discussion in reddit_community_sentiment_summary only if the notes describe it; otherwise N/A.' if is_markat else "Set reddit_community_sentiment_summary to 'N/A'."}
 7. Exclude login, support, search-results and homepage URLs.
 8. If the notes contain no real coverage, return coverage_found=false and an empty items list.
+9. EXISTING CAMPAIGNS below were found in earlier passes. If an item is the same news event as one of them, set
+   existing_campaign_id to that ID (e.g. 'C2') and list only outlets not already listed for it. Otherwise use 'NEW'.
+   Never create a second campaign for an event that already exists, even if you would word its title differently.
+10. Within one campaign, list each outlet only once. Group all coverage of the same event under one campaign.
+
+EXISTING CAMPAIGNS
+{existing_campaigns_block(existing_items)}
 
 VERIFIED SOURCES
 {src_lines or '(none)'}
@@ -660,7 +814,8 @@ def run_synthesis_engine(query, custom_urls=None):
         st.error("No Gemini API key configured. Add GEMINI_API_KEY to secrets or enter one in the sidebar. No results are shown without a live search.")
         return
 
-    existing = (st.session_state.cumulative_brief or {}).get("items", []) if query == st.session_state.get("brief_query") else []
+    keep_previous = st.session_state.get("accumulate_results", False) and query == st.session_state.get("brief_query")
+    existing = (st.session_state.cumulative_brief or {}).get("items", []) if keep_previous else []
     accumulated = list(existing)
     allowed_keys = {normalize_url(u) for u in custom_urls if is_valid_url(u)}
     failures = []
@@ -691,7 +846,7 @@ def run_synthesis_engine(query, custom_urls=None):
 
                 extract_resp = client.models.generate_content(
                     model=model_name,
-                    contents=build_extraction_prompt(query, research_text, sources, custom_urls),
+                    contents=build_extraction_prompt(query, research_text, sources, custom_urls, accumulated),
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json", response_schema=CoverageExtraction, temperature=0,
                     ),
