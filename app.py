@@ -1,8 +1,11 @@
 """
 Kat Intelligence Engine
-- Medierkat: media intelligence (official releases, news, broadcast and trade press only).
-- Markat: social listening (how customers respond to brands' marketing, and brand vs competitor sentiment).
-Accounts: katadmin (creates own password on first visit) and katguest (password set by katadmin).
+- Medierkat: media intelligence (official releases, news, broadcast and trade press
+only).
+- Markat: social listening (how customers respond to brands' marketing, and brand vs
+competitor sentiment).
+Accounts: katadmin (creates own password on first visit) and katguest (password set by
+katadmin).
 """
 
 import copy
@@ -29,6 +32,7 @@ from pydantic import BaseModel, Field
 
 try:
     from importlib.metadata import version as _pkg_version
+
     GENAI_VERSION = _pkg_version("google-genai")
 except Exception:
     GENAI_VERSION = "unknown"
@@ -43,39 +47,137 @@ FALLBACK_MODEL = "gemini-flash-latest"
 
 # Medierkat: media only. Each selected channel is one search pass.
 MEDIERKAT_CHANNELS = {
-    "Official releases & newsrooms": "official media releases, newsroom posts and announcements published by the organisation itself, government bodies or stock exchanges",
-    "News mastheads & wires": "national and international news mastheads, online news sites and wire services",
-    "Broadcast (TV, radio, podcasts)": "television, radio and podcast coverage by broadcasters, including stories on their websites",
+    "Official releases & newsrooms": "official media releases, newsroom posts and "
+    "announcements published by the organisation "
+    "itself, government bodies or stock exchanges",
+    "News mastheads & wires": "national and international news mastheads, online news "
+    "sites and wire services",
+    "Broadcast (TV, radio, podcasts)": "television, radio and podcast coverage by "
+    "broadcasters, including stories on their "
+    "websites",
     "Trade & specialist press": "trade, industry and specialist press and newsletters",
 }
 
 # Markat: social only. Each selected channel is one search pass.
 MARKAT_CHANNELS = {
-    "Reddit": "Reddit threads and comments, in subreddits about the brand, its sector, and the relevant countries or cities",
-    "X, Threads, Facebook, Instagram & LinkedIn": "public posts and comment threads on X (Twitter), Threads, Facebook, Instagram and LinkedIn, including replies to the brand's own campaign posts",
-    "TikTok & YouTube": "TikTok and YouTube: customer and creator reactions to the brand's campaigns and ads, and the comment sections of campaign videos",
-    "Community forums": "online community forums and brand community boards where customers discuss the brand (for example Whirlpool in Australia), including threads comparing it with competitors",
+    "Reddit": "Reddit threads and comments, in subreddits about the brand, its sector, "
+    "and the relevant countries or cities",
+    "X, Threads, Facebook, Instagram & LinkedIn": "public posts and comment threads on "
+    "X (Twitter), Threads, Facebook, "
+    "Instagram and LinkedIn, including "
+    "replies to the brand's own campaign "
+    "posts",
+    "TikTok & YouTube": "TikTok and YouTube: customer and creator reactions to the "
+    "brand's campaigns and ads, and the comment sections of "
+    "campaign videos",
+    "Community forums": "online community forums and brand community boards where "
+    "customers discuss the brand (for example Whirlpool in "
+    "Australia), including threads comparing it with competitors",
 }
 
 SOCIAL_DOMAINS = (
-    "reddit.com", "redd.it", "x.com", "twitter.com", "threads.net", "threads.com", "facebook.com", "fb.com",
-    "instagram.com", "linkedin.com", "tiktok.com", "youtube.com", "youtu.be", "whirlpool.net.au", "quora.com",
-    "bsky.app", "mastodon.social", "productreview.com.au",
+    "reddit.com",
+    "redd.it",
+    "x.com",
+    "twitter.com",
+    "threads.net",
+    "threads.com",
+    "facebook.com",
+    "fb.com",
+    "instagram.com",
+    "linkedin.com",
+    "tiktok.com",
+    "youtube.com",
+    "youtu.be",
+    "whirlpool.net.au",
+    "quora.com",
+    "bsky.app",
+    "mastodon.social",
+    "productreview.com.au",
 )
-SCHOLARLY_DOMAINS = ("sciencedirect.com", "springer.com", "wiley.com", "tandfonline.com", "mdpi.com", "doi.org",
-                     "sagepub.com", "frontiersin.org", "plos.org", "researchgate.net", "academia.edu", "arxiv.org")
+SCHOLARLY_DOMAINS = (
+    "sciencedirect.com",
+    "springer.com",
+    "wiley.com",
+    "tandfonline.com",
+    "mdpi.com",
+    "doi.org",
+    "sagepub.com",
+    "frontiersin.org",
+    "plos.org",
+    "researchgate.net",
+    "academia.edu",
+    "arxiv.org",
+)
 SOCIAL_PLATFORM_RE = re.compile(
-    r"\b(reddit|x|twitter|threads|facebook|instagram|linkedin|tiktok|youtube|forum|forums|community|bluesky|mastodon|quora|whirlpool)\b", re.I)
-NON_MEDIA_TYPE_WORDS = ("social", "reddit", "forum", "peer-reviewed", "peer reviewed", "academic", "scientific journal", "tiktok",
-                        "instagram", "facebook", "youtube comment", "twitter", "linkedin post")
+    r"\b(reddit|x|twitter|threads|facebook|instagram|linkedin|tiktok|youtube|forum|"
+    r"forums|community|bluesky|mastodon|quora|whirlpool)\b",
+    re.I,
+)
+NON_MEDIA_TYPE_WORDS = (
+    "social",
+    "reddit",
+    "forum",
+    "peer-reviewed",
+    "peer reviewed",
+    "academic",
+    "scientific journal",
+    "tiktok",
+    "instagram",
+    "facebook",
+    "youtube comment",
+    "twitter",
+    "linkedin post",
+)
 
 COUNTRIES = [
-    "Australia", "New Zealand", "Indonesia", "Singapore", "Malaysia", "Thailand", "Vietnam", "Philippines",
-    "Japan", "South Korea", "China", "Hong Kong", "Taiwan", "India", "Pakistan", "Bangladesh",
-    "United States", "Canada", "Mexico", "Brazil", "Argentina", "Chile", "Colombia",
-    "United Kingdom", "Ireland", "France", "Germany", "Netherlands", "Belgium", "Spain", "Portugal", "Italy",
-    "Switzerland", "Austria", "Sweden", "Norway", "Denmark", "Finland", "Poland", "Turkey",
-    "United Arab Emirates", "Saudi Arabia", "Israel", "Egypt", "South Africa", "Nigeria", "Kenya",
+    "Australia",
+    "New Zealand",
+    "Indonesia",
+    "Singapore",
+    "Malaysia",
+    "Thailand",
+    "Vietnam",
+    "Philippines",
+    "Japan",
+    "South Korea",
+    "China",
+    "Hong Kong",
+    "Taiwan",
+    "India",
+    "Pakistan",
+    "Bangladesh",
+    "United States",
+    "Canada",
+    "Mexico",
+    "Brazil",
+    "Argentina",
+    "Chile",
+    "Colombia",
+    "United Kingdom",
+    "Ireland",
+    "France",
+    "Germany",
+    "Netherlands",
+    "Belgium",
+    "Spain",
+    "Portugal",
+    "Italy",
+    "Switzerland",
+    "Austria",
+    "Sweden",
+    "Norway",
+    "Denmark",
+    "Finland",
+    "Poland",
+    "Turkey",
+    "United Arab Emirates",
+    "Saudi Arabia",
+    "Israel",
+    "Egypt",
+    "South Africa",
+    "Nigeria",
+    "Kenya",
 ]
 
 RECENCY_OPTIONS = {
@@ -87,11 +189,34 @@ RECENCY_OPTIONS = {
     "Custom time horizon": None,
 }
 
-UNIT_MULTIPLIERS = {"trillion": 1e12, "billion": 1e9, "b": 1e9, "million": 1e6, "m": 1e6, "k": 1e3}
+UNIT_MULTIPLIERS = {
+    "trillion": 1e12,
+    "billion": 1e9,
+    "b": 1e9,
+    "million": 1e6,
+    "m": 1e6,
+    "k": 1e3,
+}
 
 TITLE_STOPWORDS = {
-    "the", "and", "for", "with", "from", "into", "rmit", "university", "research", "new",
-    "breakthrough", "study", "report", "news", "media", "release", "campaign", "coverage",
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "into",
+    "rmit",
+    "university",
+    "research",
+    "new",
+    "breakthrough",
+    "study",
+    "report",
+    "news",
+    "media",
+    "release",
+    "campaign",
+    "coverage",
 }
 
 SENTIMENTS = ("Positive", "Negative", "Mixed", "Neutral")
@@ -116,12 +241,17 @@ def sanitize_api_key(raw_key):
 
 def create_gemini_client(api_key):
     """Forces the Google AI Studio Developer API, so Vertex AI environment variables can't redirect requests."""
-    return genai.Client(api_key=sanitize_api_key(api_key), vertexai=False, enterprise=False)
+    return genai.Client(
+        api_key=sanitize_api_key(api_key), vertexai=False, enterprise=False
+    )
 
 
 ADMIN_USERNAME = "katadmin"
 GUEST_USERNAME = "katguest"
-SECRET_HASH_KEYS = {ADMIN_USERNAME: "KATADMIN_PASSWORD_HASH", GUEST_USERNAME: "KATGUEST_PASSWORD_HASH"}
+SECRET_HASH_KEYS = {
+    ADMIN_USERNAME: "KATADMIN_PASSWORD_HASH",
+    GUEST_USERNAME: "KATGUEST_PASSWORD_HASH",
+}
 AUTH_STORE_PATH = Path("data/auth_store.json")
 MIN_PASSWORD_LENGTH = 8
 MAX_FAILED_LOGINS = 5
@@ -192,7 +322,11 @@ def authenticate(username, password):
     stored = get_password_hash(username)
     if stored and check_password(password, stored):
         is_admin = username == ADMIN_USERNAME
-        return {"username": username, "full_name": "Administrator" if is_admin else "Guest tester", "is_admin": is_admin}
+        return {
+            "username": username,
+            "full_name": "Administrator" if is_admin else "Guest tester",
+            "is_admin": is_admin,
+        }
     return None
 
 
@@ -205,8 +339,8 @@ SESSION_DEFAULTS = {
     "pin_notice": None,
     "active_app": "Medierkat (Media intelligence)",
     "main_mode": "📊 Dashboard",
-    "cumulative_brief": None,   # Medierkat results
-    "markat_brief": None,       # Markat results
+    "cumulative_brief": None,  # Medierkat results
+    "markat_brief": None,  # Markat results
     "executed_query": "",
     "pending_query": None,
     "saved_queries": [],
@@ -218,64 +352,92 @@ for _k, _v in SESSION_DEFAULTS.items():
 # ============================================================================
 # 2. STYLES
 # ============================================================================
-st.markdown("""
+st.markdown(
+    """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
 
-    .stApp { background-color: #14120F !important; color: #F2EDE3 !important; font-family: 'Inter', sans-serif !important; }
-    [data-testid="stSidebar"] { background-color: #1A1814 !important; border-right: 1px solid #2C2822 !important; }
+    .stApp { background-color: #14120F !important; color: #F2EDE3 !important;
+    font-family: 'Inter', sans-serif !important; }
+    [data-testid="stSidebar"] { background-color: #1A1814 !important; border-right: 1px
+    solid #2C2822 !important; }
     [data-testid="stSidebar"] * { color: #C6BCA9 !important; }
 
-    div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
-        background-color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important; border-radius: 2px !important;
+    div[data-baseweb="input"], div[data-baseweb="base-input"],
+    div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
+        background-color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
+        border-radius: 2px !important;
     }
-    div[data-baseweb="input"] input, div[data-baseweb="base-input"] input, div[data-baseweb="textarea"] textarea, textarea {
-        background-color: #F2EDE3 !important; color: #14120F !important; font-weight: 600 !important; font-size: 0.95rem !important; opacity: 1 !important;
+    div[data-baseweb="input"] input, div[data-baseweb="base-input"] input,
+    div[data-baseweb="textarea"] textarea, textarea {
+        background-color: #F2EDE3 !important; color: #14120F !important; font-weight:
+        600 !important; font-size: 0.95rem !important; opacity: 1 !important;
     }
-    div[data-baseweb="input"] input::placeholder, textarea::placeholder { color: #777777 !important; opacity: 0.8 !important; }
-    div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
+    div[data-baseweb="input"] input::placeholder, textarea::placeholder { color: #777777
+    !important; opacity: 0.8 !important; }
+    div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600
+    !important; }
 
-    /* PROMINENT SEARCH BOX — st.container(key="prominent_search") renders with class st-key-prominent_search */
+    /* PROMINENT SEARCH BOX — st.container(key="prominent_search") renders with class
+    st-key-prominent_search */
     .st-key-prominent_search input {
-        font-size: 1.35rem !important; padding: 14px 18px !important; height: 56px !important; font-weight: 600 !important;
+        font-size: 1.35rem !important; padding: 14px 18px !important; height: 56px
+        !important; font-weight: 600 !important;
     }
     .st-key-prominent_search button {
-        height: 56px !important; font-size: 1.1rem !important; font-weight: 700 !important; letter-spacing: 0.15em !important;
-        background-color: #C6BCA9 !important; color: #14120F !important; border: none !important; border-radius: 2px !important;
+        height: 56px !important; font-size: 1.1rem !important; font-weight: 700
+        !important; letter-spacing: 0.15em !important;
+        background-color: #C6BCA9 !important; color: #14120F !important; border: none
+        !important; border-radius: 2px !important;
     }
 
     .metric-card {
-        background-color: #1A1814; border: 1px solid #2C2822; padding: 18px 12px; border-radius: 2px; text-align: center;
-        height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;
+        background-color: #1A1814; border: 1px solid #2C2822; padding: 18px 12px;
+        border-radius: 2px; text-align: center;
+        height: 100%; display: flex; flex-direction: column; justify-content: center;
+        align-items: center;
         min-height: 125px; box-sizing: border-box; overflow: hidden;
     }
-    .metric-card h4 { font-size: clamp(0.65rem, 0.9vw, 0.75rem); letter-spacing: 0.12em; text-transform: uppercase; color: #C6BCA9; margin: 0 0 6px 0; }
-    .metric-card h2 { font-size: clamp(0.95rem, 1.4vw, 1.25rem); font-weight: 600; color: #F2EDE3; line-height: 1.2; margin: 0 0 6px 0; word-break: break-word; }
-    .metric-card .cap { font-size: clamp(0.6rem, 0.8vw, 0.7rem); color: #8A8275; margin: 0; }
+    .metric-card h4 { font-size: clamp(0.65rem, 0.9vw, 0.75rem); letter-spacing: 0.12em;
+    text-transform: uppercase; color: #C6BCA9; margin: 0 0 6px 0; }
+    .metric-card h2 { font-size: clamp(0.95rem, 1.4vw, 1.25rem); font-weight: 600;
+    color: #F2EDE3; line-height: 1.2; margin: 0 0 6px 0; word-break: break-word; }
+    .metric-card .cap { font-size: clamp(0.6rem, 0.8vw, 0.7rem); color: #8A8275; margin:
+    0; }
 
     .stButton>button {
-        background-color: transparent !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
-        border-radius: 2px !important; padding: 0.65rem 1.4rem !important; font-size: 0.75rem !important;
+        background-color: transparent !important; color: #F2EDE3 !important; border: 1px
+        solid #C6BCA9 !important;
+        border-radius: 2px !important; padding: 0.65rem 1.4rem !important; font-size:
+        0.75rem !important;
         letter-spacing: 0.15em !important; text-transform: uppercase !important;
     }
     .stDownloadButton>button {
-        background-color: #C6BCA9 !important; color: #14120F !important; font-weight: 600 !important;
-        padding: 0.75rem 1.4rem !important; border-radius: 2px !important; border: none !important;
+        background-color: #C6BCA9 !important; color: #14120F !important; font-weight:
+        600 !important;
+        padding: 0.75rem 1.4rem !important; border-radius: 2px !important; border: none
+        !important;
     }
-    .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #8A8275; margin-top: 20px; }
+    .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9;
+    padding: 10px 14px; font-size: 0.8rem; color: #8A8275; margin-top: 20px; }
 
     [data-testid="stStatusWidget"] svg { display: none !important; }
     [data-testid="stStatusWidget"]::before { content: "🦦"; font-size: 1.2rem; }
     </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 def render_brand_meerkat_svg(width=45, height=75, fill_color="#F2EDE3"):
     return (
-        f'<svg width="{width}" height="{height}" viewBox="0 0 60 100" fill="{fill_color}" xmlns="http://www.w3.org/2000/svg">'
-        '<path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>'
+        f'<svg width="{width}" height="{height}" viewBox="0 0 60 100" '
+        f'fill="{fill_color}" xmlns="http://www.w3.org/2000/svg">'
+        '<path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 '
+        '2-4 7-7 12-7z"/>'
         '<circle cx="40" cy="12" r="1.5" fill="#14120F"/>'
-        '<path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>'
+        '<path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 '
+        '1-10-2-17-6-17z"/>'
         '<path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>'
         '<path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>'
         '<path d="M26 81l-6 4h9zM39 81l7 4h-10z"/></svg>'
@@ -295,7 +457,13 @@ def normalize_str(s):
 
 def is_valid_url(url):
     u = str(url or "").strip()
-    return u.lower() not in {"none", "null", "", "n/a", "direct record input"} and u.startswith("http")
+    return u.lower() not in {
+        "none",
+        "null",
+        "",
+        "n/a",
+        "direct record input",
+    } and u.startswith("http")
 
 
 def normalize_url(url):
@@ -306,18 +474,28 @@ def normalize_url(url):
 
 
 def domain_of(url):
-    return urlparse(url.strip()).netloc.lower().removeprefix("www.") if is_valid_url(url) else ""
+    return (
+        urlparse(url.strip()).netloc.lower().removeprefix("www.")
+        if is_valid_url(url)
+        else ""
+    )
 
 
 MONTH_OR_DAY_RE = re.compile(
-    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b\d{4}-\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b\d{4}-\d{1,2}\b|"
+    r"\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
     re.I,
 )
 
 
 def parse_date(value):
     """Returns a Timestamp only when the value includes at least a month; a bare year is not treated as 1 January."""
-    if not value or str(value).strip().lower() in {"not stated", "unknown", "n/a", "none"}:
+    if not value or str(value).strip().lower() in {
+        "not stated",
+        "unknown",
+        "n/a",
+        "none",
+    }:
         return None
     if not MONTH_OR_DAY_RE.search(str(value)):
         return None
@@ -347,7 +525,9 @@ def parse_headline_reach(reach_str):
     if not m:
         return 0.0
     try:
-        return float(m.group(1).replace(",", "")) * UNIT_MULTIPLIERS.get(m.group(2) or "", 1)
+        return float(m.group(1).replace(",", "")) * UNIT_MULTIPLIERS.get(
+            m.group(2) or "", 1
+        )
     except ValueError:
         return 0.0
 
@@ -365,24 +545,54 @@ def format_audience(total):
 def calculate_header_metrics(items):
     outlets = [o for it in items for o in it.get("covering_outlets", [])]
     total = sum(parse_headline_reach(o.get("audience_reach_metrics")) for o in outlets)
-    uncorroborated = sum(1 for o in outlets if "Uncorroborated" in o.get("verification_confidence", ""))
-    metric = (
-        f"Media index: {len(outlets)} media records across {len(items)} campaign milestones"
-        f" ({uncorroborated} uncorroborated)"
-        if outlets else "Media index: 0 media records found in the selected window"
+    uncorroborated = sum(
+        1 for o in outlets if "Uncorroborated" in o.get("verification_confidence", "")
     )
-    reach = f"Potential audience (sum of outlet audiences, not deduplicated): {format_audience(total)}"
+    metric = (
+        f"Media index: {len(outlets)} media records across {len(items)} campaign "
+        "milestones"
+        f" ({uncorroborated} uncorroborated)"
+        if outlets
+        else "Media index: 0 media records found in the selected window"
+    )
+    reach = (
+        "Potential audience (sum of outlet audiences, not deduplicated): "
+        f"{format_audience(total)}"
+    )
     return metric, reach, total
 
 
 def is_official(out):
-    return "official" in str(out.get("medium_type", "")).lower() or "release" in str(out.get("medium_type", "")).lower()
+    return (
+        "official" in str(out.get("medium_type", "")).lower()
+        or "release" in str(out.get("medium_type", "")).lower()
+    )
 
 
 # ============================================================================
 # 5. DEDUPLICATION & CAMPAIGN MERGING (Medierkat)
 # ============================================================================
-DOMAIN_SUFFIXES = {"com", "net", "org", "edu", "gov", "co", "ac", "au", "uk", "nz", "io", "info", "id", "sg", "us", "ca", "in", "my", "vn"}
+DOMAIN_SUFFIXES = {
+    "com",
+    "net",
+    "org",
+    "edu",
+    "gov",
+    "co",
+    "ac",
+    "au",
+    "uk",
+    "nz",
+    "io",
+    "info",
+    "id",
+    "sg",
+    "us",
+    "ca",
+    "in",
+    "my",
+    "vn",
+}
 EMPTY_VALUES = {"", "none", "null", "n/a", "not stated", "not available", "unknown"}
 
 
@@ -418,18 +628,25 @@ def domain_root(url):
     dom = domain_of(url)
     for prefix in ("m.", "amp.", "mobile.", "edition."):
         dom = dom.removeprefix(prefix)
-    labels = [label for label in dom.split(".") if label and label not in DOMAIN_SUFFIXES]
+    labels = [
+        label for label in dom.split(".") if label and label not in DOMAIN_SUFFIXES
+    ]
     return labels[-1].removeprefix("the") if labels else ""
 
 
 def outlet_identities(out):
-    ids = {canon_outlet_name(out.get("outlet_name")), domain_root(out.get("canonical_source_url", ""))}
+    ids = {
+        canon_outlet_name(out.get("outlet_name")),
+        domain_root(out.get("canonical_source_url", "")),
+    }
     return {i for i in ids if i}
 
 
 def same_outlet(a, b):
     """Same article URL, same outlet name, or a name that matches the other's web domain."""
-    ua, ub = normalize_url(a.get("canonical_source_url")), normalize_url(b.get("canonical_source_url"))
+    ua, ub = normalize_url(a.get("canonical_source_url")), normalize_url(
+        b.get("canonical_source_url")
+    )
     if ua and ua == ub:
         return True
     ia, ib = outlet_identities(a), outlet_identities(b)
@@ -444,8 +661,11 @@ def same_outlet(a, b):
 
 
 def article_urls(item):
-    return {normalize_url(o.get("canonical_source_url")) for o in item.get("covering_outlets", [])
-            if is_valid_url(o.get("canonical_source_url"))}
+    return {
+        normalize_url(o.get("canonical_source_url"))
+        for o in item.get("covering_outlets", [])
+        if is_valid_url(o.get("canonical_source_url"))
+    }
 
 
 def month_gap(date_a, date_b):
@@ -462,27 +682,53 @@ def month_gap(date_a, date_b):
 def items_match(a, b):
     if article_urls(a) & article_urls(b):
         return True
-    gap, precise = month_gap(a.get("campaign_milestone_date"), b.get("campaign_milestone_date"))
-    title_sim = token_overlap(text_tokens(a.get("event_title")), text_tokens(b.get("event_title")))
+    gap, precise = month_gap(
+        a.get("campaign_milestone_date"), b.get("campaign_milestone_date")
+    )
+    title_sim = token_overlap(
+        text_tokens(a.get("event_title")), text_tokens(b.get("event_title"))
+    )
     if gap is None:
         return title_sim >= 0.6
     if gap > 1:
         return False
     body_sim = token_overlap(
-        text_tokens(a.get("event_title"), a.get("key_message_delivered"), a.get("core_event_summary")),
-        text_tokens(b.get("event_title"), b.get("key_message_delivered"), b.get("core_event_summary")),
+        text_tokens(
+            a.get("event_title"),
+            a.get("key_message_delivered"),
+            a.get("core_event_summary"),
+        ),
+        text_tokens(
+            b.get("event_title"),
+            b.get("key_message_delivered"),
+            b.get("core_event_summary"),
+        ),
     )
-    shared_outlets = sum(1 for oa in a.get("covering_outlets", []) for ob in b.get("covering_outlets", []) if same_outlet(oa, ob))
+    shared_outlets = sum(
+        1
+        for oa in a.get("covering_outlets", [])
+        for ob in b.get("covering_outlets", [])
+        if same_outlet(oa, ob)
+    )
     if not precise:
         return title_sim >= 0.4 or shared_outlets >= 2
     return title_sim >= 0.25 or body_sim >= 0.35 or shared_outlets >= 2
 
 
 def merge_outlet_record(existing, new):
-    if not is_valid_url(existing.get("canonical_source_url")) and is_valid_url(new.get("canonical_source_url")):
+    if not is_valid_url(existing.get("canonical_source_url")) and is_valid_url(
+        new.get("canonical_source_url")
+    ):
         existing["canonical_source_url"] = new["canonical_source_url"]
-        existing["verification_confidence"] = new.get("verification_confidence", existing.get("verification_confidence"))
-    for field in ("author_byline", "publication_date", "audience_reach_metrics", "medium_type"):
+        existing["verification_confidence"] = new.get(
+            "verification_confidence", existing.get("verification_confidence")
+        )
+    for field in (
+        "author_byline",
+        "publication_date",
+        "audience_reach_metrics",
+        "medium_type",
+    ):
         if is_empty(existing.get(field)) and not is_empty(new.get(field)):
             existing[field] = new[field]
 
@@ -494,7 +740,9 @@ def add_outlets(target, outlets, used_urls=None):
         url = normalize_url(o.get("canonical_source_url"))
         if used_urls is not None and url and url in used_urls and url not in own_urls:
             continue
-        match = next((ex for ex in target["covering_outlets"] if same_outlet(ex, o)), None)
+        match = next(
+            (ex for ex in target["covering_outlets"] if same_outlet(ex, o)), None
+        )
         if match:
             merge_outlet_record(match, o)
         else:
@@ -511,13 +759,22 @@ def merge_items(target, src, used_urls=None):
     sa = extract_year_month_tuple(src.get("campaign_milestone_date"))
     if (not ta[0] and sa[0]) or (not ta[1] and sa[1]) or (ta[1] and sa[1] and sa < ta):
         target["campaign_milestone_date"] = src.get("campaign_milestone_date")
-    for field in ("key_message_delivered", "core_event_summary", "co_represented_entities", "source_category"):
+    for field in (
+        "key_message_delivered",
+        "core_event_summary",
+        "co_represented_entities",
+        "source_category",
+    ):
         if is_empty(target.get(field)) and not is_empty(src.get(field)):
             target[field] = src[field]
 
 
 def next_campaign_id(items):
-    nums = [int(m.group(1)) for it in items if (m := re.fullmatch(r"C(\d+)", str(it.get("campaign_id", ""))))]
+    nums = [
+        int(m.group(1))
+        for it in items
+        if (m := re.fullmatch(r"C(\d+)", str(it.get("campaign_id", ""))))
+    ]
     return f"C{max(nums, default=0) + 1}"
 
 
@@ -528,12 +785,19 @@ def merge_and_deduplicate_campaigns(existing_items, incoming_items):
     used_urls = set().union(*(article_urls(it) for it in merged)) if merged else set()
 
     for new_item in copy.deepcopy(incoming_items):
-        claimed = str(new_item.pop("existing_campaign_id", "NEW") or "NEW").strip().upper()
+        claimed = (
+            str(new_item.pop("existing_campaign_id", "NEW") or "NEW").strip().upper()
+        )
         target = next((m for m in merged if m.get("campaign_id") == claimed), None)
         if target is not None:
-            gap, _ = month_gap(target.get("campaign_milestone_date"), new_item.get("campaign_milestone_date"))
+            gap, _ = month_gap(
+                target.get("campaign_milestone_date"),
+                new_item.get("campaign_milestone_date"),
+            )
             if gap is not None and gap > 12:
-                target = None  # model's link is implausible; fall back to our own matching
+                target = (
+                    None  # model's link is implausible; fall back to our own matching
+                )
         if target is None:
             target = next((m for m in merged if items_match(m, new_item)), None)
 
@@ -547,7 +811,8 @@ def merge_and_deduplicate_campaigns(existing_items, incoming_items):
             if new_item["covering_outlets"]:
                 merged.append(new_item)
 
-    # Final sweep: merge campaigns that only became recognisable as the same event after later passes added detail.
+    # Final sweep: merge campaigns that only became recognisable as the same event after
+    # later passes added detail.
     changed = True
     while changed:
         changed = False
@@ -563,15 +828,23 @@ def merge_and_deduplicate_campaigns(existing_items, incoming_items):
 
     for m in merged:
         m["covering_outlets"].sort(key=lambda o: 0 if is_official(o) else 1)
-    merged.sort(key=lambda x: extract_year_month_tuple(x.get("campaign_milestone_date")), reverse=True)
+    merged.sort(
+        key=lambda x: extract_year_month_tuple(x.get("campaign_milestone_date")),
+        reverse=True,
+    )
     return merged
 
 
 def existing_campaigns_block(items):
     rows = []
     for it in items[:60]:
-        outlets = ", ".join(o.get("outlet_name", "") for o in it.get("covering_outlets", [])[:10])
-        rows.append(f"{it.get('campaign_id')} | {it.get('campaign_milestone_date', '')} | {it.get('event_title', '')} | already listed: {outlets}")
+        outlets = ", ".join(
+            o.get("outlet_name", "") for o in it.get("covering_outlets", [])[:10]
+        )
+        rows.append(
+            f"{it.get('campaign_id')} | {it.get('campaign_milestone_date', '')} | "
+            f"{it.get('event_title', '')} | already listed: {outlets}"
+        )
     return "\n".join(rows) or "(none yet)"
 
 
@@ -581,14 +854,21 @@ def existing_campaigns_block(items):
 def render_pin_hint(username, pw_hash):
     key = SECRET_HASH_KEYS[username]
     st.markdown(
-        "Streamlit Community Cloud clears the app's saved files whenever it restarts, redeploys or wakes from sleep. "
+        "Streamlit Community Cloud clears the app's saved files whenever it restarts, "
+        "redeploys or wakes from sleep. "
         "To keep this password, add this line to your app's **Secrets** and save:"
     )
     st.code(f'{key} = "{pw_hash}"', language="toml")
-    consequence = (" and **katadmin** could be claimed again from the login page"
-                   if username == ADMIN_USERNAME else " and guests won't be able to log in until you set it again")
-    st.caption("This is a scrambled form of the password, not the password itself, but keep it private. "
-               f"Until it's added, a restart will clear the password{consequence}.")
+    consequence = (
+        " and **katadmin** could be claimed again from the login page"
+        if username == ADMIN_USERNAME
+        else " and guests won't be able to log in until you set it again"
+    )
+    st.caption(
+        "This is a scrambled form of the password, not the password itself, but keep "
+        "it private. "
+        f"Until it's added, a restart will clear the password{consequence}."
+    )
 
 
 def log_in(user):
@@ -609,15 +889,19 @@ def render_login_wall():
     svg = render_brand_meerkat_svg(60, 100)
     st.markdown(
         f'<div style="text-align:center;padding:40px 0 24px 0;">{svg}'
-        '<div style="font-family:\'Cormorant Garamond\',serif;font-size:3rem;color:#F2EDE3;margin-top:10px;">Kat Intelligence Engine</div>'
-        '<div style="font-size:0.8rem;letter-spacing:0.25em;text-transform:uppercase;color:#8A8275;">MEDIERKAT &amp; MARKAT</div></div>',
+        "<div style=\"font-family:'Cormorant Garamond',serif;font-size:3rem;"
+        'color:#F2EDE3;margin-top:10px;">Kat Intelligence Engine</div>'
+        '<div style="font-size:0.8rem;letter-spacing:0.25em;text-transform:uppercase;'
+        'color:#8A8275;">MEDIERKAT &amp; MARKAT</div></div>',
         unsafe_allow_html=True,
     )
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
         wait = st.session_state.lock_until - time.time()
         if wait > 0:
-            st.error(f"Too many attempts. Please wait {int(wait) + 1} seconds and try again.")
+            st.error(
+                f"Too many attempts. Please wait {int(wait) + 1} seconds and try again."
+            )
             return
 
         stage = st.session_state.login_stage
@@ -630,7 +914,9 @@ def render_login_wall():
             if go and entered.strip():
                 name = entered.strip().lower()
                 st.session_state.login_username = name
-                first_visit = name == ADMIN_USERNAME and not get_password_hash(ADMIN_USERNAME)
+                first_visit = name == ADMIN_USERNAME and not get_password_hash(
+                    ADMIN_USERNAME
+                )
                 st.session_state.login_stage = "create" if first_visit else "password"
                 st.rerun()
 
@@ -639,18 +925,26 @@ def render_login_wall():
             with st.form("create_password_form"):
                 pw = st.text_input("New password", type="password")
                 confirm = st.text_input("Confirm password", type="password")
-                create = st.form_submit_button("Create password and log in", width="stretch")
+                create = st.form_submit_button(
+                    "Create password and log in", width="stretch"
+                )
             if create:
                 problem = password_problem(pw, confirm, ADMIN_USERNAME)
                 if get_password_hash(ADMIN_USERNAME):
                     st.session_state.login_stage = "password"
-                    st.error("A password has already been created for this account. Please log in.")
+                    st.error(
+                        "A password has already been created for this account. Please "
+                        "log in."
+                    )
                 elif problem:
                     st.error(problem)
                 else:
                     new_hash = set_password(ADMIN_USERNAME, pw)
                     log_in(authenticate(ADMIN_USERNAME, pw))
-                    st.session_state.pin_notice = {"username": ADMIN_USERNAME, "hash": new_hash}
+                    st.session_state.pin_notice = {
+                        "username": ADMIN_USERNAME,
+                        "hash": new_hash,
+                    }
                     st.rerun()
             if st.button("Use a different username"):
                 st.session_state.login_stage = "username"
@@ -692,12 +986,13 @@ def resolve_redirect(uri):
     try:
         r = requests.head(uri, allow_redirects=True, timeout=6, headers=headers)
         if r.status_code in (403, 405) or r.status_code >= 500:
-            r = requests.get(uri, allow_redirects=True, timeout=8, headers=headers, stream=True)
+            r = requests.get(
+                uri, allow_redirects=True, timeout=8, headers=headers, stream=True
+            )
             r.close()
         return r.url if r.status_code < 400 else ""
     except requests.RequestException:
         return ""
-
 
 
 def grounded_sources(response):
@@ -738,27 +1033,73 @@ def is_model_not_found(error):
 
 def explain_gemini_error(error, model):
     low = str(error).lower()
-    if "api key not valid" in low or "api_key_invalid" in low or "invalid api key" in low or "api key expired" in low:
-        return "The Gemini API key isn't valid. Copy it again from Google AI Studio, making sure there are no spaces before or after it."
-    if "401" in low or "unauthenticated" in low or "access_token_type" in low or "oauth" in low:
-        return ("Google rejected the API key (401 unauthenticated). The key may have been disabled or revoked. "
-                "Try a brand-new key from AI Studio, or a standard key from the Google Cloud console "
-                "(APIs & Services > Credentials) restricted to the Generative Language API.")
+    if (
+        "api key not valid" in low
+        or "api_key_invalid" in low
+        or "invalid api key" in low
+        or "api key expired" in low
+    ):
+        return (
+            "The Gemini API key isn't valid. Copy it again from Google AI Studio, "
+            "making sure there are no spaces before or after it."
+        )
+    if (
+        "401" in low
+        or "unauthenticated" in low
+        or "access_token_type" in low
+        or "oauth" in low
+    ):
+        return (
+            "Google rejected the API key (401 unauthenticated). The key may have been "
+            "disabled or revoked. "
+            "Try a brand-new key from AI Studio, or a standard key from the Google "
+            "Cloud console "
+            "(APIs & Services > Credentials) restricted to the Generative Language API."
+        )
     if is_model_not_found(error):
-        return f"The model '{model}' isn't available to this API key. Try 'gemini-flash-latest' in the sidebar's Gemini model box."
+        return (
+            f"The model '{model}' isn't available to this API key. Try "
+            "'gemini-flash-latest' in the sidebar's Gemini model box."
+        )
     if "permission" in low or "403" in low:
-        return "This API key isn't allowed to make the request. Check that the Gemini API is enabled for the key and that any restrictions on the key allow it."
-    if "resource_exhausted" in low or "429" in low or "quota" in low or "rate limit" in low:
-        return "Gemini's usage limit has been reached. Wait a minute and try again, or check your quota and billing in Google AI Studio."
-    if "timed out" in low or "timeout" in low or "deadline" in low or "connection" in low or "unavailable" in low or "503" in low:
-        return "Gemini didn't respond in time or is temporarily unavailable. Try again in a moment."
+        return (
+            "This API key isn't allowed to make the request. Check that the "
+            "Gemini API is enabled for the key and that any restrictions on the "
+            "key allow it."
+        )
+    if (
+        "resource_exhausted" in low
+        or "429" in low
+        or "quota" in low
+        or "rate limit" in low
+    ):
+        return (
+            "Gemini's usage limit has been reached. Wait a minute and try again, "
+            "or check your quota and billing in Google AI Studio."
+        )
+    if (
+        "timed out" in low
+        or "timeout" in low
+        or "deadline" in low
+        or "connection" in low
+        or "unavailable" in low
+        or "503" in low
+    ):
+        return (
+            "Gemini didn't respond in time or is temporarily unavailable. Try "
+            "again in a moment."
+        )
     if "validation error" in low or "json" in low or "expecting" in low:
-        return "Gemini replied in an unexpected format. Trying again usually fixes this."
+        return (
+            "Gemini replied in an unexpected format. Trying again usually fixes this."
+        )
     return f"Gemini returned an error: {str(error)[:300]}"
 
 
 def ping_gemini(client, model):
-    client.models.generate_content(model=model, contents="Reply with the single word OK.")
+    client.models.generate_content(
+        model=model, contents="Reply with the single word OK."
+    )
 
 
 def test_gemini_connection(api_key, model):
@@ -795,7 +1136,9 @@ def is_social_source(src):
     platform = str(src.get("platform", ""))
     if is_valid_url(src.get("source_url")):
         dom = domain_of(src["source_url"])
-        return domain_in(dom, SOCIAL_DOMAINS) or bool(re.search(r"\b(forum|forums|community)\b", platform, re.I))
+        return domain_in(dom, SOCIAL_DOMAINS) or bool(
+            re.search(r"\b(forum|forums|community)\b", platform, re.I)
+        )
     return bool(SOCIAL_PLATFORM_RE.search(platform))
 
 
@@ -816,11 +1159,18 @@ def source_key(src):
     url = normalize_url(src.get("source_url"))
     if url:
         return "url:" + url
-    return "post:" + "|".join(normalize_str(src.get(k)) for k in ("platform", "community_or_account", "post_date"))
+    return "post:" + "|".join(
+        normalize_str(src.get(k))
+        for k in ("platform", "community_or_account", "post_date")
+    )
 
 
 def topic_urls(topic):
-    return {normalize_url(s.get("source_url")) for s in topic.get("sources", []) if is_valid_url(s.get("source_url"))}
+    return {
+        normalize_url(s.get("source_url"))
+        for s in topic.get("sources", [])
+        if is_valid_url(s.get("source_url"))
+    }
 
 
 def topics_match(a, b):
@@ -837,8 +1187,14 @@ def topics_match(a, b):
         return title_sim >= 0.6
     if gap > 2:
         return False
-    body_a = text_tokens(a.get("topic_title"), a.get("sentiment_drivers"), a.get("summary")) - brand_words
-    body_b = text_tokens(b.get("topic_title"), b.get("sentiment_drivers"), b.get("summary")) - brand_words
+    body_a = (
+        text_tokens(a.get("topic_title"), a.get("sentiment_drivers"), a.get("summary"))
+        - brand_words
+    )
+    body_b = (
+        text_tokens(b.get("topic_title"), b.get("sentiment_drivers"), b.get("summary"))
+        - brand_words
+    )
     return title_sim >= 0.3 or token_overlap(body_a, body_b) >= 0.4
 
 
@@ -864,14 +1220,28 @@ def merge_topic(target, src, used_urls=None):
     add_sources(target, src.get("sources", []), used_urls)
     s1, s2 = target.get("sentiment", "Neutral"), src.get("sentiment", "Neutral")
     if s1 != s2:
-        target["sentiment"] = s2 if s1 == "Neutral" else (s1 if s2 == "Neutral" else "Mixed")
-    if target.get("customer_type") != src.get("customer_type") and not is_empty(src.get("customer_type")):
+        target["sentiment"] = (
+            s2 if s1 == "Neutral" else (s1 if s2 == "Neutral" else "Mixed")
+        )
+    if target.get("customer_type") != src.get("customer_type") and not is_empty(
+        src.get("customer_type")
+    ):
         target["customer_type"] = "Mixed"
-    target["countries"] = sorted(set(target.get("countries", [])) | set(src.get("countries", [])))
-    views = list(dict.fromkeys(target.get("representative_views", []) + src.get("representative_views", [])))
+    target["countries"] = sorted(
+        set(target.get("countries", [])) | set(src.get("countries", []))
+    )
+    views = list(
+        dict.fromkeys(
+            target.get("representative_views", []) + src.get("representative_views", [])
+        )
+    )
     target["representative_views"] = views[:4]
-    target["is_marketing_campaign"] = bool(target.get("is_marketing_campaign") or src.get("is_marketing_campaign"))
-    ta, sa = extract_year_month_tuple(target.get("period")), extract_year_month_tuple(src.get("period"))
+    target["is_marketing_campaign"] = bool(
+        target.get("is_marketing_campaign") or src.get("is_marketing_campaign")
+    )
+    ta, sa = extract_year_month_tuple(target.get("period")), extract_year_month_tuple(
+        src.get("period")
+    )
     if (not ta[0] and sa[0]) or (not ta[1] and sa[1]):
         target["period"] = src.get("period")
     for field in ("sentiment_drivers", "summary"):
@@ -880,7 +1250,11 @@ def merge_topic(target, src, used_urls=None):
 
 
 def next_topic_id(topics):
-    nums = [int(m.group(1)) for t in topics if (m := re.fullmatch(r"T(\d+)", str(t.get("topic_id", ""))))]
+    nums = [
+        int(m.group(1))
+        for t in topics
+        if (m := re.fullmatch(r"T(\d+)", str(t.get("topic_id", ""))))
+    ]
     return f"T{max(nums, default=0) + 1}"
 
 
@@ -889,8 +1263,15 @@ def merge_social_topics(existing, incoming):
     used_urls = set().union(*(topic_urls(t) for t in merged)) if merged else set()
     for new in copy.deepcopy(incoming):
         claimed = str(new.pop("existing_topic_id", "NEW") or "NEW").strip().upper()
-        target = next((t for t in merged if t.get("topic_id") == claimed
-                       and normalize_str(t.get("brand")) == normalize_str(new.get("brand"))), None)
+        target = next(
+            (
+                t
+                for t in merged
+                if t.get("topic_id") == claimed
+                and normalize_str(t.get("brand")) == normalize_str(new.get("brand"))
+            ),
+            None,
+        )
         if target is None:
             target = next((t for t in merged if topics_match(t, new)), None)
         if target is not None:
@@ -920,7 +1301,11 @@ def merge_social_topics(existing, incoming):
 
 
 def existing_topics_block(topics):
-    rows = [f"{t.get('topic_id')} | {t.get('brand')} | {t.get('period', '')} | {t.get('topic_title', '')}" for t in topics[:60]]
+    rows = [
+        f"{t.get('topic_id')} | {t.get('brand')} | {t.get('period', '')} | "
+        f"{t.get('topic_title', '')}"
+        for t in topics[:60]
+    ]
     return "\n".join(rows) or "(none yet)"
 
 
@@ -938,24 +1323,53 @@ def match_brand(name, brands):
 # 7. SCHEMAS
 # ============================================================================
 class CoverageOutlet(BaseModel):
-    outlet_name: str = Field(description="Publisher, broadcaster or institution, verbatim.")
-    medium_type: str = Field(description="One of: Official Release, Online News, Print, Wire, Television, Radio, Podcast, Trade Press.")
-    author_byline: str = Field(default="not stated", description="Author, or 'not stated'.")
-    publication_date: str = Field(default="not stated", description="Publication date as stated in the source, e.g. '22 August 2023'.")
+    outlet_name: str = Field(
+        description="Publisher, broadcaster or institution, verbatim."
+    )
+    medium_type: str = Field(
+        description="One of: Official Release, Online News, Print, Wire, Television, "
+        "Radio, Podcast, Trade Press."
+    )
+    author_byline: str = Field(
+        default="not stated", description="Author, or 'not stated'."
+    )
+    publication_date: str = Field(
+        default="not stated",
+        description="Publication date as stated in the source, e.g. '22 August 2023'.",
+    )
     original_language: str = Field(default="English")
-    canonical_source_url: str = Field(default="None", description="MUST be copied exactly from the verified source list, otherwise 'None'.")
-    audience_reach_metrics: str = Field(default="Not available", description="Published masthead audience figure, or 'Not available'. Never estimate.")
+    canonical_source_url: str = Field(
+        default="None",
+        description="MUST be copied exactly from the verified source list, otherwise "
+        "'None'.",
+    )
+    audience_reach_metrics: str = Field(
+        default="Not available",
+        description="Published masthead audience figure, or 'Not available'. Never "
+        "estimate.",
+    )
     country_domain_code: str = Field(default="Global")
     verification_confidence: str = Field(default="[Uncorroborated]")
 
 
 class EventCoverageItem(BaseModel):
-    existing_campaign_id: str = Field(default="NEW", description="ID of the existing campaign this is the same news event as (e.g. 'C2'), or 'NEW'.")
+    existing_campaign_id: str = Field(
+        default="NEW",
+        description="ID of the existing campaign this is the same news event as (e.g. "
+        "'C2'), or 'NEW'.",
+    )
     event_title: str
-    campaign_milestone_date: str = Field(description="Month and year of the milestone, e.g. 'August 2023'.")
+    campaign_milestone_date: str = Field(
+        description="Month and year of the milestone, e.g. 'August 2023'."
+    )
     source_category: str = ""
-    prominence_depth: str = Field(default="Mention", description="Feature, Segment or Mention.")
-    representation_mode: str = Field(default="Neutral", description="One or two words: Positive, Neutral, Negative, Mixed.")
+    prominence_depth: str = Field(
+        default="Mention", description="Feature, Segment or Mention."
+    )
+    representation_mode: str = Field(
+        default="Neutral",
+        description="One or two words: Positive, Neutral, Negative, Mixed.",
+    )
     key_message_delivered: str = ""
     co_represented_entities: str = ""
     core_event_summary: str = ""
@@ -969,42 +1383,105 @@ class CoverageExtraction(BaseModel):
 
 class BriefSummary(BaseModel):
     headline_synthesis: str = Field(description="1-2 sentence executive overview.")
-    sentiment_framing_read: str = Field(description="1-2 sentences on framing and positioning.")
-    subject_quoted_vs_reported: str = Field(description="Direct quotes vs reported speech, only as evidenced in the items.")
-    engagement_opportunities: str = Field(description="Strategic opportunities grounded in the items.")
-    demographic_audience_profile: str = Field(description="Likely audience profile of the covering outlets.")
+    sentiment_framing_read: str = Field(
+        description="1-2 sentences on framing and positioning."
+    )
+    subject_quoted_vs_reported: str = Field(
+        description="Direct quotes vs reported speech, only as evidenced in the items."
+    )
+    engagement_opportunities: str = Field(
+        description="Strategic opportunities grounded in the items."
+    )
+    demographic_audience_profile: str = Field(
+        description="Likely audience profile of the covering outlets."
+    )
 
 
 class MarketScope(BaseModel):
     company_name: str = ""
-    footprint: str = Field(default="unknown", description="'single-country', 'multi-country' or 'global'.")
-    countries: list[str] = Field(default=[], description="Countries where it has customers. For a global company, its five largest customer markets.")
-    languages: list[str] = Field(default=[], description="Main languages its customers use.")
-    competitors: list[str] = Field(default=[], description="Up to five main competitors in those markets.")
-    rationale: str = Field(default="", description="One sentence explaining the footprint.")
+    footprint: str = Field(
+        default="unknown", description="'single-country', 'multi-country' or 'global'."
+    )
+    countries: list[str] = Field(
+        default=[],
+        description="Countries where it has customers. For a global company, its five "
+        "largest customer markets.",
+    )
+    languages: list[str] = Field(
+        default=[], description="Main languages its customers use."
+    )
+    competitors: list[str] = Field(
+        default=[], description="Up to five main competitors in those markets."
+    )
+    rationale: str = Field(
+        default="", description="One sentence explaining the footprint."
+    )
 
 
 class SocialSource(BaseModel):
-    platform: str = Field(description="Reddit, X, Threads, Facebook, Instagram, LinkedIn, TikTok, YouTube, or the forum's name.")
-    community_or_account: str = Field(default="not stated", description="Subreddit, forum, group or brand page. Never an individual person's username.")
+    platform: str = Field(
+        description="Reddit, X, Threads, Facebook, Instagram, LinkedIn, TikTok, "
+        "YouTube, or the forum's name."
+    )
+    community_or_account: str = Field(
+        default="not stated",
+        description="Subreddit, forum, group or brand page. Never an individual "
+        "person's username.",
+    )
     country: str = Field(default="not stated")
-    post_date: str = Field(default="not stated", description="Date of the post or thread, e.g. '14 March 2026'.")
-    engagement: str = Field(default="Not available", description="Upvotes, comments, likes or views only if stated in the notes. Never estimate.")
-    source_url: str = Field(default="None", description="MUST be copied exactly from the verified source list, otherwise 'None'.")
+    post_date: str = Field(
+        default="not stated",
+        description="Date of the post or thread, e.g. '14 March 2026'.",
+    )
+    engagement: str = Field(
+        default="Not available",
+        description="Upvotes, comments, likes or views only if stated in the notes. "
+        "Never estimate.",
+    )
+    source_url: str = Field(
+        default="None",
+        description="MUST be copied exactly from the verified source list, otherwise "
+        "'None'.",
+    )
     verification_confidence: str = Field(default="[Uncorroborated]")
 
 
 class SentimentTopic(BaseModel):
-    existing_topic_id: str = Field(default="NEW", description="ID of the existing topic this is the same discussion as (e.g. 'T3'), or 'NEW'.")
-    topic_title: str = Field(description="The marketing campaign, ad, promotion, launch, offer or customer issue being discussed.")
-    brand: str = Field(description="The company the discussion is about: the searched brand or one of its competitors.")
-    is_marketing_campaign: bool = Field(default=False, description="True if the topic is a proactive marketing activity by the brand: an ad, campaign, promotion, sponsorship, offer or launch.")
-    period: str = Field(description="Month and year of the discussion, e.g. 'March 2026'.")
+    existing_topic_id: str = Field(
+        default="NEW",
+        description="ID of the existing topic this is the same discussion as (e.g. "
+        "'T3'), or 'NEW'.",
+    )
+    topic_title: str = Field(
+        description="The marketing campaign, ad, promotion, launch, offer or customer "
+        "issue being discussed."
+    )
+    brand: str = Field(
+        description="The company the discussion is about: the searched brand or one of "
+        "its competitors."
+    )
+    is_marketing_campaign: bool = Field(
+        default=False,
+        description="True if the topic is a proactive marketing activity by the brand: "
+        "an ad, campaign, promotion, sponsorship, offer or launch.",
+    )
+    period: str = Field(
+        description="Month and year of the discussion, e.g. 'March 2026'."
+    )
     countries: list[str] = []
     sentiment: str = Field(description="Positive, Negative, Mixed or Neutral.")
-    customer_type: str = Field(default="Mixed", description="'Existing customers', 'Prospective customers' or 'Mixed'.")
-    sentiment_drivers: str = Field(description="What people liked or disliked, in one or two sentences.")
-    representative_views: list[str] = Field(default=[], description="Up to three short paraphrases of typical comments. No usernames or personal details.")
+    customer_type: str = Field(
+        default="Mixed",
+        description="'Existing customers', 'Prospective customers' or 'Mixed'.",
+    )
+    sentiment_drivers: str = Field(
+        description="What people liked or disliked, in one or two sentences."
+    )
+    representative_views: list[str] = Field(
+        default=[],
+        description="Up to three short paraphrases of typical comments. No usernames "
+        "or personal details.",
+    )
     summary: str = ""
     sources: list[SocialSource] = []
 
@@ -1015,11 +1492,22 @@ class SocialExtraction(BaseModel):
 
 
 class MarkatSummary(BaseModel):
-    headline_read: str = Field(description="1-2 sentences on overall customer sentiment towards the brand.")
-    campaign_reception: str = Field(description="How customers responded to the brand's proactive marketing campaigns.")
-    competitor_comparison: str = Field(description="How sentiment towards the brand compares with its competitors.")
-    pain_points_and_praise: str = Field(description="The main things customers complain about and praise.")
-    opportunities: str = Field(description="Marketing opportunities and risks suggested by the discussion.")
+    headline_read: str = Field(
+        description="1-2 sentences on overall customer sentiment towards the brand."
+    )
+    campaign_reception: str = Field(
+        description="How customers responded to the brand's proactive marketing "
+        "campaigns."
+    )
+    competitor_comparison: str = Field(
+        description="How sentiment towards the brand compares with its competitors."
+    )
+    pain_points_and_praise: str = Field(
+        description="The main things customers complain about and praise."
+    )
+    opportunities: str = Field(
+        description="Marketing opportunities and risks suggested by the discussion."
+    )
 
 
 # ============================================================================
@@ -1040,7 +1528,10 @@ def clear_all_searches():
 
 p_col1, p_col2, p_col3 = st.columns([2, 2, 1])
 with p_col1:
-    st.markdown(f"**Signed in as:** `{current_user['username']}`" + (" (admin)" if is_admin else ""))
+    st.markdown(
+        f"**Signed in as:** `{current_user['username']}`"
+        + (" (admin)" if is_admin else "")
+    )
 with p_col2:
     st.selectbox("Platform app layer:", LAYERS, key="active_app")
 with p_col3:
@@ -1051,13 +1542,20 @@ with p_col3:
 
 if is_admin and st.session_state.pin_notice:
     with st.expander("🔐 Keep your password after the app restarts", expanded=True):
-        render_pin_hint(st.session_state.pin_notice["username"], st.session_state.pin_notice["hash"])
+        render_pin_hint(
+            st.session_state.pin_notice["username"], st.session_state.pin_notice["hash"]
+        )
         if st.button("Done, I've added it to Secrets"):
             st.session_state.pin_notice = None
             st.rerun()
 
 st.divider()
-st.radio("Select mode:", ["📊 Dashboard", "📄 Brief", "📚 Library"], horizontal=True, key="main_mode")
+st.radio(
+    "Select mode:",
+    ["📊 Dashboard", "📄 Brief", "📚 Library"],
+    horizontal=True,
+    key="main_mode",
+)
 main_mode = st.session_state.main_mode
 is_markat = st.session_state.active_app.startswith("Markat")
 app_title = "Markat" if is_markat else "Medierkat"
@@ -1065,7 +1563,12 @@ app_title = "Markat" if is_markat else "Medierkat"
 secret_key = sanitize_api_key(secret("GEMINI_API_KEY", ""))
 
 # Defaults so both layers' variables always exist
-media_markets, scope_mode, scope_countries, competitor_input = ["Global"], "Auto-detect", [], ""
+media_markets, scope_mode, scope_countries, competitor_input = (
+    ["Global"],
+    "Auto-detect",
+    [],
+    "",
+)
 
 with st.sidebar:
     st.markdown(f"### {app_title.upper()}")
@@ -1078,9 +1581,13 @@ with st.sidebar:
             gemini_key = secret_key
             st.caption("✅ Using the Gemini API key from Secrets.")
         else:
-            gemini_key = st.text_input("Gemini API key", type="password", placeholder="AQ...")
+            gemini_key = st.text_input(
+                "Gemini API key", type="password", placeholder="AQ..."
+            )
             st.caption("Add GEMINI_API_KEY to Secrets so guests can search.")
-        model_name = st.text_input("Gemini model", value=str(secret("GEMINI_MODEL", DEFAULT_MODEL)))
+        model_name = st.text_input(
+            "Gemini model", value=str(secret("GEMINI_MODEL", DEFAULT_MODEL))
+        )
         st.caption(f"Gemini library version: {GENAI_VERSION}")
         if st.button("Test connection", key="test_connection"):
             ok, message = test_gemini_connection(gemini_key, model_name)
@@ -1094,59 +1601,122 @@ with st.sidebar:
 
     st.subheader("Objective and report")
     purposes = (
-        ["Customer reaction to a marketing campaign", "Brand sentiment vs competitors", "Customer pain points and praise",
-         "Pre-launch sentiment scan", "Custom objective"]
-        if is_markat else
-        ["Demonstrate long-term impact & track record", "Identify emerging issue / early warning radar",
-         "Track ongoing issue / crisis management", "Institutional board briefing / executive reporting", "Custom objective"]
+        [
+            "Customer reaction to a marketing campaign",
+            "Brand sentiment vs competitors",
+            "Customer pain points and praise",
+            "Pre-launch sentiment scan",
+            "Custom objective",
+        ]
+        if is_markat
+        else [
+            "Demonstrate long-term impact & track record",
+            "Identify emerging issue / early warning radar",
+            "Track ongoing issue / crisis management",
+            "Institutional board briefing / executive reporting",
+            "Custom objective",
+        ]
     )
     report_purpose_selected = st.selectbox("Primary objective", purposes)
-    custom_purpose_input = st.text_input("Specify custom objective:") if "Custom" in report_purpose_selected else ""
+    custom_purpose_input = (
+        st.text_input("Specify custom objective:")
+        if "Custom" in report_purpose_selected
+        else ""
+    )
     active_report_purpose = custom_purpose_input.strip() or report_purpose_selected
 
-    report_format_tier = st.selectbox("Report type", (
-        ["Executive sentiment brief (1 page)", "Marketing team report (2 pages)", "Detailed social listening report (up to 4 pages)"]
-        if is_markat else
-        ["Executive leadership brief (1 page — C-Suite and Board)", "Strategic advisory report (2 pages — Subject experts)",
-         "Comprehensive media operations report (up to 4 pages — PR and Media teams)"]
-    ))
-    output_language = st.selectbox("Report output language", [
-        "English", "French (Français)", "Spanish (Español)", "German (Deutsch)", "Mandarin Chinese (中文)",
-        "Japanese (日本語)", "Indonesian (Bahasa Indonesia)", "Vietnamese (Tiếng Việt)", "Hindi (हिंदी)", "Arabic (العربية)",
-    ])
+    report_format_tier = st.selectbox(
+        "Report type",
+        (
+            [
+                "Executive sentiment brief (1 page)",
+                "Marketing team report (2 pages)",
+                "Detailed social listening report (up to 4 pages)",
+            ]
+            if is_markat
+            else [
+                "Executive leadership brief (1 page — C-Suite and Board)",
+                "Strategic advisory report (2 pages — Subject experts)",
+                "Comprehensive media operations report (up to 4 pages — PR and Media "
+                "teams)",
+            ]
+        ),
+    )
+    output_language = st.selectbox(
+        "Report output language",
+        [
+            "English",
+            "French (Français)",
+            "Spanish (Español)",
+            "German (Deutsch)",
+            "Mandarin Chinese (中文)",
+            "Japanese (日本語)",
+            "Indonesian (Bahasa Indonesia)",
+            "Vietnamese (Tiếng Việt)",
+            "Hindi (हिंदी)",
+            "Arabic (العربية)",
+        ],
+    )
 
     st.divider()
     st.subheader("Time frame")
-    date_window = st.selectbox("Recency scope", list(RECENCY_OPTIONS.keys()), index=2 if is_markat else 1)
+    date_window = st.selectbox(
+        "Recency scope", list(RECENCY_OPTIONS.keys()), index=2 if is_markat else 1
+    )
     custom_range = None
     if RECENCY_OPTIONS[date_window] is None:
         today = datetime.date.today()
-        custom_range = st.date_input("Custom range", value=(today - datetime.timedelta(days=90), today))
+        custom_range = st.date_input(
+            "Custom range", value=(today - datetime.timedelta(days=90), today)
+        )
 
     st.divider()
     if is_markat:
         st.subheader("Social channels")
-        selected_channels = st.multiselect("Search these channels", list(MARKAT_CHANNELS.keys()), default=list(MARKAT_CHANNELS.keys()))
+        selected_channels = st.multiselect(
+            "Search these channels",
+            list(MARKAT_CHANNELS.keys()),
+            default=list(MARKAT_CHANNELS.keys()),
+        )
         st.subheader("Market scope")
         scope_mode = st.selectbox(
             "Which countries' customers?",
             ["Auto-detect", "Single country", "Multiple countries", "Global"],
-            help="Auto-detect first checks where the company actually sells: Telstra is Australia-only, Coca-Cola is global.",
+            help="Auto-detect first checks where the company actually sells: Telstra "
+            "is Australia-only, Coca-Cola is global.",
         )
         if scope_mode == "Single country":
             scope_countries = [st.selectbox("Country", COUNTRIES, index=0)]
         elif scope_mode == "Multiple countries":
-            scope_countries = st.multiselect("Countries", COUNTRIES, default=["Australia", "New Zealand"])
-        competitor_input = st.text_input("Competitors (optional)", placeholder="e.g. Optus, TPG. Leave blank to auto-detect")
+            scope_countries = st.multiselect(
+                "Countries", COUNTRIES, default=["Australia", "New Zealand"]
+            )
+        competitor_input = st.text_input(
+            "Competitors (optional)",
+            placeholder="e.g. Optus, TPG. Leave blank to auto-detect",
+        )
     else:
         st.subheader("Media channels")
-        selected_channels = st.multiselect("Search these channels", list(MEDIERKAT_CHANNELS.keys()), default=list(MEDIERKAT_CHANNELS.keys()))
-        media_markets = st.multiselect("Priority media markets", ["Global"] + COUNTRIES, default=["Global"])
+        selected_channels = st.multiselect(
+            "Search these channels",
+            list(MEDIERKAT_CHANNELS.keys()),
+            default=list(MEDIERKAT_CHANNELS.keys()),
+        )
+        media_markets = st.multiselect(
+            "Priority media markets", ["Global"] + COUNTRIES, default=["Global"]
+        )
 
     st.divider()
-    st.checkbox("Add repeat searches to current results", value=False, key="accumulate_results",
-                help="Off: each search starts fresh. On: searching the same terms again adds new finds to the current brief, without duplicates.")
-    st.button("Reset brief and clear all", on_click=clear_all_searches, key="sidebar_reset")
+    st.checkbox(
+        "Add repeat searches to current results",
+        value=False,
+        key="accumulate_results",
+        help="Off: each search starts fresh. On: searching the same terms again adds "
+        "new finds to the current brief, without duplicates.",
+    )
+    st.button(
+        "Reset brief and clear all", on_click=clear_all_searches, key="sidebar_reset"
+    )
 
 
 def window_bounds():
@@ -1165,16 +1735,24 @@ def window_label():
 
 
 header_svg = render_brand_meerkat_svg(45, 75)
-subtitle = ("How customers respond to brands' marketing, and how they rate them against competitors, across social media."
-            if is_markat else "Media intelligence from official releases, news, broadcast and trade press.")
+subtitle = (
+    "How customers respond to brands' marketing, and how they rate them against "
+    "competitors, across social media."
+    if is_markat
+    else "Media intelligence from official releases, news, broadcast and trade press."
+)
 st.markdown(
-    f'<div style="display:flex;align-items:center;background-color:#1A1814;border:1px solid #2C2822;padding:24px 30px;border-radius:2px;margin-bottom:18px;">'
+    '<div style="display:flex;align-items:center;background-color:#1A1814;border:1px '
+    'solid #2C2822;padding:24px 30px;border-radius:2px;margin-bottom:18px;">'
     f'<div style="margin-right:24px;flex-shrink:0;">{header_svg}</div><div>'
-    f'<div style="font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;color:#8A8275;margin-bottom:4px;">'
+    '<div style="font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;'
+    'color:#8A8275;margin-bottom:4px;">'
     f'{"SOCIAL CUSTOMER SENTIMENT" if is_markat else "MEDIA INTELLIGENCE"}</div>'
-    f'<div style="font-family:\'Cormorant Garamond\',serif;font-size:2.6rem;color:#F2EDE3;line-height:1;">{app_title}</div>'
-    f'<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.1rem;font-style:italic;color:#C6BCA9;margin-top:6px;">{subtitle}</div>'
-    f'</div></div>',
+    "<div style=\"font-family:'Cormorant Garamond',serif;font-size:2.6rem;"
+    f'color:#F2EDE3;line-height:1;">{app_title}</div>'
+    "<div style=\"font-family:'Cormorant Garamond',serif;font-size:1.1rem;"
+    f'font-style:italic;color:#C6BCA9;margin-top:6px;">{subtitle}</div>'
+    f"</div></div>",
     unsafe_allow_html=True,
 )
 
@@ -1192,31 +1770,52 @@ def connect_gemini(status):
         ping_gemini(client, active_model)
     except Exception as e:
         error = e
-    if error is not None and client is not None and is_model_not_found(error) and active_model != FALLBACK_MODEL:
+    if (
+        error is not None
+        and client is not None
+        and is_model_not_found(error)
+        and active_model != FALLBACK_MODEL
+    ):
         try:
             ping_gemini(client, FALLBACK_MODEL)
-            notice = f"The model '{active_model}' isn't available, so this search used '{FALLBACK_MODEL}' instead."
+            notice = (
+                f"The model '{active_model}' isn't available, so this search "
+                f"used '{FALLBACK_MODEL}' instead."
+            )
             active_model, error = FALLBACK_MODEL, None
         except Exception as e2:
             error = e2
     if error is not None:
         status.update(label="Search could not start", state="error")
-        return None, active_model, notice, (explain_gemini_error(error, active_model), str(error))
+        return (
+            None,
+            active_model,
+            notice,
+            (explain_gemini_error(error, active_model), str(error)),
+        )
     return client, active_model, notice, None
 
 
 def grounded_call(client, model, prompt):
     resp = client.models.generate_content(
-        model=model, contents=prompt,
-        config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())], temperature=0.3),
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            tools=[types.Tool(google_search=types.GoogleSearch())], temperature=0.3
+        ),
     )
     return resp.text or "", grounded_sources(resp)
 
 
 def structured_call(client, model, prompt, schema, temperature=0):
     resp = client.models.generate_content(
-        model=model, contents=prompt,
-        config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=schema, temperature=temperature),
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=schema,
+            temperature=temperature,
+        ),
     )
     parsed = getattr(resp, "parsed", None)
     if isinstance(parsed, BaseModel):
@@ -1236,16 +1835,27 @@ def show_run_messages(notice, fatal, failures, num_passes):
     if failures:
         all_failed = len([f for f in failures if f[0].startswith("Pass")]) == num_passes
         reasons = list(dict.fromkeys(f[1] for f in failures))
-        heading = ("**All search passes failed.** Nothing is shown rather than substituting unverified data."
-                   if all_failed else "**Some steps had problems, so results may be incomplete.**")
-        (st.error if all_failed else st.warning)(heading + "\n\n" + "\n\n".join(reasons))
+        heading = (
+            "**All search passes failed.** Nothing is shown rather than substituting "
+            "unverified data."
+            if all_failed
+            else "**Some steps had problems, so results may be incomplete.**"
+        )
+        (st.error if all_failed else st.warning)(
+            heading + "\n\n" + "\n\n".join(reasons)
+        )
         with st.expander("Technical detail"):
             st.code("\n\n".join(f"{label}: {detail}" for label, _, detail in failures))
 
 
 def run_settings():
-    return {"purpose": active_report_purpose, "tier": report_format_tier, "lang": output_language,
-            "time": f"{date_window} ({window_label()})", "channels": ", ".join(selected_channels) or "All channels"}
+    return {
+        "purpose": active_report_purpose,
+        "tier": report_format_tier,
+        "lang": output_language,
+        "time": f"{date_window} ({window_label()})",
+        "channels": ", ".join(selected_channels) or "All channels",
+    }
 
 
 def search_ready(query):
@@ -1253,8 +1863,14 @@ def search_ready(query):
         st.error("Please enter a search term.")
         return False
     if not sanitize_api_key(gemini_key):
-        st.error("Search isn't set up: no Gemini API key found. " +
-                 ("Add GEMINI_API_KEY to Secrets or enter a key in the sidebar." if is_admin else "Please contact the administrator."))
+        st.error(
+            "Search isn't set up: no Gemini API key found. "
+            + (
+                "Add GEMINI_API_KEY to Secrets or enter a key in the sidebar."
+                if is_admin
+                else "Please contact the administrator."
+            )
+        )
         return False
     return True
 
@@ -1263,37 +1879,62 @@ def search_ready(query):
 def medierkat_search_prompt(query, angle, custom_urls):
     start, end = window_bounds()
     markets = ", ".join(media_markets) if media_markets else "Global"
-    url_hint = ("\nAlso review these user-supplied URLs if relevant:\n" + "\n".join(custom_urls[:100])) if custom_urls else ""
+    url_hint = (
+        (
+            "\nAlso review these user-supplied URLs if relevant:\n"
+            + "\n".join(custom_urls[:100])
+        )
+        if custom_urls
+        else ""
+    )
     return f"""Today is {datetime.date.today():%d %B %Y}.
-You are Medierkat's senior media intelligence analyst. Use Google Search to find real media coverage of: "{query}".
+You are Medierkat's senior media intelligence analyst. Use Google Search to find real
+media coverage of: "{query}".
 Focus this search on: {angle}.
 Priority media markets: {markets}.
 Only include coverage published between {start:%d %B %Y} and {end:%d %B %Y}.
-This is media coverage only. Do NOT include social media posts, Reddit or other forums, blogs' comment sections, or academic journal articles.
-For each item found, report: outlet name, headline, publication date, author if stated, the article URL,
+This is media coverage only. Do NOT include social media posts, Reddit or other forums,
+blogs' comment sections, or academic journal articles.
+For each item found, report: outlet name, headline, publication date, author if stated,
+the article URL,
 what it said, and whether spokespeople were quoted directly.
-Group coverage by the underlying news event or milestone (e.g. an official media release and the stories that followed it).
-Report only what the search results show. If nothing is found in the window, say so plainly.{url_hint}"""
+Group coverage by the underlying news event or milestone (e.g. an official media release
+and the stories that followed it).
+Report only what the search results show. If nothing is found in the window, say so
+plainly.{url_hint}"""
 
 
-def medierkat_extraction_prompt(query, research_text, sources, custom_urls, existing_items):
+def medierkat_extraction_prompt(
+    query, research_text, sources, custom_urls, existing_items
+):
     src_lines = "\n".join(f"- {url}  ({title})" for title, url in sources)
     if custom_urls:
-        src_lines += "\n" + "\n".join(f"- {u}  (user supplied)" for u in custom_urls[:100])
-    return f"""Convert the research notes below into JSON matching the schema, for the query "{query}".
+        src_lines += "\n" + "\n".join(
+            f"- {u}  (user supplied)" for u in custom_urls[:100]
+        )
+    return f"""Convert the research notes below into JSON matching the schema, for the
+    query "{query}".
 
 RULES
-1. canonical_source_url must be copied EXACTLY from the VERIFIED SOURCES list. If the matching article is not in that list, write 'None'.
-2. verification_confidence is '[Verified Source]' only when canonical_source_url is from the list; otherwise '[Uncorroborated]'.
-3. audience_reach_metrics: use only a published masthead audience figure you are confident of. If unsure, write 'Not available'. Never estimate.
-4. medium_type must be one of: Official Release, Online News, Print, Wire, Television, Radio, Podcast, Trade Press.
+1. canonical_source_url must be copied EXACTLY from the VERIFIED SOURCES list. If the
+matching article is not in that list, write 'None'.
+2. verification_confidence is '[Verified Source]' only when canonical_source_url is from
+the list; otherwise '[Uncorroborated]'.
+3. audience_reach_metrics: use only a published masthead audience figure you are
+confident of. If unsure, write 'Not available'. Never estimate.
+4. medium_type must be one of: Official Release, Online News, Print, Wire, Television,
+Radio, Podcast, Trade Press.
 5. Media only: leave out social media, Reddit, forums and academic journals entirely.
 6. Group outlets under the news event they covered. List the official release first.
 7. Exclude login, support, search-results and homepage URLs.
-8. If the notes contain no real coverage, return coverage_found=false and an empty items list.
-9. EXISTING CAMPAIGNS below were found in earlier passes. If an item is the same news event as one of them, set
-   existing_campaign_id to that ID (e.g. 'C2') and list only outlets not already listed for it. Otherwise use 'NEW'.
-   Never create a second campaign for an event that already exists, even if you would word its title differently.
+8. If the notes contain no real coverage, return coverage_found=false and an empty items
+list.
+9. EXISTING CAMPAIGNS below were found in earlier passes. If an item is the same news
+event as one of them, set
+   existing_campaign_id to that ID (e.g. 'C2') and list only outlets not already listed
+   for it. Otherwise use 'NEW'.
+   Never create a second campaign for an event that already exists, even if you would
+   word its title differently.
 10. Within one campaign, list each outlet only once.
 
 EXISTING CAMPAIGNS
@@ -1332,13 +1973,24 @@ def verify_media_items(items, allowed_keys):
 
 def summarise_media(client, model, query, items):
     compact = [
-        {k: it.get(k) for k in ("event_title", "campaign_milestone_date", "representation_mode", "key_message_delivered", "core_event_summary")}
+        {
+            k: it.get(k)
+            for k in (
+                "event_title",
+                "campaign_milestone_date",
+                "representation_mode",
+                "key_message_delivered",
+                "core_event_summary",
+            )
+        }
         | {"outlets": [o.get("outlet_name") for o in it.get("covering_outlets", [])]}
         for it in items[:40]
     ]
-    prompt = f"""Write an executive media brief summary in {output_language} for the query "{query}".
+    prompt = f"""Write an executive media brief summary in {output_language} for the
+    query "{query}".
 Objective: {active_report_purpose}. Report type: {report_format_tier}.
-Base every statement strictly on these media coverage milestones; do not add facts, dates or figures that are not present:
+Base every statement strictly on these media coverage milestones; do not add facts,
+dates or figures that are not present:
 {json.dumps(compact, ensure_ascii=False)}"""
     return structured_call(client, model, prompt, BriefSummary, temperature=0.2)
 
@@ -1348,9 +2000,15 @@ def run_medierkat(query, custom_urls=None):
     query = (query or "").strip()
     if not search_ready(query):
         return
-    passes = [(label, MEDIERKAT_CHANNELS[label]) for label in selected_channels] or list(MEDIERKAT_CHANNELS.items())
-    keep = st.session_state.get("accumulate_results") and query == (st.session_state.cumulative_brief or {}).get("query")
-    accumulated = list((st.session_state.cumulative_brief or {}).get("items", [])) if keep else []
+    passes = [
+        (label, MEDIERKAT_CHANNELS[label]) for label in selected_channels
+    ] or list(MEDIERKAT_CHANNELS.items())
+    keep = st.session_state.get("accumulate_results") and query == (
+        st.session_state.cumulative_brief or {}
+    ).get("query")
+    accumulated = (
+        list((st.session_state.cumulative_brief or {}).get("items", [])) if keep else []
+    )
     allowed_keys = {normalize_url(u) for u in custom_urls if is_valid_url(u)}
     failures = []
 
@@ -1360,58 +2018,111 @@ def run_medierkat(query, custom_urls=None):
             for idx, (label, angle) in enumerate(passes, 1):
                 status.update(label=f"Pass {idx} of {len(passes)}: {label}")
                 try:
-                    research_text, sources = grounded_call(client, model, medierkat_search_prompt(query, angle, custom_urls))
+                    research_text, sources = grounded_call(
+                        client,
+                        model,
+                        medierkat_search_prompt(query, angle, custom_urls),
+                    )
                     allowed_keys |= {normalize_url(u) for _, u in sources}
                     if not research_text.strip():
                         continue
-                    data = structured_call(client, model, medierkat_extraction_prompt(query, research_text, sources, custom_urls, accumulated),
-                                           CoverageExtraction)
-                    accumulated = merge_and_deduplicate_campaigns(accumulated, verify_media_items(data.get("items", []), allowed_keys))
+                    data = structured_call(
+                        client,
+                        model,
+                        medierkat_extraction_prompt(
+                            query, research_text, sources, custom_urls, accumulated
+                        ),
+                        CoverageExtraction,
+                    )
+                    accumulated = merge_and_deduplicate_campaigns(
+                        accumulated,
+                        verify_media_items(data.get("items", []), allowed_keys),
+                    )
                 except Exception as e:
-                    failures.append((f"Pass {idx}", explain_gemini_error(e, model), str(e)))
+                    failures.append(
+                        (f"Pass {idx}", explain_gemini_error(e, model), str(e))
+                    )
 
             if len([f for f in failures if f[0].startswith("Pass")]) == len(passes):
                 status.update(label="Search failed", state="error")
             else:
-                summary = {"headline_synthesis": f"No verified media coverage matched '{query}' between {window_label()}.",
-                           "sentiment_framing_read": "N/A", "subject_quoted_vs_reported": "N/A",
-                           "engagement_opportunities": "N/A", "demographic_audience_profile": "N/A"}
+                summary = {
+                    "headline_synthesis": "No verified media coverage matched "
+                    f"'{query}' between {window_label()}.",
+                    "sentiment_framing_read": "N/A",
+                    "subject_quoted_vs_reported": "N/A",
+                    "engagement_opportunities": "N/A",
+                    "demographic_audience_profile": "N/A",
+                }
                 if accumulated:
                     status.update(label="Writing summary")
                     try:
                         summary = summarise_media(client, model, query, accumulated)
                     except Exception as e:
-                        failures.append(("Summary", explain_gemini_error(e, model), str(e)))
-                        summary["headline_synthesis"] = "Summary could not be generated; see the coverage milestones below."
+                        failures.append(
+                            ("Summary", explain_gemini_error(e, model), str(e))
+                        )
+                        summary["headline_synthesis"] = (
+                            "Summary could not be generated; see the coverage "
+                            "milestones below."
+                        )
                 metric_str, reach_str, _ = calculate_header_metrics(accumulated)
                 settings = run_settings()
-                settings["cov"] = "Media only · priority markets: " + (", ".join(media_markets) or "Global")
+                settings["cov"] = "Media only · priority markets: " + (
+                    ", ".join(media_markets) or "Global"
+                )
                 st.session_state.cumulative_brief = {
-                    "query": query, "coverage_found": bool(accumulated), "verified_coverage_metric": metric_str,
-                    "total_combined_audience_reach": reach_str, **summary, "items": accumulated,
-                    "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"), "settings": settings,
+                    "query": query,
+                    "coverage_found": bool(accumulated),
+                    "verified_coverage_metric": metric_str,
+                    "total_combined_audience_reach": reach_str,
+                    **summary,
+                    "items": accumulated,
+                    "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"),
+                    "settings": settings,
                 }
-                status.update(label=f"Complete: {len(accumulated)} coverage milestones", state="complete")
+                status.update(
+                    label=f"Complete: {len(accumulated)} coverage milestones",
+                    state="complete",
+                )
     show_run_messages(notice, fatal, failures, len(passes))
 
 
 # ---------------------------------------------------------------- Markat
 def detect_market_scope(client, model, brand):
-    research, _ = grounded_call(client, model, f"""Today is {datetime.date.today():%d %B %Y}.
-Using Google Search, work out the customer-facing operating footprint of the company or brand "{brand}".
+    research, _ = grounded_call(
+        client,
+        model,
+        f"""Today is {datetime.date.today():%d %B %Y}.
+Using Google Search, work out the customer-facing operating footprint of the company or
+brand "{brand}".
 Where does it sell to customers? Is it single-country, multi-country or global?
-List the countries where it has customers (for a global company, its five largest customer markets),
+List the countries where it has customers (for a global company, its five largest
+customer markets),
 the main languages its customers use, and up to five main competitors in those markets.
-Give a one-sentence reason for the footprint.""")
-    return structured_call(client, model, f"Convert these notes about \"{brand}\" into JSON matching the schema.\n\n{research[:15000]}", MarketScope)
+Give a one-sentence reason for the footprint.""",
+    )
+    return structured_call(
+        client,
+        model,
+        f'Convert these notes about "{brand}" into JSON matching the '
+        f"schema.\n\n{research[:15000]}",
+        MarketScope,
+    )
 
 
 def resolve_scope(detected, brand):
     """Combines the sidebar choice with what was detected."""
     detected = detected or {}
-    competitors = [c.strip() for c in competitor_input.split(",") if c.strip()] or detected.get("competitors", [])[:5]
+    competitors = [
+        c.strip() for c in competitor_input.split(",") if c.strip()
+    ] or detected.get("competitors", [])[:5]
     if scope_mode == "Single country":
-        footprint, countries, source = "single-country", scope_countries[:1], "chosen by you"
+        footprint, countries, source = (
+            "single-country",
+            scope_countries[:1],
+            "chosen by you",
+        )
     elif scope_mode == "Multiple countries":
         footprint, countries, source = "multi-country", scope_countries, "chosen by you"
     elif scope_mode == "Global":
@@ -1426,12 +2137,23 @@ def resolve_scope(detected, brand):
     elif footprint == "multi-country" and countries:
         label = "Multiple countries: " + ", ".join(countries)
     elif footprint == "global":
-        label = "Global" + (": focusing on its largest markets, " + ", ".join(countries) if countries else "")
+        label = "Global" + (
+            ": focusing on its largest markets, " + ", ".join(countries)
+            if countries
+            else ""
+        )
     else:
         label = "Not determined: searching without a country focus"
-    return {"brand": brand, "footprint": footprint, "countries": countries, "languages": detected.get("languages", []),
-            "competitors": competitors, "label": label, "source": source,
-            "rationale": detected.get("rationale", "") if source == "auto-detected" else ""}
+    return {
+        "brand": brand,
+        "footprint": footprint,
+        "countries": countries,
+        "languages": detected.get("languages", []),
+        "competitors": competitors,
+        "label": label,
+        "source": source,
+        "rationale": detected.get("rationale", "") if source == "auto-detected" else "",
+    }
 
 
 def markat_search_prompt(brand, angle, scope, custom_urls):
@@ -1441,44 +2163,78 @@ def markat_search_prompt(brand, angle, scope, custom_urls):
         geo = f"Focus on discussion by customers in {', '.join(scope['countries'])}."
     else:
         geo = "Include discussion from any country, noting the country where clear."
-    langs = f" Search in local languages where relevant ({', '.join(scope['languages'])})." if scope["languages"] else ""
-    url_hint = ("\nAlso review these user-supplied links if relevant:\n" + "\n".join(custom_urls[:100])) if custom_urls else ""
+    langs = (
+        f" Search in local languages where relevant ({', '.join(scope['languages'])})."
+        if scope["languages"]
+        else ""
+    )
+    url_hint = (
+        (
+            "\nAlso review these user-supplied links if relevant:\n"
+            + "\n".join(custom_urls[:100])
+        )
+        if custom_urls
+        else ""
+    )
     return f"""Today is {datetime.date.today():%d %B %Y}.
-You are Markat's social listening analyst. Use Google Search to find real public social media discussion about "{brand}"
+You are Markat's social listening analyst. Use Google Search to find real public social
+media discussion about "{brand}"
 and its competitors ({comps}).
 Focus this search on: {angle}.
 Market scope: {scope['label']}. {geo}{langs}
 Only include discussion posted between {start:%d %B %Y} and {end:%d %B %Y}.
-Focus on how existing and prospective customers respond to the brand's proactive marketing (advertising campaigns,
-promotions, product launches, sponsorships and offers), and on their sentiment towards the brand compared with its competitors.
-This is social media only: do NOT use news articles, press releases or corporate media as sources.
-For each discussion found, report: platform, subreddit, forum or page, country if clear, date, the URL, which brand and
-which campaign or issue it concerns, overall sentiment, what drove it, whether commenters appear to be existing or
-prospective customers, and any engagement numbers shown (upvotes, comments, likes, views).
+Focus on how existing and prospective customers respond to the brand's proactive
+marketing (advertising campaigns,
+promotions, product launches, sponsorships and offers), and on their sentiment towards
+the brand compared with its competitors.
+This is social media only: do NOT use news articles, press releases or corporate media
+as sources.
+For each discussion found, report: platform, subreddit, forum or page, country if clear,
+date, the URL, which brand and
+which campaign or issue it concerns, overall sentiment, what drove it, whether
+commenters appear to be existing or
+prospective customers, and any engagement numbers shown (upvotes, comments, likes,
+views).
 Do not record the usernames or personal details of individual people.
-Report only what the search results show. If nothing is found in the window, say so plainly.{url_hint}"""
+Report only what the search results show. If nothing is found in the window, say so
+plainly.{url_hint}"""
 
 
-def markat_extraction_prompt(brand, scope, research_text, sources, custom_urls, existing_topics):
+def markat_extraction_prompt(
+    brand, scope, research_text, sources, custom_urls, existing_topics
+):
     src_lines = "\n".join(f"- {url}  ({title})" for title, url in sources)
     if custom_urls:
-        src_lines += "\n" + "\n".join(f"- {u}  (user supplied)" for u in custom_urls[:100])
+        src_lines += "\n" + "\n".join(
+            f"- {u}  (user supplied)" for u in custom_urls[:100]
+        )
     brands = ", ".join([brand] + scope["competitors"])
-    return f"""Convert the social listening notes below into JSON matching the schema, for the brand "{brand}".
+    return f"""Convert the social listening notes below into JSON matching the schema,
+    for the brand "{brand}".
 
 RULES
-1. source_url must be copied EXACTLY from the VERIFIED SOURCES list. If the matching post is not in that list, write 'None'.
-2. verification_confidence is '[Verified Source]' only when source_url is from the list; otherwise '[Uncorroborated]'.
+1. source_url must be copied EXACTLY from the VERIFIED SOURCES list. If the matching
+post is not in that list, write 'None'.
+2. verification_confidence is '[Verified Source]' only when source_url is from the list;
+otherwise '[Uncorroborated]'.
 3. brand must be one of: {brands}.
-4. Social media and forums only. Leave out news articles, press releases and corporate media entirely.
-5. is_marketing_campaign is true only for the brand's own proactive marketing: ads, campaigns, promotions, sponsorships, offers, launches.
+4. Social media and forums only. Leave out news articles, press releases and corporate
+media entirely.
+5. is_marketing_campaign is true only for the brand's own proactive marketing: ads,
+campaigns, promotions, sponsorships, offers, launches.
 6. sentiment must be exactly one of: Positive, Negative, Mixed, Neutral.
-7. community_or_account: the subreddit, forum, group or brand page. Never an individual person's username; write 'Individual user' instead.
-8. representative_views: up to three short paraphrases of typical comments, with no usernames or personal details.
-9. engagement: only numbers stated in the notes. Otherwise 'Not available'. Never estimate.
-10. EXISTING TOPICS below were found in earlier passes. If a topic is the same discussion as one of them, set existing_topic_id
-    to that ID (e.g. 'T3') and list only sources not already listed. Otherwise use 'NEW'. Never duplicate an existing topic.
-11. List each source only once. If the notes contain no real social discussion, return discussion_found=false and no topics.
+7. community_or_account: the subreddit, forum, group or brand page. Never an individual
+person's username; write 'Individual user' instead.
+8. representative_views: up to three short paraphrases of typical comments, with no
+usernames or personal details.
+9. engagement: only numbers stated in the notes. Otherwise 'Not available'. Never
+estimate.
+10. EXISTING TOPICS below were found in earlier passes. If a topic is the same
+discussion as one of them, set existing_topic_id
+    to that ID (e.g. 'T3') and list only sources not already listed. Otherwise use
+    'NEW'. Never duplicate an existing topic.
+11. List each source only once. If the notes contain no real social discussion, return
+discussion_found=false and no topics.
 
 EXISTING TOPICS
 {existing_topics_block(existing_topics)}
@@ -1507,7 +2263,9 @@ def verify_social_topics(topics, allowed_keys, brands):
             d = parse_date(s.get("post_date"))
             if d is not None and not (start <= d.date() <= end):
                 continue
-            s["community_or_account"] = anonymise_account(s.get("community_or_account"), brands)
+            s["community_or_account"] = anonymise_account(
+                s.get("community_or_account"), brands
+            )
             sources.append(s)
         if sources:
             t["sources"] = sources
@@ -1519,14 +2277,30 @@ def verify_social_topics(topics, allowed_keys, brands):
 
 
 def summarise_social(client, model, brand, scope, topics):
-    compact = [{k: t.get(k) for k in ("brand", "topic_title", "is_marketing_campaign", "period", "sentiment",
-                                       "customer_type", "sentiment_drivers", "countries")}
-               | {"platforms": sorted({s.get("platform", "") for s in t.get("sources", [])})}
-               for t in topics[:50]]
-    prompt = f"""Write a customer sentiment brief in {output_language} for the brand "{brand}".
-Objective: {active_report_purpose}. Report type: {report_format_tier}. Market scope: {scope['label']}.
+    compact = [
+        {
+            k: t.get(k)
+            for k in (
+                "brand",
+                "topic_title",
+                "is_marketing_campaign",
+                "period",
+                "sentiment",
+                "customer_type",
+                "sentiment_drivers",
+                "countries",
+            )
+        }
+        | {"platforms": sorted({s.get("platform", "") for s in t.get("sources", [])})}
+        for t in topics[:50]
+    ]
+    prompt = f"""Write a customer sentiment brief in {output_language} for the brand
+    "{brand}".
+Objective: {active_report_purpose}. Report type: {report_format_tier}. Market scope:
+{scope['label']}.
 Competitors: {', '.join(scope['competitors']) or 'not identified'}.
-Base every statement strictly on these social listening topics; do not add facts, figures or campaigns that are not present:
+Base every statement strictly on these social listening topics; do not add facts,
+figures or campaigns that are not present:
 {json.dumps(compact, ensure_ascii=False)}"""
     return structured_call(client, model, prompt, MarkatSummary, temperature=0.2)
 
@@ -1536,7 +2310,9 @@ def run_markat(query, custom_urls=None):
     brand = (query or "").strip()
     if not search_ready(brand):
         return
-    passes = [(label, MARKAT_CHANNELS[label]) for label in selected_channels] or list(MARKAT_CHANNELS.items())
+    passes = [(label, MARKAT_CHANNELS[label]) for label in selected_channels] or list(
+        MARKAT_CHANNELS.items()
+    )
     previous = st.session_state.markat_brief or {}
     keep = st.session_state.get("accumulate_results") and brand == previous.get("query")
     topics = list(previous.get("topics", [])) if keep else []
@@ -1548,47 +2324,84 @@ def run_markat(query, custom_urls=None):
         if fatal is None:
             detected = None
             if scope_mode == "Auto-detect" or not competitor_input.strip():
-                status.update(label="Assessing where the company operates and who its competitors are")
+                status.update(
+                    label="Assessing where the company operates and who its "
+                    "competitors are"
+                )
                 try:
                     detected = detect_market_scope(client, model, brand)
                 except Exception as e:
-                    failures.append(("Market scope", explain_gemini_error(e, model), str(e)))
+                    failures.append(
+                        ("Market scope", explain_gemini_error(e, model), str(e))
+                    )
             scope = resolve_scope(detected, brand)
             brands = [brand] + scope["competitors"]
 
             for idx, (label, angle) in enumerate(passes, 1):
                 status.update(label=f"Pass {idx} of {len(passes)}: {label}")
                 try:
-                    research_text, sources = grounded_call(client, model, markat_search_prompt(brand, angle, scope, custom_urls))
+                    research_text, sources = grounded_call(
+                        client,
+                        model,
+                        markat_search_prompt(brand, angle, scope, custom_urls),
+                    )
                     allowed_keys |= {normalize_url(u) for _, u in sources}
                     if not research_text.strip():
                         continue
-                    data = structured_call(client, model, markat_extraction_prompt(brand, scope, research_text, sources, custom_urls, topics),
-                                           SocialExtraction)
-                    topics = merge_social_topics(topics, verify_social_topics(data.get("topics", []), allowed_keys, brands))
+                    data = structured_call(
+                        client,
+                        model,
+                        markat_extraction_prompt(
+                            brand, scope, research_text, sources, custom_urls, topics
+                        ),
+                        SocialExtraction,
+                    )
+                    topics = merge_social_topics(
+                        topics,
+                        verify_social_topics(
+                            data.get("topics", []), allowed_keys, brands
+                        ),
+                    )
                 except Exception as e:
-                    failures.append((f"Pass {idx}", explain_gemini_error(e, model), str(e)))
+                    failures.append(
+                        (f"Pass {idx}", explain_gemini_error(e, model), str(e))
+                    )
 
             if len([f for f in failures if f[0].startswith("Pass")]) == len(passes):
                 status.update(label="Search failed", state="error")
             else:
-                summary = {"headline_read": f"No verified social discussion about '{brand}' was found between {window_label()}.",
-                           "campaign_reception": "N/A", "competitor_comparison": "N/A",
-                           "pain_points_and_praise": "N/A", "opportunities": "N/A"}
+                summary = {
+                    "headline_read": f"No verified social discussion about '{brand}' "
+                    f"was found between {window_label()}.",
+                    "campaign_reception": "N/A",
+                    "competitor_comparison": "N/A",
+                    "pain_points_and_praise": "N/A",
+                    "opportunities": "N/A",
+                }
                 if topics:
                     status.update(label="Writing summary")
                     try:
                         summary = summarise_social(client, model, brand, scope, topics)
                     except Exception as e:
-                        failures.append(("Summary", explain_gemini_error(e, model), str(e)))
-                        summary["headline_read"] = "Summary could not be generated; see the topics below."
+                        failures.append(
+                            ("Summary", explain_gemini_error(e, model), str(e))
+                        )
+                        summary["headline_read"] = (
+                            "Summary could not be generated; see the topics below."
+                        )
                 settings = run_settings()
                 settings["cov"] = f"Social only · {scope['label']}"
                 st.session_state.markat_brief = {
-                    "query": brand, "scope": scope, **summary, "topics": topics,
-                    "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"), "settings": settings,
+                    "query": brand,
+                    "scope": scope,
+                    **summary,
+                    "topics": topics,
+                    "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"),
+                    "settings": settings,
                 }
-                status.update(label=f"Complete: {len(topics)} discussion topics", state="complete")
+                status.update(
+                    label=f"Complete: {len(topics)} discussion topics", state="complete"
+                )
     show_run_messages(notice, fatal, failures, len(passes))
 
 
@@ -1603,10 +2416,16 @@ with st.container(key="prominent_search"):
     with st.form("top_search_form", border=False):
         s_col1, s_col2 = st.columns([3.5, 1])
         with s_col1:
-            top_query = st.text_input("Enter target terms:", value=st.session_state.executed_query,
-                                      placeholder=("Brand or company, e.g. Telstra or Coca-Cola" if is_markat
-                                                   else "Person, organisation or topic, e.g. RMIT coffee concrete"),
-                                      label_visibility="collapsed")
+            top_query = st.text_input(
+                "Enter target terms:",
+                value=st.session_state.executed_query,
+                placeholder=(
+                    "Brand or company, e.g. Telstra or Coca-Cola"
+                    if is_markat
+                    else "Person, organisation or topic, e.g. RMIT coffee concrete"
+                ),
+                label_visibility="collapsed",
+            )
         with s_col2:
             top_submitted = st.form_submit_button("🔍 Search", width="stretch")
 
@@ -1627,7 +2446,16 @@ if st.session_state.pending_query:
 def clean_pdf_text(text):
     if not text:
         return ""
-    for orig, repl in {"“": '"', "”": '"', "‘": "'", "’": "'", "—": "-", "–": "-", "•": "*", "📌": ""}.items():
+    for orig, repl in {
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
+        "—": "-",
+        "–": "-",
+        "•": "*",
+        "📌": "",
+    }.items():
         text = str(text).replace(orig, repl)
     return text.encode("latin-1", "replace").decode("latin-1")
 
@@ -1646,7 +2474,13 @@ class PDFReport(FPDF):
         self.set_y(-14)
         self.set_font("Helvetica", "", 6.5)
         self.set_text_color(107, 107, 107)
-        self.cell(0, 5, "Generated with AI assistance via Kat Intelligence Engine. Confirm critical details against source.", align="C")
+        self.cell(
+            0,
+            5,
+            "Generated with AI assistance via Kat Intelligence Engine. Confirm "
+            "critical details against source.",
+            align="C",
+        )
 
 
 def generate_pdf_brief(brief, query, s, export_limit):
@@ -1659,13 +2493,23 @@ def generate_pdf_brief(brief, query, s, export_limit):
 
     pdf.set_font("Helvetica", "B", 12)
     pdf.set_text_color(35, 35, 35)
-    pdf.cell(epw, 6, clean_pdf_text(f"Executive Brief ({s['lang']})"), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(
+        epw,
+        6,
+        clean_pdf_text(f"Executive Brief ({s['lang']})"),
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )
     pdf.set_font("Helvetica", "B", 7.5)
     pdf.set_text_color(107, 107, 107)
     pdf.multi_cell(epw, 3.8, clean_pdf_text(f"OBJECTIVE: {s['purpose'].upper()}"))
     pdf.set_font("Helvetica", "I", 7.5)
-    for line in (f"Format: {s['tier']}", f"Scope: {query[:80]}  |  Recency: {s['time']}",
-                 brief.get("verified_coverage_metric", ""), brief.get("total_combined_audience_reach", "")):
+    for line in (
+        f"Format: {s['tier']}",
+        f"Scope: {query[:80]}  |  Recency: {s['time']}",
+        brief.get("verified_coverage_metric", ""),
+        brief.get("total_combined_audience_reach", ""),
+    ):
         pdf.multi_cell(epw, 3.8, clean_pdf_text(line))
 
     pdf.set_draw_color(198, 188, 169)
@@ -1689,14 +2533,29 @@ def generate_pdf_brief(brief, query, s, export_limit):
 
     items = brief.get("items", [])[:export_limit]
     pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(epw, 5, f"5. Campaign milestones (newest first, {len(items)} shown)", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(
+        epw,
+        5,
+        f"5. Campaign milestones (newest first, {len(items)} shown)",
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )
     pdf.ln(1)
     for item in items:
         pdf.set_font("Helvetica", "B", 8.5)
-        pdf.multi_cell(epw, 4, clean_pdf_text(f"* [{item.get('campaign_milestone_date', '')}] {item.get('event_title', '')}"))
+        pdf.multi_cell(
+            epw,
+            4,
+            clean_pdf_text(
+                f"* [{item.get('campaign_milestone_date', '')}] "
+                f"{item.get('event_title', '')}"
+            ),
+        )
         pdf.set_font("Helvetica", "", 7.5)
         pdf.multi_cell(epw, 3.5, clean_pdf_text(item.get("core_event_summary", "")))
-        outlets = ", ".join(o.get("outlet_name", "") for o in item.get("covering_outlets", []))
+        outlets = ", ".join(
+            o.get("outlet_name", "") for o in item.get("covering_outlets", [])
+        )
         pdf.set_font("Helvetica", "I", 7)
         pdf.multi_cell(epw, 3.4, clean_pdf_text(f"Outlets: {outlets}"))
         pdf.ln(1.5)
@@ -1704,31 +2563,67 @@ def generate_pdf_brief(brief, query, s, export_limit):
 
 
 def outlet_line_md(o):
-    link = f" — [Source]({o['canonical_source_url']})" if is_valid_url(o.get("canonical_source_url")) else " — *(no verified link)*"
-    return f"  - **{o.get('outlet_name', '')}** ({o.get('medium_type', '')}, {o.get('publication_date', '')}) | Audience: {o.get('audience_reach_metrics', '')}{link}"
+    link = (
+        f" — [Source]({o['canonical_source_url']})"
+        if is_valid_url(o.get("canonical_source_url"))
+        else " — *(no verified link)*"
+    )
+    return (
+        f"  - **{o.get('outlet_name', '')}** ({o.get('medium_type', '')}, "
+        f"{o.get('publication_date', '')}) | Audience: "
+        f"{o.get('audience_reach_metrics', '')}{link}"
+    )
 
 
 def generate_markdown_brief(brief, query, s, export_limit):
     md = f"# MEDIERKAT EXECUTIVE BRIEF ({s['lang']})\n\n"
-    md += f"**Objective:** {s['purpose']}  \n**Report type:** {s['tier']}  \n**Query:** {query}  \n"
-    md += f"**Recency:** {s['time']}  \n**Coverage focus:** {s['cov']}  \n**Channels:** {s['channels']}  \n"
-    md += f"**{brief.get('verified_coverage_metric', '')}**  \n**{brief.get('total_combined_audience_reach', '')}**\n\n"
+    md += (
+        f"**Objective:** {s['purpose']}  \n**Report type:** {s['tier']}  "
+        f"\n**Query:** {query}  \n"
+    )
+    md += (
+        f"**Recency:** {s['time']}  \n**Coverage focus:** {s['cov']}  "
+        f"\n**Channels:** {s['channels']}  \n"
+    )
+    md += (
+        f"**{brief.get('verified_coverage_metric', '')}**  "
+        f"\n**{brief.get('total_combined_audience_reach', '')}**\n\n"
+    )
     md += "## 1. Executive summary and strategic read\n\n"
     md += f"**Overview:** {brief.get('headline_synthesis', '')}\n\n"
-    md += f"**Positioning and reputation:** {brief.get('sentiment_framing_read', '')}\n\n"
+    md += (
+        f"**Positioning and reputation:** {brief.get('sentiment_framing_read', '')}\n\n"
+    )
     md += f"**Spokesperson quotes:** {brief.get('subject_quoted_vs_reported', '')}\n\n"
-    md += f"**Strategic opportunities:** {brief.get('engagement_opportunities', '')}\n\n"
-    md += f"**Audience profile:** {brief.get('demographic_audience_profile', '')}\n\n---\n\n"
+    md += (
+        f"**Strategic opportunities:** {brief.get('engagement_opportunities', '')}\n\n"
+    )
+    md += (
+        f"**Audience profile:** {brief.get('demographic_audience_profile', '')}\n\n"
+        "---\n\n"
+    )
     items = brief.get("items", [])[:export_limit]
     md += f"## 2. Campaign milestones (newest first, {len(items)} shown)\n\n"
     for item in items:
-        md += f"### [{item.get('campaign_milestone_date', '')}] {item.get('event_title', '')}\n"
-        md += f"- **Prominence:** {item.get('prominence_depth', '')} | **Framing:** {item.get('representation_mode', '')}\n"
-        md += f"- **Key message:** {item.get('key_message_delivered', '')}\n- **Summary:** {item.get('core_event_summary', '')}\n"
+        md += (
+            f"### [{item.get('campaign_milestone_date', '')}] "
+            f"{item.get('event_title', '')}\n"
+        )
+        md += (
+            f"- **Prominence:** {item.get('prominence_depth', '')} | **Framing:** "
+            f"{item.get('representation_mode', '')}\n"
+        )
+        md += (
+            f"- **Key message:** {item.get('key_message_delivered', '')}\n- "
+            f"**Summary:** {item.get('core_event_summary', '')}\n"
+        )
         for o in item.get("covering_outlets", []):
             md += outlet_line_md(o) + "\n"
         md += "\n"
-    md += "\n*Generated with AI assistance via Kat Intelligence Engine. Confirm critical details against source.*\n"
+    md += (
+        "\n*Generated with AI assistance via Kat Intelligence Engine. Confirm "
+        "critical details against source.*\n"
+    )
     return md
 
 
@@ -1736,26 +2631,47 @@ def generate_docx_brief(brief, query, s, export_limit):
     doc = Document()
     doc.add_heading(f"MEDIERKAT EXECUTIVE BRIEF ({s['lang']})", level=0)
     meta = doc.add_paragraph()
-    for label, val in (("Objective: ", s["purpose"]), ("Query: ", query), ("Recency: ", s["time"]),
-                       ("Coverage: ", brief.get("verified_coverage_metric", "")),
-                       ("Audience: ", brief.get("total_combined_audience_reach", ""))):
+    for label, val in (
+        ("Objective: ", s["purpose"]),
+        ("Query: ", query),
+        ("Recency: ", s["time"]),
+        ("Coverage: ", brief.get("verified_coverage_metric", "")),
+        ("Audience: ", brief.get("total_combined_audience_reach", "")),
+    ):
         meta.add_run(label).bold = True
         meta.add_run(f"{val}\n")
     doc.add_heading("1. Executive summary and strategic read", level=1)
-    for label, key in (("Overview", "headline_synthesis"), ("Positioning and reputation", "sentiment_framing_read"),
-                       ("Spokesperson quotes", "subject_quoted_vs_reported"), ("Strategic opportunities", "engagement_opportunities"),
-                       ("Audience profile", "demographic_audience_profile")):
+    for label, key in (
+        ("Overview", "headline_synthesis"),
+        ("Positioning and reputation", "sentiment_framing_read"),
+        ("Spokesperson quotes", "subject_quoted_vs_reported"),
+        ("Strategic opportunities", "engagement_opportunities"),
+        ("Audience profile", "demographic_audience_profile"),
+    ):
         p = doc.add_paragraph()
         p.add_run(f"{label}: ").bold = True
         p.add_run(brief.get(key, ""))
     items = brief.get("items", [])[:export_limit]
-    doc.add_heading(f"2. Campaign milestones (newest first, {len(items)} shown)", level=1)
+    doc.add_heading(
+        f"2. Campaign milestones (newest first, {len(items)} shown)", level=1
+    )
     for item in items:
-        doc.add_heading(f"[{item.get('campaign_milestone_date', '')}] {item.get('event_title', '')}", level=2)
+        doc.add_heading(
+            f"[{item.get('campaign_milestone_date', '')}] {item.get('event_title', '')}",
+            level=2,
+        )
         doc.add_paragraph(item.get("core_event_summary", ""))
         for o in item.get("covering_outlets", []):
-            url = o.get("canonical_source_url") if is_valid_url(o.get("canonical_source_url")) else "no verified link"
-            doc.add_paragraph(f"{o.get('outlet_name', '')} ({o.get('medium_type', '')}, {o.get('publication_date', '')}) — {url}", style="List Bullet")
+            url = (
+                o.get("canonical_source_url")
+                if is_valid_url(o.get("canonical_source_url"))
+                else "no verified link"
+            )
+            doc.add_paragraph(
+                f"{o.get('outlet_name', '')} ({o.get('medium_type', '')}, "
+                f"{o.get('publication_date', '')}) — {url}",
+                style="List Bullet",
+            )
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
@@ -1767,15 +2683,26 @@ def generate_docx_brief(brief, query, s, export_limit):
 # ============================================================================
 def ordered_topics(brief):
     brand = normalize_str(brief.get("query"))
-    return sorted(brief.get("topics", []),
-                  key=lambda t: (0 if normalize_str(t.get("brand")) == brand else 1,
-                                 [-x for x in extract_year_month_tuple(t.get("period"))]))
+    return sorted(
+        brief.get("topics", []),
+        key=lambda t: (
+            0 if normalize_str(t.get("brand")) == brand else 1,
+            [-x for x in extract_year_month_tuple(t.get("period"))],
+        ),
+    )
 
 
 def markat_source_line(s):
-    link = f" — [Source]({s['source_url']})" if is_valid_url(s.get("source_url")) else " — *(no verified link)*"
+    link = (
+        f" — [Source]({s['source_url']})"
+        if is_valid_url(s.get("source_url"))
+        else " — *(no verified link)*"
+    )
     engagement = f" | {s['engagement']}" if not is_empty(s.get("engagement")) else ""
-    return f"  - {s.get('platform', '')} · {s.get('community_or_account', '')} ({s.get('post_date', '')}){engagement}{link}"
+    return (
+        f"  - {s.get('platform', '')} · {s.get('community_or_account', '')} "
+        f"({s.get('post_date', '')}){engagement}{link}"
+    )
 
 
 MARKAT_SECTIONS = [
@@ -1790,24 +2717,42 @@ MARKAT_SECTIONS = [
 def generate_markat_markdown(brief, limit):
     s, scope = brief["settings"], brief["scope"]
     md = f"# MARKAT CUSTOMER SENTIMENT BRIEF ({s['lang']})\n\n"
-    md += f"**Brand:** {brief['query']}  \n**Market scope:** {scope['label']} ({scope['source']})  \n"
+    md += (
+        f"**Brand:** {brief['query']}  \n**Market scope:** {scope['label']} "
+        f"({scope['source']})  \n"
+    )
     md += f"**Competitors:** {', '.join(scope['competitors']) or 'not identified'}  \n"
-    md += f"**Objective:** {s['purpose']}  \n**Time frame:** {s['time']}  \n**Channels:** {s['channels']}\n\n"
+    md += (
+        f"**Objective:** {s['purpose']}  \n**Time frame:** {s['time']}  "
+        f"\n**Channels:** {s['channels']}\n\n"
+    )
     for i, (title, key) in enumerate(MARKAT_SECTIONS, 1):
         md += f"## {i}. {title}\n\n{brief.get(key, '')}\n\n"
     topics = ordered_topics(brief)[:limit]
-    md += f"---\n\n## {len(MARKAT_SECTIONS) + 1}. Discussion topics ({len(topics)} shown)\n\n"
+    md += (
+        f"---\n\n## {len(MARKAT_SECTIONS) + 1}. Discussion topics ({len(topics)} "
+        "shown)\n\n"
+    )
     for t in topics:
         flag = " · marketing campaign" if t.get("is_marketing_campaign") else ""
-        md += f"### [{t.get('period', '')}] {t.get('brand', '')}: {t.get('topic_title', '')} ({t.get('sentiment', '')}{flag})\n"
-        md += f"- **Customers:** {t.get('customer_type', '')} | **Countries:** {', '.join(t.get('countries', [])) or 'not stated'}\n"
+        md += (
+            f"### [{t.get('period', '')}] {t.get('brand', '')}: "
+            f"{t.get('topic_title', '')} ({t.get('sentiment', '')}{flag})\n"
+        )
+        md += (
+            f"- **Customers:** {t.get('customer_type', '')} | **Countries:** "
+            f"{', '.join(t.get('countries', [])) or 'not stated'}\n"
+        )
         md += f"- **What drove it:** {t.get('sentiment_drivers', '')}\n"
         for v in t.get("representative_views", []):
             md += f"- *Typical view:* {v}\n"
         for src in t.get("sources", []):
             md += markat_source_line(src) + "\n"
         md += "\n"
-    md += "\n*Generated with AI assistance via Kat Intelligence Engine. Views are paraphrased; confirm against sources.*\n"
+    md += (
+        "\n*Generated with AI assistance via Kat Intelligence Engine. Views are "
+        "paraphrased; confirm against sources.*\n"
+    )
     return md
 
 
@@ -1816,25 +2761,46 @@ def generate_markat_docx(brief, limit):
     doc = Document()
     doc.add_heading(f"MARKAT CUSTOMER SENTIMENT BRIEF ({s['lang']})", level=0)
     meta = doc.add_paragraph()
-    for label, val in (("Brand: ", brief["query"]), ("Market scope: ", f"{scope['label']} ({scope['source']})"),
-                       ("Competitors: ", ", ".join(scope["competitors"]) or "not identified"),
-                       ("Objective: ", s["purpose"]), ("Time frame: ", s["time"]), ("Channels: ", s["channels"])):
+    for label, val in (
+        ("Brand: ", brief["query"]),
+        ("Market scope: ", f"{scope['label']} ({scope['source']})"),
+        ("Competitors: ", ", ".join(scope["competitors"]) or "not identified"),
+        ("Objective: ", s["purpose"]),
+        ("Time frame: ", s["time"]),
+        ("Channels: ", s["channels"]),
+    ):
         meta.add_run(label).bold = True
         meta.add_run(f"{val}\n")
     for i, (title, key) in enumerate(MARKAT_SECTIONS, 1):
         doc.add_heading(f"{i}. {title}", level=1)
         doc.add_paragraph(brief.get(key, ""))
     topics = ordered_topics(brief)[:limit]
-    doc.add_heading(f"{len(MARKAT_SECTIONS) + 1}. Discussion topics ({len(topics)} shown)", level=1)
+    doc.add_heading(
+        f"{len(MARKAT_SECTIONS) + 1}. Discussion topics ({len(topics)} shown)", level=1
+    )
     for t in topics:
-        doc.add_heading(f"[{t.get('period', '')}] {t.get('brand', '')}: {t.get('topic_title', '')} ({t.get('sentiment', '')})", level=2)
-        doc.add_paragraph(f"Customers: {t.get('customer_type', '')}. What drove it: {t.get('sentiment_drivers', '')}")
+        doc.add_heading(
+            f"[{t.get('period', '')}] {t.get('brand', '')}: {t.get('topic_title', '')} "
+            f"({t.get('sentiment', '')})",
+            level=2,
+        )
+        doc.add_paragraph(
+            f"Customers: {t.get('customer_type', '')}. What drove it: "
+            f"{t.get('sentiment_drivers', '')}"
+        )
         for v in t.get("representative_views", []):
             doc.add_paragraph(f"Typical view: {v}", style="List Bullet")
         for src in t.get("sources", []):
-            url = src.get("source_url") if is_valid_url(src.get("source_url")) else "no verified link"
-            doc.add_paragraph(f"{src.get('platform', '')} · {src.get('community_or_account', '')} ({src.get('post_date', '')}) — {url}",
-                              style="List Bullet")
+            url = (
+                src.get("source_url")
+                if is_valid_url(src.get("source_url"))
+                else "no verified link"
+            )
+            doc.add_paragraph(
+                f"{src.get('platform', '')} · {src.get('community_or_account', '')} "
+                f"({src.get('post_date', '')}) — {url}",
+                style="List Bullet",
+            )
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
@@ -1846,157 +2812,4 @@ def generate_markat_pdf(brief, limit):
     pdf = PDFReport()
     pdf.brand, pdf.kind = "MARKAT", "CUSTOMER SENTIMENT BRIEF"
     pdf.set_margins(18, 22, 18)
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=20)
-    epw = pdf.epw
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.set_text_color(35, 35, 35)
-    pdf.cell(epw, 6, clean_pdf_text(f"Customer Sentiment Brief: {brief['query']} ({s['lang']})"), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "I", 7.5)
-    pdf.set_text_color(107, 107, 107)
-    for line in (f"Market scope: {scope['label']} ({scope['source']})", f"Competitors: {', '.join(scope['competitors']) or 'not identified'}",
-                 f"Objective: {s['purpose']}  |  Time frame: {s['time']}", f"Channels: {s['channels']}"):
-        pdf.multi_cell(epw, 3.8, clean_pdf_text(line))
-    pdf.ln(2)
-    pdf.set_draw_color(198, 188, 169)
-    pdf.line(18, pdf.get_y(), 18 + epw, pdf.get_y())
-    pdf.ln(3)
-    for i, (title, key) in enumerate(MARKAT_SECTIONS, 1):
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.set_text_color(35, 35, 35)
-        pdf.cell(epw, 5, clean_pdf_text(f"{i}. {title}"), new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("Helvetica", "", 8.5)
-        pdf.multi_cell(epw, 4, clean_pdf_text(brief.get(key, "")))
-        pdf.ln(2)
-    topics = ordered_topics(brief)[:limit]
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(epw, 5, f"{len(MARKAT_SECTIONS) + 1}. Discussion topics ({len(topics)} shown)", new_x="LMARGIN", new_y="NEXT")
-    for t in topics:
-        pdf.set_font("Helvetica", "B", 8.5)
-        pdf.multi_cell(epw, 4, clean_pdf_text(f"* [{t.get('period', '')}] {t.get('brand', '')}: {t.get('topic_title', '')} ({t.get('sentiment', '')})"))
-        pdf.set_font("Helvetica", "", 7.5)
-        pdf.multi_cell(epw, 3.5, clean_pdf_text(t.get("sentiment_drivers", "")))
-        platforms = ", ".join(sorted({src.get("platform", "") for src in t.get("sources", [])}))
-        pdf.set_font("Helvetica", "I", 7)
-        pdf.multi_cell(epw, 3.4, clean_pdf_text(f"Platforms: {platforms}"))
-        pdf.ln(1.5)
-    return bytes(pdf.output())
-
-
-# ============================================================================
-# 12. VIEWS
-# ============================================================================
-SENTIMENT_COLOURS = {"Positive": "#7FA37A", "Negative": "#B5654F", "Mixed": "#C6A15B", "Neutral": "#8A8275"}
-SENTIMENT_ICONS = {"Positive": "🟢", "Negative": "🔴", "Mixed": "🟠", "Neutral": "⚪"}
-
-
-def metric_card(label, value, caption):
-    st.markdown(f"<div class='metric-card'><h4>{esc(label)}</h4><h2>{esc(value)}</h2><p class='cap'>{esc(caption)}</p></div>",
-                unsafe_allow_html=True)
-
-
-def dated_counts(dates):
-    dates = [d for d in dates if d is not None]
-    if not dates:
-        return None
-    s = pd.Series(dates)
-    span = (s.max() - s.min()).days
-    freq, fmt = ("D", "%d %b") if span <= 60 else (("W", "%d %b %y") if span <= 365 else ("M", "%b %Y"))
-    counts = s.dt.to_period(freq).value_counts().sort_index()
-    return pd.DataFrame({"Period": [p.start_time.strftime(fmt) for p in counts.index], "Items": counts.values})
-
-
-def line_chart(df, y_title):
-    chart = alt.Chart(df).mark_line(point=True, color="#C6BCA9").encode(
-        x=alt.X("Period:O", sort=None, title=None), y=alt.Y("Items:Q", title=y_title), tooltip=["Period", "Items"],
-    ).properties(height=240).configure_axis(labelColor="#C6BCA9", titleColor="#F2EDE3", gridColor="#2C2822")
-    st.altair_chart(chart, width="stretch")
-
-
-def export_controls(n, make_pdf, make_docx, make_md, base):
-    options = sorted({x for x in (5, 10, 25, 50) if x < n} | {n}) if n else [0]
-    limit = st.selectbox("Items to include in export:", options, index=len(options) - 1,
-                         format_func=lambda x: f"All {x}" if x == n else f"Newest {x}")
-    fmt = st.selectbox("Export format:", ["PDF Document (.pdf)", "Microsoft Word (.docx)", "Markdown (.md)"])
-    if "PDF" in fmt:
-        st.download_button("Download PDF", make_pdf(limit), f"{base}.pdf", "application/pdf")
-    elif "Word" in fmt:
-        st.download_button("Download Word document", make_docx(limit), f"{base}.docx",
-                           "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-    else:
-        st.download_button("Download Markdown", make_md(limit), f"{base}.md", "text/markdown")
-
-
-def disclaimer(text):
-    st.markdown(f"<div class='disclaimer-box'><b>Verification note:</b> {text}</div>", unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------- Medierkat views
-def render_medierkat_dashboard(brief):
-    items = brief.get("items", [])
-    st.markdown("##### 📈 Coverage by publication date")
-    df = dated_counts([parse_date(o.get("publication_date")) for it in items for o in it.get("covering_outlets", [])])
-    if df is not None:
-        line_chart(df, "Media items")
-    else:
-        st.caption("No dated coverage to chart.")
-    outlets = [o for it in items for o in it.get("covering_outlets", [])]
-    _, _, total_reach = calculate_header_metrics(items)
-    channel = Counter(o.get("medium_type", "Unknown") for o in outlets).most_common(1)
-    framing = Counter(it.get("representation_mode", "Unknown") for it in items).most_common(1)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        metric_card("Coverage milestones", f"{len(items)}", brief["settings"]["time"])
-    with c2:
-        metric_card("Potential audience", format_audience(total_reach), "Sum of outlet audiences, not deduplicated")
-    with c3:
-        metric_card("Dominant channel", channel[0][0] if channel else "—", f"{channel[0][1]} of {len(outlets)} items" if channel else "")
-    with c4:
-        metric_card("Most common framing", framing[0][0] if framing else "—", f"{framing[0][1]} of {len(items)} milestones" if framing else "")
-
-
-def render_medierkat_brief(brief):
-    items, s, query = brief.get("items", []), brief["settings"], brief["query"]
-    h1, h2 = st.columns(2)
-    with h1:
-        st.caption(f"MEDIERKAT EXECUTIVE BRIEF · generated {brief.get('generated_at', '')}")
-        st.header(f"Executive brief ({s['lang']})")
-        st.markdown(f"🎯 **Objective:** {esc(s['purpose'])}  \n📋 **Report type:** {esc(s['tier'])}")
-        st.markdown(f"⏳ **Time frame:** {esc(s['time'])}  \n🌐 **Scope:** {esc(s['cov'])}  \n📡 **Channels:** {esc(s['channels'])}")
-        st.caption(brief.get("verified_coverage_metric", ""))
-        st.caption(brief.get("total_combined_audience_reach", ""))
-    with h2:
-        export_controls(len(items), lambda n: generate_pdf_brief(brief, query, s, n), lambda n: generate_docx_brief(brief, query, s, n),
-                        lambda n: generate_markdown_brief(brief, query, s, n), "Medierkat_Executive_Brief")
-    if not items:
-        st.warning(f"No verified media coverage matched '{query}' in {s['time']}. Nothing has been substituted.")
-        return
-    st.subheader("1. Executive summary and strategic read")
-    st.info(brief.get("headline_synthesis", ""))
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("2. Positioning and reputation")
-        st.write(brief.get("sentiment_framing_read", ""))
-        st.subheader("3. Spokesperson quotes and commentary")
-        st.write(brief.get("subject_quoted_vs_reported", ""))
-    with c2:
-        st.subheader("4. Strategic engagement opportunities")
-        st.warning(brief.get("engagement_opportunities", ""))
-        st.caption(f"Audience profile: {brief.get('demographic_audience_profile', '')}")
-    st.divider()
-    st.subheader(f"5. Coverage milestones ({len(items)}, newest first)")
-    for i, item in enumerate(items, 1):
-        with st.expander(f"📌 [{item.get('campaign_milestone_date', '')}] #{i}: {item.get('event_title', '')}"):
-            st.markdown(f"**Prominence:** {esc(item.get('prominence_depth'))} | **Framing:** {esc(item.get('representation_mode'))}")
-            st.markdown(f"**Key message:** {esc(item.get('key_message_delivered'))}")
-            st.write(f"**Summary:** {item.get('core_event_summary', '')}")
-            for o in item.get("covering_outlets", []):
-                url = o.get("canonical_source_url", "")
-                link = (f"<br>🔗 <a href='{esc(url)}' target='_blank' rel='noopener'>Open source</a>" if is_valid_url(url)
-                        else "<br><i>No verified link</i>")
-                flag = f"<br>⚠️ <i>{esc(o.get('verification_confidence'))}</i>" if "Uncorroborated" in o.get("verification_confidence", "") else ""
-                st.markdown(
-                    f"📰 <b>{esc(o.get('outlet_name'))}</b> ({esc(o.get('medium_type'))}) | ✍️ {esc(o.get('author_byline'))} | "
-                    f"📅 {esc(o.get('publication_date'))}<br>📊 Audience: <b>{esc(o.get('audience_reach_metrics'))}</b>{flag}{link}",
-                    unsafe_allow_html=True)
-    disclaimer("Generated with AI assistance via Medierkat. Links are shown only when they came from search grounding or were 
+   
