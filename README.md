@@ -12,6 +12,25 @@ This is a private sandbox for invited testers, not a production service.
 - **A new search runs two passes.** The selected channels are split across them, so every channel is covered.
 - **"Find more"** runs one extra pass on a single channel, rotating through the channels on each click. It adds only new, non-duplicate results and refreshes the summary.
 
+## Medierkat visibility grades
+
+Instead of audience figures, which are usually estimates, each coverage milestone gets a visibility grade from 1 to 10, calculated from the coverage itself:
+
+| Grade | Label | Roughly means |
+|---|---|---|
+| 10 | Exceptional | Feature coverage across several national or international outlets |
+| 9 | Very high | Multiple national outlets, or a national feature plus wide pick-up |
+| 8 | High | A national outlet feature, or several strong outlets |
+| 7 | Good | A national outlet story, or strong regional or trade coverage |
+| 6 | Moderate | Solid regional, metro or leading trade coverage |
+| 5 | Modest | A mention in a national outlet, or a few trade outlets |
+| 4 | Low | Niche trade or specialist coverage |
+| 3 | Very low | Aggregators and syndication sites only |
+| 2 | Minimal | Promoted through owned channels, no pick-up |
+| 1 | None | No coverage or promotion found |
+
+Earned outlets score by tier (national or international 4, regional, metro or leading trade 2.5, niche trade 1, aggregators 0.5), weighted by prominence (feature 1.5x, segment 1x, mention 0.6x). Owned channels (the organisation's newsroom, press-release distribution) and official announcements don't add to the score. Each milestone also gets a grade per country where it appeared. Reports also split coverage into **earned vs owned**, and tag each milestone by type (research finding, expert commentary, partnership or funding, launch, award, issue).
+
 ## How Markat scopes a search
 
 Before searching, Markat works out where customers buy under the brand name itself:
