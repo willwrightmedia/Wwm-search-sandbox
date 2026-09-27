@@ -3,7 +3,6 @@ google-genai
 pydantic>=2
 pandas
 altair
-bcrypt
 requests
 python-docx
 fpdf2
