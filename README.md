@@ -12,6 +12,16 @@ This is a private sandbox for invited testers, not a production service.
 - **A new search runs two passes.** The selected channels are split across them, so every channel is covered.
 - **"Find more"** runs one extra pass on a single channel, rotating through the channels on each click. It adds only new, non-duplicate results and refreshes the summary.
 
+## Smart search
+
+After each search, the app finds related terms in the results (named people, projects, products, spin-offs, campaigns or hashtags tied to the original search) and offers to search them too. For example, "RMIT AND innovation" might suggest "Rajeev Roychand" or "Atmo Biosciences".
+
+- You can untick any suggested term before it runs. Up to three terms are searched together, so a round usually costs one or two searches.
+- Every new result must link back to the original search. Results that don't are rejected: the result needs a relevance score of at least 0.7 plus a mention of the original subject, or 0.85 on its own.
+- Terms whose results mostly fail that check cancel themselves and are never suggested again. Productive terms can lead to further suggestions, for up to three rounds.
+- A **search map** in each brief, and in the PDF, shows which terms were added, why, how many results each contributed, and which were cancelled.
+- Turn suggestions off in the sidebar under "Smart search".
+
 ## Medierkat visibility grades
 
 Instead of audience figures, which are usually estimates, each coverage milestone gets a visibility grade from 1 to 10, calculated from the coverage itself:
@@ -26,10 +36,10 @@ Instead of audience figures, which are usually estimates, each coverage mileston
 | 5 | Modest | A mention in a national outlet, or a few trade outlets |
 | 4 | Low | Niche trade or specialist coverage |
 | 3 | Very low | Aggregators and syndication sites only |
-| 2 | Minimal | Promoted through owned channels, no pick-up |
+| 2 | Minimal | Promoted through owned channels only (own newsroom, paid wires such as Business Wire) |
 | 1 | None | No coverage or promotion found |
 
-Earned outlets score by tier (national or international 4, regional, metro or leading trade 2.5, niche trade 1, aggregators 0.5), weighted by prominence (feature 1.5x, segment 1x, mention 0.6x). Owned channels (the organisation's newsroom, press-release distribution) and official announcements don't add to the score. Each milestone also gets a grade per country where it appeared. Reports also split coverage into **earned vs owned**, and tag each milestone by type (research finding, expert commentary, partnership or funding, launch, award, issue).
+Earned outlets score by tier (national or international 4, regional, metro or leading trade 2.5, niche trade 1, aggregators 0.5), weighted by prominence (feature 1.5x, segment 1x, mention 0.6x). Owned channels (the organisation's newsroom, paid wires like Business Wire, release reposting sites) don't add to the score. Government, minister and regulator announcements count as modest third-party endorsements (1.5 points), so an official-only milestone grades 3 to 5 rather than 2. Each milestone also gets a grade per country where it appeared. Reports also split coverage into **earned vs owned**, and tag each milestone by type (research finding, expert commentary, partnership or funding, launch, award, issue).
 
 ## How Markat scopes a search
 
