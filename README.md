@@ -25,9 +25,20 @@ It also identifies sub-brands in those markets (e.g. Belong for Telstra) and the
 ## Reading Markat results
 
 - **Signal strength** shows how widely each topic is discussed: ▮▯▯▯ single source, ▮▮▯▯ limited, ▮▮▮▯ moderate, ▮▮▮▮ widely discussed. It counts distinct sources and communities, plus any stated engagement.
+- **Themes grid:** net sentiment for each brand on themes such as price, service and reliability, from -1 (all negative) to +1 (all positive).
+- **Confidence:** each topic shows how sure the sentiment call is, the evidence behind it, and a flag for possible sarcasm. You can correct any call; corrections are kept.
 - **"How representative is this?"** in each brief says whether sentiment looks broad or comes from a small, vocal group.
-- **"Dig deeper"** on any topic runs a focused search for more discussion of it, to test how widespread it is.
+- **"Dig deeper"** on any topic runs a focused search for more discussion of it.
+- **Campaign mode:** enter a campaign name and launch date to compare discussion before and after the launch.
+- **Review sites and app stores** can be added as an optional channel.
 - Social media over-represents digitally engaged and often dissatisfied customers, so use Markat alongside survey and NPS data.
+
+## Features in both layers
+
+- **Ask this report:** type a question and get an answer drawn from the brief. In Markat, it can run a focused search when the brief doesn't cover the question.
+- **Noise filter:** exclude results that mention particular terms.
+- **Exports:** visual PDF and Word reports with charts and headline figures, Markdown, and a spreadsheet of every source.
+- **Medierkat people searches:** "Also known as" (e.g. Oli Jones) and "Context" (e.g. RMIT chemistry professor) keep results to the right person.
 
 ## How results are checked
 
