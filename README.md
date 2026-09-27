@@ -7,15 +7,27 @@ Prototype of the **Kat Intelligence Engine**, with two app layers:
 
 This is a private sandbox for invited testers, not a production service.
 
+## How searches work
+
+- **A new search runs two passes.** The selected channels are split across them, so every channel is covered.
+- **"Find more"** runs one extra pass on a single channel, rotating through the channels on each click. It adds only new, non-duplicate results and refreshes the summary.
+
 ## How Markat scopes a search
 
-Before searching, Markat works out where the company actually sells to customers:
+Before searching, Markat works out where customers buy under the brand name itself:
 
 - **Single country**, e.g. Telstra (Australia only): searches that country's customers.
 - **Multiple countries:** searches each of those markets.
 - **Global**, e.g. Coca-Cola: searches its largest customer markets.
 
-It also identifies the main competitors in those markets. You can override the scope and competitors in the sidebar.
+It also identifies sub-brands in those markets (e.g. Belong for Telstra) and the main competitors. Subsidiaries trading under other names (e.g. Digicel) are left out. You can confirm or edit the scope, sub-brands and competitors before the search runs, or set them yourself in the sidebar.
+
+## Reading Markat results
+
+- **Signal strength** shows how widely each topic is discussed: ▮▯▯▯ single source, ▮▮▯▯ limited, ▮▮▮▯ moderate, ▮▮▮▮ widely discussed. It counts distinct sources and communities, plus any stated engagement.
+- **"How representative is this?"** in each brief says whether sentiment looks broad or comes from a small, vocal group.
+- **"Dig deeper"** on any topic runs a focused search for more discussion of it, to test how widespread it is.
+- Social media over-represents digitally engaged and often dissatisfied customers, so use Markat alongside survey and NPS data.
 
 ## How results are checked
 
