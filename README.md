@@ -51,6 +51,6 @@ Locally: `pip install -r requirements.txt`, then `streamlit run app.py`, with se
 
 ## Repository contents
 
-- `app.py` – the Streamlit application
+- `app(1).py` – the Streamlit application
 - `requirements.txt` – Python dependencies
 - `.gitignore` – keeps secrets and local data out of the repository
