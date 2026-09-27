@@ -13,7 +13,7 @@ from docx import Document
 from fpdf import FPDF
 from duckduckgo_search import DDGS
 
-# Global Population Cap: Earth Adult Population Benchmark (~5.6 Billion Adults in 2026)
+# Global Population Benchmark (approx. 5.6 Billion Adults)
 GLOBAL_ADULT_POPULATION_CAP = 5_600_000_000
 
 # ============================================================================
@@ -26,7 +26,6 @@ FOUNDER_PASSWORD = "MyPa$$wordI5Hard"
 
 if "users_db" not in st.session_state:
     st.session_state.users_db = {
-        # Default Public Guest Account for easy testing
         "guest": {
             "email": "guest",
             "password": "password",
@@ -38,7 +37,6 @@ if "users_db" not in st.session_state:
             "total_searches": 0,
             "created_at": "2026-09-27"
         },
-        # Admin Founder Account
         FOUNDER_EMAIL: {
             "email": FOUNDER_EMAIL,
             "password": FOUNDER_PASSWORD,
@@ -55,7 +53,7 @@ if "users_db" not in st.session_state:
 if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
-# Custom CSS - PROMINENT 1.5X SEARCH BOX, BONE INPUTS & TIDY METRIC CARDS
+# Custom CSS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -93,7 +91,7 @@ st.markdown("""
         border: none !important;
     }
 
-    /* TIDY RESPONSIVE METRIC CARDS (FIXES OVERLAPPING TEXT) */
+    /* METRIC CARDS */
     .metric-card {
         background-color: #1A1814;
         border: 1px solid #2C2822;
@@ -152,7 +150,6 @@ st.markdown("""
     }
     .report-card { background-color: #1A1814; border: 1px solid #2C2822; padding: 28px; border-radius: 2px; }
     .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #6B6B6B; margin-top: 20px; }
-    .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
     .admin-card { background-color: #1F1C18; border: 1px solid #C6BCA9; padding: 18px; margin-bottom: 20px; border-radius: 2px; }
 
     /* OVERRIDE STREAMLIT TOP STATUS SPINNER WITH BRAND MEERKAT ARTWORK */
@@ -166,7 +163,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Shared Brand SVG Component matching user's exact artwork in bone and dark ink
+# Shared Brand SVG Component matching official artwork
 def render_brand_meerkat_svg(width=45, height=75, fill_color="#F2EDE3"):
     return f'<svg width="{width}" height="{height}" viewBox="0 0 60 100" fill="{fill_color}" xmlns="http://www.w3.org/2000/svg"><path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/><circle cx="40" cy="12" r="1.5" fill="#14120F"/><path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/><path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/><path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/><path d="M26 81l-6 4h9zM39 81l7 4h-10z"/></svg>'
 
@@ -422,16 +419,16 @@ class CoverageOutlet(BaseModel):
     author_byline: str = Field(description="Author or handle. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication date verbatim.")
     original_language: str = Field(description="Original language.")
-    canonical_source_url: str = Field(description="Direct resolving URL from grounding metadata. Pass ONLY exact verbatim URLs returned in grounding.")
-    audience_reach_metrics: str = Field(description="Audience reach or follower counts (e.g. '130.0M monthly unique readers [Australia: 45M, US: 55M, UK: 30M]').")
-    country_domain_code: str = Field(default="Global", description="Country of domain where article originated (e.g., 'Australia', 'United States', 'United Kingdom', 'Global').")
-    is_peer_reviewed_journal: bool = Field(default=False, description="Set to True ONLY if this outlet is a verified peer-reviewed scientific journal or research publication.")
+    canonical_source_url: str = Field(description="Direct resolving URL from grounding metadata. Pass ONLY exact verbatim resolving URLs. If no direct link exists, write 'None'.")
+    audience_reach_metrics: str = Field(description="Audience reach metrics (e.g. '130.0M monthly unique readers [Australia: 45M, US: 55M, UK: 30M]').")
+    country_domain_code: str = Field(default="Global", description="Country of domain where article originated.")
+    is_peer_reviewed_journal: bool = Field(default=False, description="Set to True ONLY if this outlet is a verified peer-reviewed scientific journal.")
     altmetric_attention_score: str = Field(default="N/A", description="Altmetric Attention Score ONLY if is_peer_reviewed_journal is True. Otherwise write 'N/A'.")
     verification_confidence: str = Field(description="Flag as '[Verified Tier-1 Source]' or '[Uncorroborated]'")
 
 class EventCoverageItem(BaseModel):
     event_title: str = Field(description="Title describing the specific campaign milestone anchored to an official media release or major news story.")
-    campaign_milestone_date: str = Field(default="2026", description="Point in time / release date for this campaign milestone (e.g., 'August 2023' or 'March 2025').")
+    campaign_milestone_date: str = Field(default="2026", description="Point in time / release date for this campaign milestone.")
     source_category: str = Field(description="Category of source.")
     prominence_depth: str = Field(description="Feature, Segment, or Mention.")
     representation_mode: str = Field(description="Framing or sentiment.")
@@ -474,7 +471,7 @@ def clean_pdf_text(text):
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 def is_valid_url(url):
-    return url and url.strip().lower() not in ["none", "null", "", "direct record input"] and url.strip().startswith("http")
+    return url and str(url).strip().lower() not in ["none", "null", "", "direct record input"] and str(url).strip().startswith("http")
 
 def generate_pdf_brief(brief, query, lang, purpose_text, tier_type, time_scope, cov_scope, channels_str, export_limit=5):
     pdf = PDFReport()
@@ -610,7 +607,7 @@ def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope,
     buffer.seek(0)
     return buffer
 
-# --- HELPER FUNCS FOR NUMBER FORMATTING (MODERATED AGAINST WORLD ADULT POPULATION CAP) ---
+# --- HELPER FUNCS FOR NUMBER FORMATTING & CHRONOLOGICAL CAMPAIGN SORTING ---
 def normalize_str(s):
     return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
@@ -674,7 +671,7 @@ def calculate_aligned_header_metrics(all_items):
         
     return metric_display, reach_display
 
-# FUZZY CAMPAIGN MERGER: Anchors strictly to Official Releases & Suppresses Duplicates
+# CANONICAL MERGER: Anchors to Official Releases & Suppresses Duplicates
 def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_query_term=""):
     merged = list(existing_items)
     irrelevant_sectors = ["dental", "dentistry", "healthcare practitioner", "dental association"]
@@ -794,7 +791,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                     STRICT GROUNDING, ANCHORING, URL & REACH CAP MANDATE:
                     1. ANCHOR CAMPAIGNS TO OFFICIAL INSTITUTIONAL PRESS RELEASES (e.g., RMIT University Media Releases, ASX Releases, Government Announcements).
                     2. Ground across global mainstream press, trade journals, peer-reviewed scientific publications, and Reddit discussions.
-                    3. URL VERIFICATION RULE: For 'canonical_source_url', pass ONLY exact verbatim URLs returned in grounding metadata. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'. Do NOT fabricate or approximate URLs.
+                    3. VERIFIED DEEP URL RULE: For 'canonical_source_url', pass ONLY exact verbatim article URLs returned in grounding metadata. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING METADATA, WRITE 'None'. Do NOT fabricate or construct domain search links.
                     4. LIST ORDER INSIDE CAMPAIGNS:
                        - FIRST: Official University / Primary Institution Press Release.
                        - SECOND: External Mainstream News Mastheads, Wire Services, & Trade Press.
@@ -841,7 +838,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 else:
                     st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
 
-        # ROUTE B: Sandbox Media Search Engine (Chronological Campaigns Anchored to Official Releases)
+        # ROUTE B: Sandbox Media Search Engine (Strict Chronological Campaigns Anchored to Official Releases)
         try:
             campaign_batch_2025 = {
                 "event_title": "Shaping Australia Awards Victory & National Innovation Recognition",
@@ -993,7 +990,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             
             # Respect Strict Recency Window Filtering in Sandbox Mode
             if "Past 7 days" in date_window or "Past 24 hours" in date_window:
-                all_campaign_batches = [] # Zero records returned outside designated 7-day window
+                all_campaign_batches = []
                 
             all_items = merge_and_deduplicate_campaigns(existing_items, all_campaign_batches, active_q)
             metric_str, reach_str = calculate_aligned_header_metrics(all_items)
@@ -1002,7 +999,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 "coverage_found": len(all_items) > 0,
                 "verified_coverage_metric": metric_str,
                 "total_combined_audience_reach": reach_str,
-                "headline_synthesis": f"Sustained 4-year media and research campaign trajectory for '{active_q}' demonstrates continuous milestone execution from initial lab discovery to Victorian municipal civil trials." if len(all_items) > 0 else f"No verified media records matched '{active_q}' within the designated {date_window} window.",
+                "headline_synthesis": f"Sustained media and research campaign trajectory for '{active_q}' demonstrates continuous milestone execution from initial lab discovery to Victorian municipal civil trials." if len(all_items) > 0 else f"No verified media records matched '{active_q}' within the designated {date_window} window.",
                 "sentiment_framing_read": f"Media framing across all campaign phases is overwhelmingly positive, positioning the RMIT team as global pioneers in green concrete technology." if len(all_items) > 0 else "N/A",
                 "subject_quoted_vs_reported": f"Public statements from Dr. Roychand highlight the technical feasibility and commercial scalability of coffee biochar." if len(all_items) > 0 else "N/A",
                 "engagement_opportunities": f"Strategic opportunity identified to build on the March 2025 civil footpaths milestone to advocate for Standards Australia biochar aggregate codification." if len(all_items) > 0 else "N/A",
@@ -1169,7 +1166,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
         if "PDF" in export_format:
             st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans, export_limit=export_limit_sel), f"{app_title}_Executive_Brief_{active_l}.pdf", "application/pdf", key="dl_pdf_top")
         elif "Word" in export_format:
-            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans, export_limit=export_limit_sel), f"{app_title}_Executive_Brief_{active_l}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
+            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"{app_title}_Executive_Brief_{active_l}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
         else:
             st.download_button("💚 Download Markdown file", generate_markdown_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"{app_title}_Executive_Brief_{active_l}.md", "text/markdown", key="dl_md_top")
 
@@ -1206,7 +1203,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
                 
                 for outlet in item.get("covering_outlets", []):
                     url = outlet.get('canonical_source_url', '')
-                    # Exact Link Verification Rule: Render hyperlink ONLY if URL starts with http
+                    # Strict URL Verification Rule: Render hyperlink ONLY if URL is direct and valid
                     link_html = f"<br>🔗 <a href='{url}' target='_blank'>Review original canonical source link</a>" if is_valid_url(url) else ""
                     conf_tag = f"<br>⚠️ <i>{outlet.get('verification_confidence', '')}</i>" if "Uncorroborated" in outlet.get('verification_confidence', '') else ""
                     
