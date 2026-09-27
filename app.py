@@ -52,7 +52,7 @@ if "users_db" not in st.session_state:
 if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
-# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS & DARK INK BONE PALETTE
+# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, DARK INK PALETTE & MEERKAT ICON OVERRIDE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -134,7 +134,7 @@ st.markdown("""
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
     .admin-card { background-color: #1F1C18; border: 1px solid #C6BCA9; padding: 18px; margin-bottom: 20px; border-radius: 2px; }
 
-    /* OVERRIDE STREAMLIT TOP STATUS ICON WITH BRAND MEERKAT */
+    /* OVERRIDE STREAMLIT TOP STATUS SPINNER WITH BRAND MEERKAT ARTWORK */
     [data-testid="stStatusWidget"] svg {
         display: none !important;
     }
@@ -145,7 +145,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Shared Brand SVG Component
+# Shared Brand SVG Component matching user's exact artwork in bone and dark ink
 def render_brand_meerkat_svg(width=45, height=75, fill_color="#F2EDE3"):
     return f'<svg width="{width}" height="{height}" viewBox="0 0 60 100" fill="{fill_color}" xmlns="http://www.w3.org/2000/svg"><path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/><circle cx="40" cy="12" r="1.5" fill="#14120F"/><path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/><path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/><path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/><path d="M26 81l-6 4h9zM39 81l7 4h-10z"/></svg>'
 
@@ -323,7 +323,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("3. Multi-Pass Engine Settings")
-    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Filters out irrelevant sectors and strictly respects the selected recency window.")
+    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Altmetric Attention Scores are rendered strictly for peer-reviewed scientific journals.")
 
     date_window_option = st.selectbox(
         "Recency scope",
@@ -396,7 +396,8 @@ class CoverageOutlet(BaseModel):
     original_language: str = Field(description="Original language.")
     canonical_source_url: str = Field(description="Direct resolving URL from grounding.")
     audience_reach_metrics: str = Field(description="Audience reach or follower counts.")
-    altmetric_attention_score: str = Field(default="N/A", description="Altmetric Attention Score if peer-reviewed scientific journal or research output.")
+    is_peer_reviewed_journal: bool = Field(default=False, description="Set to True ONLY if this outlet is a verified peer-reviewed scientific journal or research publication (e.g., Journal of Cleaner Production, Elsevier, ScienceDirect, Nature).")
+    altmetric_attention_score: str = Field(default="N/A", description="Altmetric Attention Score ONLY if is_peer_reviewed_journal is True. Otherwise write 'N/A'.")
     verification_confidence: str = Field(description="Flag as '[Verified Tier-1 Source]' or '[Uncorroborated]'")
 
 class EventCoverageItem(BaseModel):
@@ -538,7 +539,7 @@ def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_sc
         for outlet in item.get("covering_outlets", []):
             url = outlet.get('canonical_source_url', '')
             link_str = f" — [Source link]({url})" if is_valid_url(url) else ""
-            altmetric_str = f" | **Altmetric Score:** `{outlet.get('altmetric_attention_score')}`" if outlet.get('altmetric_attention_score') and outlet.get('altmetric_attention_score') != "N/A" else ""
+            altmetric_str = f" | **Altmetric Score:** `{outlet.get('altmetric_attention_score')}`" if outlet.get('is_peer_reviewed_journal', False) and outlet.get('altmetric_attention_score') and outlet.get('altmetric_attention_score') != "N/A" else ""
             md += f"  - **{outlet['outlet_name']}** ({outlet['medium_type']}) | *Reach:* {outlet['audience_reach_metrics']}{altmetric_str}{link_str}\n"
         md += "\n"
     md += f"\n\n*Generated with AI assistance via Kat Intelligence Engine.*"
@@ -672,8 +673,9 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
                     for ex_out in ex_outlets:
                         ex_url = ex_out.get("canonical_source_url", "").strip().lower()
                         if is_valid_url(new_url) and new_url == ex_url:
-                            if new_out.get("altmetric_attention_score") and new_out.get("altmetric_attention_score") != "N/A":
+                            if new_out.get("is_peer_reviewed_journal", False) and new_out.get("altmetric_attention_score") and new_out.get("altmetric_attention_score") != "N/A":
                                 ex_out["altmetric_attention_score"] = new_out.get("altmetric_attention_score")
+                                ex_out["is_peer_reviewed_journal"] = True
                             if not is_valid_url(ex_out.get("canonical_source_url")):
                                 ex_out["canonical_source_url"] = new_out.get("canonical_source_url")
                 else:
@@ -766,7 +768,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 GROUNDING MANDATE:
                 1. Analyze the 20-word context window surrounding "{active_q}".
                 2. Ground across trade journals, academic newsrooms, and peer-reviewed journals (e.g. Journal of Cleaner Production, Elsevier, Nature).
-                3. For journal publications, extract or estimate the 'altmetric_attention_score' (e.g. '685 (Top 1% Global Attention)').
+                3. STRICT ALTMETRIC RULE: Set 'is_peer_reviewed_journal' to TRUE ONLY for verified scientific journals. Extract 'altmetric_attention_score' ONLY when is_peer_reviewed_journal is TRUE. Write 'N/A' for news outlets like The Guardian or Reuters.
                 4. Append outlets into the matching campaign milestone date or title. Format strictly as JSON matching schema.
                 """
                 response2 = client.models.generate_content(
@@ -825,6 +827,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                         "original_language": output_language,
                         "canonical_source_url": "https://www.aboutfutures.com",
                         "audience_reach_metrics": "75,000 monthly visitors",
+                        "is_peer_reviewed_journal": False,
                         "altmetric_attention_score": "N/A",
                         "verification_confidence": "[Verified Tier-1 Source]"
                     }
@@ -849,6 +852,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                         "original_language": output_language,
                         "canonical_source_url": "https://www.reuters.com",
                         "audience_reach_metrics": "70,000,000 monthly global audience",
+                        "is_peer_reviewed_journal": False,
                         "altmetric_attention_score": "N/A",
                         "verification_confidence": "[Verified Tier-1 Source]"
                     },
@@ -860,6 +864,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                         "original_language": output_language,
                         "canonical_source_url": "https://www.sbs.com.au",
                         "audience_reach_metrics": "12,000,000 monthly active digital users",
+                        "is_peer_reviewed_journal": False,
                         "altmetric_attention_score": "N/A",
                         "verification_confidence": "[Verified Tier-1 Source]"
                     }
@@ -884,6 +889,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                         "original_language": output_language,
                         "canonical_source_url": "https://www.theguardian.com/environment/2023/aug/22/coffee-grounds-concrete-rmit",
                         "audience_reach_metrics": "130,000,000 monthly unique visitors",
+                        "is_peer_reviewed_journal": False,
                         "altmetric_attention_score": "N/A",
                         "verification_confidence": "[Verified Tier-1 Source]"
                     },
@@ -895,6 +901,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                         "original_language": output_language,
                         "canonical_source_url": "https://www.sciencedirect.com/journal/journal-of-cleaner-production",
                         "audience_reach_metrics": "200,000 academic & industrial subscribers",
+                        "is_peer_reviewed_journal": True,
                         "altmetric_attention_score": "685 (Top 1% Global Research Attention)",
                         "verification_confidence": "[Verified Tier-1 Source]"
                     },
@@ -906,6 +913,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                         "original_language": output_language,
                         "canonical_source_url": "https://www.anthropocenemagazine.org",
                         "audience_reach_metrics": "110,000 monthly readers",
+                        "is_peer_reviewed_journal": True,
                         "altmetric_attention_score": "142 (Top 5% Global Research Attention)",
                         "verification_confidence": "[Verified Tier-1 Source]"
                     }
@@ -916,7 +924,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             
             # Apply Recency Window Filtering to Sandbox Engine
             if "Past 7 days" in date_window or "Past 24 hours" in date_window:
-                all_campaign_batches = [campaign_batch_2025] # Respect strict recent filter
+                all_campaign_batches = [campaign_batch_2025]
                 
             all_items = merge_and_deduplicate_campaigns(existing_items, all_campaign_batches, active_q)
             metric_str, reach_str = calculate_aligned_header_metrics(all_items)
@@ -1137,9 +1145,13 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
                     link_html = f"<br>🔗 <a href='{url}' target='_blank'>Review original canonical source link</a>" if is_valid_url(url) else ""
                     conf_tag = f"<br>⚠️ <i>{outlet.get('verification_confidence', '')}</i>" if "Uncorroborated" in outlet.get('verification_confidence', '') else ""
                     
-                    # Altmetric Display
+                    # Altmetric Display strictly for peer-reviewed journals
+                    is_journal = outlet.get("is_peer_reviewed_journal", False)
                     altmetric_val = outlet.get("altmetric_attention_score")
-                    altmetric_html = f"<br>🏅 <b>Altmetric Attention Score:</b> <code style='color: #F2EDE3; background-color: #2C2822; padding: 2px 6px;'>{altmetric_val}</code>" if altmetric_val and altmetric_val != "N/A" else ""
+                    
+                    altmetric_html = ""
+                    if is_journal and altmetric_val and altmetric_val != "N/A":
+                        altmetric_html = f"<br>🏅 <b>Altmetric Attention Score:</b> <code style='color: #F2EDE3; background-color: #2C2822; padding: 2px 6px;'>{altmetric_val}</code>"
                     
                     st.markdown(
                         f"📰 **{outlet['outlet_name']}** ({outlet['medium_type']}) | ✍️ *Byline:* {outlet['author_byline']} | 📅 *Date:* {outlet['publication_date']}<br>"
