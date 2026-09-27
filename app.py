@@ -145,34 +145,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Shared Brand SVG Component matching user's exact artwork
+# Shared Brand SVG Component
 def render_brand_meerkat_svg(width=45, height=75, fill_color="#F2EDE3"):
-    return f"""
-        <svg width="{width}" height="{height}" viewBox="0 0 60 100" fill="{fill_color}" xmlns="http://www.w3.org/2000/svg">
-            <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
-            <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
-            <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
-            <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
-            <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
-            <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
-        </svg>
-    """
+    return f'<svg width="{width}" height="{height}" viewBox="0 0 60 100" fill="{fill_color}" xmlns="http://www.w3.org/2000/svg"><path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/><circle cx="40" cy="12" r="1.5" fill="#14120F"/><path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/><path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/><path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/><path d="M26 81l-6 4h9zM39 81l7 4h-10z"/></svg>'
 
 # ============================================================================
 # 2. AUTHENTICATION WALL
 # ============================================================================
 def render_login_wall():
-    st.markdown(f"""
-        <div style="text-align: center; padding: 40px 0px;">
-            {render_brand_meerkat_svg(60, 100)}
-            <div style="font-family: 'Cormorant Garamond', serif; font-size: 3.0rem; color: #F2EDE3; margin-top: 10px;">
-                Kat Intelligence Engine
-            </div>
-            <div style="font-family: 'Inter', sans-serif; font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B;">
-                SOVEREIGN INTELLIGENCE PLATFORM • MEDIERKAT & MARKAT
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    meerkat_svg = render_brand_meerkat_svg(60, 100)
+    html_header = f'<div style="text-align: center; padding: 40px 0px;">{meerkat_svg}<div style="font-family: \'Cormorant Garamond\', serif; font-size: 3.0rem; color: #F2EDE3; margin-top: 10px;">Kat Intelligence Engine</div><div style="font-family: \'Inter\', sans-serif; font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B;">SOVEREIGN INTELLIGENCE PLATFORM • MEDIERKAT & MARKAT</div></div>'
+    st.markdown(html_header, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -340,7 +323,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("3. Multi-Pass Engine Settings")
-    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Filters out irrelevant sectors (e.g. dental associations) and strictly respects the selected recency window.")
+    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Filters out irrelevant sectors and strictly respects the selected recency window.")
 
     date_window_option = st.selectbox(
         "Recency scope",
@@ -392,24 +375,9 @@ app_subtitle = "Strategic marketing performance, competitor benchmarking, and sh
 app_tagline = "COMPETITOR & CAMPAIGN INTELLIGENCE" if is_markat else "GLOBAL MEDIA INSIGHTS"
 tooltip_text = "Build reports step by step: Grounded searches are strictly filtered to match target search terms and recency scope."
 
-st.markdown(f"""
-    <div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;">
-        <div style="margin-right: 24px; flex-shrink: 0;">
-            {render_brand_meerkat_svg(45, 75)}
-        </div>
-        <div>
-            <div style="font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">
-                {app_tagline}
-            </div>
-            <div style="font-family: 'Cormorant Garamond', serif; font-size: 2.6rem; font-weight: 400; color: #F2EDE3; line-height: 1;">
-                {app_title}
-            </div>
-            <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-style: italic; color: #C6BCA9; margin-top: 6px;">
-                {app_subtitle}
-            </div>
-        </div>
-    </div>
-""", unsafe_allow_html=True)
+header_svg = render_brand_meerkat_svg(45, 75)
+header_html = f'<div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;"><div style="margin-right: 24px; flex-shrink: 0;">{header_svg}</div><div><div style="font-family: \'Inter\', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">{app_tagline}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 2.6rem; font-weight: 400; color: #F2EDE3; line-height: 1;">{app_title}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 1.1rem; font-style: italic; color: #C6BCA9; margin-top: 6px;">{app_subtitle}</div></div></div>'
+st.markdown(header_html, unsafe_allow_html=True)
 
 control_col1, control_col2 = st.columns([3, 1])
 with control_col1:
@@ -614,7 +582,6 @@ def normalize_str(s):
     return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
 def extract_year_month_tuple(date_str):
-    # Parses 'August 2023', 'March 2025', '2026', etc. into integer tuple for exact chronological sorting
     months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
     d_clean = str(date_str).lower()
     
@@ -756,7 +723,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         if st.session_state.cumulative_brief and st.session_state.cumulative_brief.get("items"):
             existing_items = st.session_state.cumulative_brief.get("items")
 
-        # ROUTE A: 2-Pass Gemini Grounding Engine with Campaign Clustering & Context Filter
+        # ROUTE A: 2-Pass Gemini Grounding Engine
         if clean_key:
             accumulated_items = list(existing_items)
             try:
@@ -946,6 +913,11 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             }
 
             all_campaign_batches = [campaign_batch_2025, campaign_batch_2024, campaign_batch_2023]
+            
+            # Apply Recency Window Filtering to Sandbox Engine
+            if "Past 7 days" in date_window or "Past 24 hours" in date_window:
+                all_campaign_batches = [campaign_batch_2025] # Respect strict recent filter
+                
             all_items = merge_and_deduplicate_campaigns(existing_items, all_campaign_batches, active_q)
             metric_str, reach_str = calculate_aligned_header_metrics(all_items)
 
