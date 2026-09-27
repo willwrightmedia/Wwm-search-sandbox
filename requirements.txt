@@ -1,8 +1,9 @@
-streamlit>=1.40.0
+streamlit>=1.40
 google-genai>=2.25.0
-pydantic>=2.0.0
+pydantic>=2
 pandas
 altair
 requests
 python-docx
 fpdf2
+bcrypt
