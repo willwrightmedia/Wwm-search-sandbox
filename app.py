@@ -52,7 +52,7 @@ if "users_db" not in st.session_state:
 if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
-# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, DARK INK PALETTE & MEERKAT SPINNER OVERRIDE
+# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS & DARK INK BONE PALETTE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -134,37 +134,37 @@ st.markdown("""
     .notice-box { background-color: #1A1814; border-left: 2px solid #6B6B6B; padding: 8px 12px; font-size: 0.78rem; color: #C6BCA9; margin-bottom: 14px; }
     .admin-card { background-color: #1F1C18; border: 1px solid #C6BCA9; padding: 18px; margin-bottom: 20px; border-radius: 2px; }
 
-    /* OVERRIDE STREAMLIT TOP LOADING STATUS ICON WITH MEERKAT POSES */
+    /* OVERRIDE STREAMLIT TOP STATUS ICON WITH BRAND MEERKAT */
     [data-testid="stStatusWidget"] svg {
         display: none !important;
     }
     [data-testid="stStatusWidget"]::before {
         content: "🦦";
         font-size: 1.2rem;
-        animation: meerkatPoses 3s infinite ease-in-out;
-    }
-    @keyframes meerkatPoses {
-        0%   { transform: translateY(2px) scale(0.85); opacity: 0.6; }
-        50%  { transform: translateY(-3px) scale(1.15); opacity: 1.0; }
-        100% { transform: translateY(3px) scale(0.7); opacity: 0.4; }
     }
     </style>
 """, unsafe_allow_html=True)
+
+# Shared Brand SVG Component matching user's exact artwork
+def render_brand_meerkat_svg(width=45, height=75, fill_color="#F2EDE3"):
+    return f"""
+        <svg width="{width}" height="{height}" viewBox="0 0 60 100" fill="{fill_color}" xmlns="http://www.w3.org/2000/svg">
+            <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
+            <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
+            <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
+            <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
+            <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
+            <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
+        </svg>
+    """
 
 # ============================================================================
 # 2. AUTHENTICATION WALL
 # ============================================================================
 def render_login_wall():
-    st.markdown("""
+    st.markdown(f"""
         <div style="text-align: center; padding: 40px 0px;">
-            <svg width="60" height="100" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
-                <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
-                <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
-                <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
-                <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
-                <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
-                <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
-            </svg>
+            {render_brand_meerkat_svg(60, 100)}
             <div style="font-family: 'Cormorant Garamond', serif; font-size: 3.0rem; color: #F2EDE3; margin-top: 10px;">
                 Kat Intelligence Engine
             </div>
@@ -340,7 +340,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("3. Multi-Pass Engine Settings")
-    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Pass 1 sweeps mainstream media worldwide. Pass 2 sweeps tech & industry outlets. Media items are grouped into milestone campaigns sorted from newest to oldest.")
+    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Filters out irrelevant sectors (e.g. dental associations) and strictly respects the selected recency window.")
 
     date_window_option = st.selectbox(
         "Recency scope",
@@ -386,23 +386,16 @@ with st.sidebar:
     st.divider()
     st.button("Reset brief buffer and clear all", on_click=clear_all_searches, key="sidebar_reset")
 
-# --- HEADER ---
+# --- HEADER WITH BRANDED MEERKAT ---
 app_title = "Markat" if is_markat else "Medierkat"
 app_subtitle = "Strategic marketing performance, competitor benchmarking, and share of voice." if is_markat else "Strategic media intelligence, verified reach analytics, and cross-lingual reporting for leadership."
 app_tagline = "COMPETITOR & CAMPAIGN INTELLIGENCE" if is_markat else "GLOBAL MEDIA INSIGHTS"
-tooltip_text = "Build reports step by step: Multi-pass search groups media items into chronological milestone campaigns (newest first) without adding duplicates."
+tooltip_text = "Build reports step by step: Grounded searches are strictly filtered to match target search terms and recency scope."
 
 st.markdown(f"""
     <div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;">
         <div style="margin-right: 24px; flex-shrink: 0;">
-            <svg width="45" height="75" viewBox="0 0 60 100" fill="#F2EDE3" xmlns="http://www.w3.org/2000/svg">
-                <path d="M35 8c4 0 8 3 9 7 2-1 4 0 4 2s-2 4-5 4c-3 5-10 7-16 5-4-2-6-6-4-11 2-4 7-7 12-7z"/>
-                <circle cx="40" cy="12" r="1.5" fill="#14120F"/>
-                <path d="M28 22c2 7 2 17 1 30s-3 23-1 33c3 4 13 4 15 0-2-13-3-30-2-48 1-10-2-17-6-17z"/>
-                <path d="M37 35c5 2 8 6 6 9-3 1-7-3-8-7z"/>
-                <path d="M27 75C18 79 8 85 1 91c-2 2 0 3 3 1 9-6 17-11 25-13z"/>
-                <path d="M26 81l-6 4h9zM39 81l7 4h-10z"/>
-            </svg>
+            {render_brand_meerkat_svg(45, 75)}
         </div>
         <div>
             <div style="font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">
@@ -439,8 +432,8 @@ class CoverageOutlet(BaseModel):
     verification_confidence: str = Field(description="Flag as '[Verified Tier-1 Source]' or '[Uncorroborated]'")
 
 class EventCoverageItem(BaseModel):
-    event_title: str = Field(description="Title describing the specific campaign milestone or media release event (e.g. 'Victorian Footpath Civil Construction Trial' or 'Peer-Reviewed Publication in Journal of Cleaner Production').")
-    campaign_milestone_date: str = Field(default="2026", description="Point in time / release date for this campaign milestone (YYYY or Month YYYY format).")
+    event_title: str = Field(description="Title describing the specific campaign milestone or media release event.")
+    campaign_milestone_date: str = Field(default="2026", description="Point in time / release date for this campaign milestone (e.g., 'August 2023' or 'March 2025').")
     source_category: str = Field(description="Category of source.")
     prominence_depth: str = Field(description="Feature, Segment, or Mention.")
     representation_mode: str = Field(description="Framing or sentiment.")
@@ -616,13 +609,25 @@ def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope,
     buffer.seek(0)
     return buffer
 
-# --- HELPER FUNCS FOR CAMPAIGN CLUSTERING, DEDUPLICATION & CHRONOLOGICAL SORTING ---
+# --- HELPER FUNCS FOR CHRONOLOGICAL CAMPAIGN SORTING & STRICT DEDUPLICATION ---
 def normalize_str(s):
     return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
-def extract_year(date_str):
-    match = re.search(r'\b(20\d{2}|19\d{2})\b', str(date_str))
-    return int(match.group(1)) if match else 2026
+def extract_year_month_tuple(date_str):
+    # Parses 'August 2023', 'March 2025', '2026', etc. into integer tuple for exact chronological sorting
+    months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+    d_clean = str(date_str).lower()
+    
+    year_match = re.search(r'\b(20\d{2}|19\d{2})\b', d_clean)
+    year = int(year_match.group(1)) if year_match else 2026
+    
+    month = 1
+    for idx, m in enumerate(months, 1):
+        if m in d_clean:
+            month = idx
+            break
+            
+    return (year, month)
 
 def calculate_aligned_header_metrics(all_items):
     total_outlets_count = 0
@@ -655,8 +660,11 @@ def calculate_aligned_header_metrics(all_items):
     metric_display = f"Media Index: {total_outlets_count} unique verified media records across campaign milestones"
     return metric_display, reach_display
 
-def merge_and_deduplicate_campaigns(existing_items, new_incoming_items):
+def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_query_term=""):
     merged = list(existing_items)
+    
+    # Irrelevant sector domain keywords to suppress
+    irrelevant_sectors = ["dental", "dentistry", "healthcare practitioner", "dental association"]
     
     existing_urls = set()
     existing_outlet_names = set()
@@ -671,7 +679,6 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items):
         new_title_norm = normalize_str(new_item.get("event_title", ""))
         found_existing_item = None
         
-        # Match campaign milestones by topic or milestone date
         for ex_item in merged:
             ex_title_norm = normalize_str(ex_item.get("event_title", ""))
             ex_date = ex_item.get("campaign_milestone_date", "")
@@ -687,6 +694,10 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items):
                 new_url = new_out.get("canonical_source_url", "").strip().lower()
                 new_out_name = normalize_str(new_out.get("outlet_name", ""))
                 
+                # Strict Irrelevant Domain Filter (e.g. Dental Associations)
+                if any(irr in new_out_name.lower() or irr in new_out.get("medium_type", "").lower() for irr in irrelevant_sectors):
+                    continue
+
                 if "eurekalert" in new_out_name and any("guardian" in name or "reuters" in name or "journal" in name for name in existing_outlet_names):
                     continue
 
@@ -709,6 +720,8 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items):
                 new_url = new_out.get("canonical_source_url", "").strip().lower()
                 new_out_name = normalize_str(new_out.get("outlet_name", ""))
                 
+                if any(irr in new_out_name.lower() or irr in new_out.get("medium_type", "").lower() for irr in irrelevant_sectors):
+                    continue
                 if "eurekalert" in new_out_name and any("guardian" in name or "reuters" in name or "journal" in name for name in existing_outlet_names):
                     continue
                 if (is_valid_url(new_url) and new_url in existing_urls) or (new_out_name and new_out_name in existing_outlet_names):
@@ -722,8 +735,8 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items):
                 new_item["covering_outlets"] = clean_new_outlets
                 merged.append(new_item)
             
-    # Sort Campaign Milestones Chronologically: Newest First
-    merged.sort(key=lambda x: extract_year(x.get("campaign_milestone_date", "2026")), reverse=True)
+    # Sort Chronologically: Newest Campaigns First
+    merged.sort(key=lambda x: extract_year_month_tuple(x.get("campaign_milestone_date", "2026")), reverse=True)
     return merged
 
 # --- REUSABLE EXECUTION ENGINE ---
@@ -734,7 +747,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
         return
 
-    with st.status("Executing 2-Pass Campaign Grounding... Grouping into Chronological Milestones", expanded=False):
+    with st.status("Executing Grounded Campaign Synthesis... Filtering & Grouping into Chronological Milestones", expanded=False):
         current_date = datetime.datetime.now().strftime("%B %d, %Y")
         channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
         clean_key = gemini_key.strip()
@@ -743,7 +756,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         if st.session_state.cumulative_brief and st.session_state.cumulative_brief.get("items"):
             existing_items = st.session_state.cumulative_brief.get("items")
 
-        # ROUTE A: 2-Pass Gemini Grounding Engine with Campaign Clustering
+        # ROUTE A: 2-Pass Gemini Grounding Engine with Campaign Clustering & Context Filter
         if clean_key:
             accumulated_items = list(existing_items)
             try:
@@ -754,11 +767,14 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 Today is {current_date}. [PASS 1: MAINSTREAM MEDIA CAMPAIGN SWEEP]
                 You are {app_title}'s Senior Strategic Intelligence Analyst.
                 SEARCH TARGET: "{active_q}"
+                RECENCY WINDOW MANDATE: Strictly respect the selected time window: '{date_window}'.
                 
-                CAMPAIGN CLUSTERING MANDATE:
-                1. Group media results into distinct, chronological media releases / campaign milestones over time (e.g. 'Initial Lab Discovery Announcement', 'Victorian Civil Infrastructure Footpath Trial', 'Standards Australia Industry Code').
-                2. For each campaign milestone, state its 'campaign_milestone_date' (e.g. 'August 2023', 'May 2024', 'March 2025').
-                3. EXCLUDE support/login pages. Format strictly as JSON matching schema.
+                STRICT RELEVANCE & CAMPAIGN CLUSTERING MANDATE:
+                1. INCLUDE ONLY media coverage directly discussing "{active_q}".
+                2. STRICTLY EXCLUDE unrelated industry sectors (e.g. dental associations, medical clinics, irrelevant trade press).
+                3. Group media results into chronological media releases / campaign milestones over time.
+                4. For each campaign milestone, state its 'campaign_milestone_date' (e.g. 'August 2023', 'May 2024', 'March 2025').
+                5. EXCLUDE support/login pages. Format strictly as JSON matching schema.
                 """
                 response1 = client.models.generate_content(
                     model="gemini-3.8-flash",
@@ -772,7 +788,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 )
                 pass1_data = json.loads(response1.text)
                 if pass1_data.get("items"):
-                    accumulated_items = merge_and_deduplicate_campaigns(accumulated_items, pass1_data.get("items"))
+                    accumulated_items = merge_and_deduplicate_campaigns(accumulated_items, pass1_data.get("items"), active_q)
 
                 # PASS 2: Tech, Trade & Journal Altmetric Sweep
                 pass2_prompt = f"""
@@ -781,9 +797,10 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 SEARCH TARGET: "{active_q}"
                 
                 GROUNDING MANDATE:
-                1. Ground across trade journals, academic newsrooms, and peer-reviewed journals (e.g. Journal of Cleaner Production, Elsevier, Nature).
-                2. For journal publications, extract or estimate the 'altmetric_attention_score' (e.g. '685 (Top 1% Global Attention)').
-                3. Append outlets into the matching campaign milestone date or title. Format strictly as JSON matching schema.
+                1. Analyze the 20-word context window surrounding "{active_q}".
+                2. Ground across trade journals, academic newsrooms, and peer-reviewed journals (e.g. Journal of Cleaner Production, Elsevier, Nature).
+                3. For journal publications, extract or estimate the 'altmetric_attention_score' (e.g. '685 (Top 1% Global Attention)').
+                4. Append outlets into the matching campaign milestone date or title. Format strictly as JSON matching schema.
                 """
                 response2 = client.models.generate_content(
                     model="gemini-3.8-flash",
@@ -797,7 +814,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 )
                 pass2_data = json.loads(response2.text)
                 if pass2_data.get("items"):
-                    accumulated_items = merge_and_deduplicate_campaigns(accumulated_items, pass2_data.get("items"))
+                    accumulated_items = merge_and_deduplicate_campaigns(accumulated_items, pass2_data.get("items"), active_q)
 
                 metric_str, reach_str = calculate_aligned_header_metrics(accumulated_items)
 
@@ -821,7 +838,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 else:
                     st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
 
-        # ROUTE B: Sandbox Media Search Engine (Chronological Campaign Milestones)
+        # ROUTE B: Sandbox Media Search Engine (Strict Chronological Campaign Milestones)
         try:
             campaign_batch_2025 = {
                 "event_title": "Victorian Civil Infrastructure & Footpath Deployment Campaign",
@@ -929,7 +946,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
             }
 
             all_campaign_batches = [campaign_batch_2025, campaign_batch_2024, campaign_batch_2023]
-            all_items = merge_and_deduplicate_campaigns(existing_items, all_campaign_batches)
+            all_items = merge_and_deduplicate_campaigns(existing_items, all_campaign_batches, active_q)
             metric_str, reach_str = calculate_aligned_header_metrics(all_items)
 
             st.session_state.cumulative_brief = {
@@ -1063,7 +1080,7 @@ else:
     for idx, q in enumerate(st.session_state.saved_queries, 1):
         st.markdown(f"**{idx}.** `{q}`")
 
-# --- DELIVERABLE RENDER (CHRONOLOGICAL CAMPAIGN MILESTONES) ---
+# --- DELIVERABLE RENDER (CHRONOLOGICAL CAMPAIGN MILESTONES: NEWEST FIRST) ---
 if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in main_mode):
     brief = st.session_state.cumulative_brief
     st.markdown("---")
