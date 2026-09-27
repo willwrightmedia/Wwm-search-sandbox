@@ -23,6 +23,12 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
+try:
+    from importlib.metadata import version as _pkg_version
+    GENAI_VERSION = _pkg_version("google-genai")
+except Exception:
+    GENAI_VERSION = "unknown"
+
 st.set_page_config(page_title="Kat Intelligence Engine", page_icon="🦦", layout="wide")
 
 # ============================================================================
@@ -556,6 +562,11 @@ def explain_gemini_error(error, model):
     low = str(error).lower()
     if "api key not valid" in low or "api_key_invalid" in low or "invalid api key" in low or "api key expired" in low:
         return "The Gemini API key isn't valid. Copy it again from Google AI Studio, making sure there are no spaces before or after it."
+    if "401" in low or "unauthenticated" in low or "access_token_type" in low or "oauth" in low:
+        return ("Google rejected the API key (401 unauthenticated). With the newer 'AQ.' keys from AI Studio this is usually "
+                f"an outdated Gemini library (this app is running version {GENAI_VERSION}; it needs 2.25.0 or later), "
+                "or a key that has been disabled. Reboot the app so it installs the latest library, and if it still fails, "
+                "create a new key in AI Studio.")
     if is_model_not_found(error):
         return f"The model '{model}' isn't available to this API key. Try 'gemini-flash-latest' in the sidebar's Gemini model box."
     if "permission" in low or "403" in low:
@@ -663,6 +674,7 @@ with st.sidebar:
     if secret("GEMINI_API_KEY"):
         st.caption("Using the API key from secrets.")
     model_name = st.text_input("Gemini model", value=secret("GEMINI_MODEL", DEFAULT_MODEL))
+    st.caption(f"Gemini library version: {GENAI_VERSION}")
     if st.button("Test connection", key="test_connection"):
         ok, message = test_gemini_connection(gemini_key, model_name)
         (st.success if ok else st.error)(message)
