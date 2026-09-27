@@ -322,8 +322,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.subheader("3. Multi-Pass Engine Settings")
-    search_passes_setting = st.slider("Multi-Pass Grounding Cycles", min_value=1, max_value=5, value=2, help="Default is 2 passes. Altmetric Attention Scores are rendered strictly for peer-reviewed scientific journals.")
+    st.subheader("3. Media channels and horizon")
 
     date_window_option = st.selectbox(
         "Recency scope",
@@ -343,9 +342,9 @@ with st.sidebar:
     social_media_focus = st.selectbox(
         "Coverage scope",
         [
-            "Include major news and verified social media combined",
+            "Include major news, verified social media, and Reddit forums combined",
             "Focus exclusively on major news and broadcast press",
-            "Focus exclusively on high-reach social media channels"
+            "Focus exclusively on high-reach social media channels & Reddit forums"
         ],
         index=0
     )
@@ -355,13 +354,14 @@ with st.sidebar:
         [
             "Global tier-1 press & wires",
             "Australian press & national broadcasters",
-            "Major social media channels (>10,000 followers)",
+            "Major social media & Reddit discussions",
             "Southeast Asian press",
             "Official releases (.gov.au, .edu.au, ASX)"
         ],
         default=[
             "Global tier-1 press & wires",
             "Australian press & national broadcasters",
+            "Major social media & Reddit discussions",
             "Official releases (.gov.au, .edu.au, ASX)"
         ]
     )
@@ -373,7 +373,7 @@ with st.sidebar:
 app_title = "Markat" if is_markat else "Medierkat"
 app_subtitle = "Strategic marketing performance, competitor benchmarking, and share of voice." if is_markat else "Strategic media intelligence, verified reach analytics, and cross-lingual reporting for leadership."
 app_tagline = "COMPETITOR & CAMPAIGN INTELLIGENCE" if is_markat else "GLOBAL MEDIA INSIGHTS"
-tooltip_text = "Build reports step by step: Grounded searches are strictly filtered to match target search terms and recency scope."
+tooltip_text = "Build reports step by step: Multi-pass search continuously appends new media items without adding duplicates. Scientific journals automatically display Altmetric Attention Scores."
 
 header_svg = render_brand_meerkat_svg(45, 75)
 header_html = f'<div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;"><div style="margin-right: 24px; flex-shrink: 0;">{header_svg}</div><div><div style="font-family: \'Inter\', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">{app_tagline}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 2.6rem; font-weight: 400; color: #F2EDE3; line-height: 1;">{app_title}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 1.1rem; font-style: italic; color: #C6BCA9; margin-top: 6px;">{app_subtitle}</div></div></div>'
@@ -396,7 +396,7 @@ class CoverageOutlet(BaseModel):
     original_language: str = Field(description="Original language.")
     canonical_source_url: str = Field(description="Direct resolving URL from grounding.")
     audience_reach_metrics: str = Field(description="Audience reach or follower counts.")
-    is_peer_reviewed_journal: bool = Field(default=False, description="Set to True ONLY if this outlet is a verified peer-reviewed scientific journal or research publication (e.g., Journal of Cleaner Production, Elsevier, ScienceDirect, Nature).")
+    is_peer_reviewed_journal: bool = Field(default=False, description="Set to True ONLY if this outlet is a verified peer-reviewed scientific journal or research publication.")
     altmetric_attention_score: str = Field(default="N/A", description="Altmetric Attention Score ONLY if is_peer_reviewed_journal is True. Otherwise write 'N/A'.")
     verification_confidence: str = Field(description="Flag as '[Verified Tier-1 Source]' or '[Uncorroborated]'")
 
@@ -407,6 +407,7 @@ class EventCoverageItem(BaseModel):
     prominence_depth: str = Field(description="Feature, Segment, or Mention.")
     representation_mode: str = Field(description="Framing or sentiment.")
     key_message_delivered: str = Field(description="Core key message delivered.")
+    reddit_community_sentiment_summary: str = Field(default="N/A", description="Synthesized summary of Reddit community discussions, forum commentary, or consumer sentiment surrounding this campaign milestone.")
     co_represented_entities: str = Field(description="Competitors or co-featured brands.")
     core_event_summary: str = Field(description="Summary of coverage.")
     covering_outlets: list[CoverageOutlet]
@@ -536,6 +537,8 @@ def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_sc
         md += f"- **Category:** {item['source_category']} | **Prominence:** {item['prominence_depth']}\n"
         md += f"- **Framing:** {item['representation_mode']} | **Key messages delivered:** {item['key_message_delivered']}\n"
         md += f"- **Summary:** {item['core_event_summary']}\n"
+        if item.get("reddit_community_sentiment_summary") and item.get("reddit_community_sentiment_summary") != "N/A":
+            md += f"- **Reddit Forum Sentiment:** {item['reddit_community_sentiment_summary']}\n"
         for outlet in item.get("covering_outlets", []):
             url = outlet.get('canonical_source_url', '')
             link_str = f" — [Source link]({url})" if is_valid_url(url) else ""
@@ -578,7 +581,7 @@ def generate_docx_brief(brief, query, lang, purpose_text, tier_type, time_scope,
     buffer.seek(0)
     return buffer
 
-# --- HELPER FUNCS FOR CHRONOLOGICAL CAMPAIGN SORTING & STRICT DEDUPLICATION ---
+# --- HELPER FUNCS FOR CHRONOLOGICAL CAMPAIGN SORTING & FUZZY DEDUPLICATION ---
 def normalize_str(s):
     return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
@@ -628,10 +631,10 @@ def calculate_aligned_header_metrics(all_items):
     metric_display = f"Media Index: {total_outlets_count} unique verified media records across campaign milestones"
     return metric_display, reach_display
 
+# FUZZY CAMPAIGN MERGER: Prevents duplicate campaign cards like "Municipal Footpath Trial" and "Field Scale Translation"
 def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_query_term=""):
     merged = list(existing_items)
     
-    # Irrelevant sector domain keywords to suppress
     irrelevant_sectors = ["dental", "dentistry", "healthcare practitioner", "dental association"]
     
     existing_urls = set()
@@ -645,14 +648,19 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
 
     for new_item in new_incoming_items:
         new_title_norm = normalize_str(new_item.get("event_title", ""))
+        new_date_norm = normalize_str(new_item.get("campaign_milestone_date", ""))
         found_existing_item = None
         
+        # Fuzzy campaign title/date matching
         for ex_item in merged:
             ex_title_norm = normalize_str(ex_item.get("event_title", ""))
-            ex_date = ex_item.get("campaign_milestone_date", "")
-            new_date = new_item.get("campaign_milestone_date", "")
+            ex_date_norm = normalize_str(ex_item.get("campaign_milestone_date", ""))
             
-            if (new_title_norm and (new_title_norm in ex_title_norm or ex_title_norm in new_title_norm)) or (ex_date and ex_date == new_date):
+            # Match if milestone date overlaps AND key roots match (e.g. "footpath", "trial", "gisborne")
+            same_date = (new_date_norm and ex_date_norm and (new_date_norm in ex_date_norm or ex_date_norm in new_date_norm))
+            similar_title = any(word in ex_title_norm for word in ["footpath", "gisborne", "journal", "trial", "discovery", "deployment"] if word in new_title_norm)
+            
+            if (new_title_norm and (new_title_norm in ex_title_norm or ex_title_norm in new_title_norm)) or (same_date and similar_title):
                 found_existing_item = ex_item
                 break
                 
@@ -662,7 +670,6 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
                 new_url = new_out.get("canonical_source_url", "").strip().lower()
                 new_out_name = normalize_str(new_out.get("outlet_name", ""))
                 
-                # Strict Irrelevant Domain Filter (e.g. Dental Associations)
                 if any(irr in new_out_name.lower() or irr in new_out.get("medium_type", "").lower() for irr in irrelevant_sectors):
                     continue
 
@@ -708,15 +715,15 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
     merged.sort(key=lambda x: extract_year_month_tuple(x.get("campaign_milestone_date", "2026")), reverse=True)
     return merged
 
-# --- REUSABLE EXECUTION ENGINE ---
-def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary, num_passes=2):
+# --- REUSABLE EXECUTION ENGINE (4-PASS DEFAULT GROUNDING SWEEP) ---
+def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary, num_passes=4):
     active_q = search_query_input if search_query_input else st.session_state.executed_query
     
     if not active_q and not custom_urls_input and not submit_manual:
         st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
         return
 
-    with st.status("Executing Grounded Campaign Synthesis... Filtering & Grouping into Chronological Milestones", expanded=False):
+    with st.status("Executing 4-Pass Grounded Synthesis... Mainstream • Tech/Journal • Reddit & Social Forums", expanded=False):
         current_date = datetime.datetime.now().strftime("%B %d, %Y")
         channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
         clean_key = gemini_key.strip()
@@ -725,69 +732,44 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         if st.session_state.cumulative_brief and st.session_state.cumulative_brief.get("items"):
             existing_items = st.session_state.cumulative_brief.get("items")
 
-        # ROUTE A: 2-Pass Gemini Grounding Engine
+        # ROUTE A: 4-Pass Gemini Grounding Engine
         if clean_key:
             accumulated_items = list(existing_items)
             try:
                 client = genai.Client(api_key=clean_key)
                 
-                # PASS 1: Mainstream Worldwide Campaign Sweep
-                pass1_prompt = f"""
-                Today is {current_date}. [PASS 1: MAINSTREAM MEDIA CAMPAIGN SWEEP]
-                You are {app_title}'s Senior Strategic Intelligence Analyst.
-                SEARCH TARGET: "{active_q}"
-                RECENCY WINDOW MANDATE: Strictly respect the selected time window: '{date_window}'.
-                
-                STRICT RELEVANCE & CAMPAIGN CLUSTERING MANDATE:
-                1. INCLUDE ONLY media coverage directly discussing "{active_q}".
-                2. STRICTLY EXCLUDE unrelated industry sectors (e.g. dental associations, medical clinics, irrelevant trade press).
-                3. Group media results into chronological media releases / campaign milestones over time.
-                4. For each campaign milestone, state its 'campaign_milestone_date' (e.g. 'August 2023', 'May 2024', 'March 2025').
-                5. EXCLUDE support/login pages. Format strictly as JSON matching schema.
-                """
-                response1 = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=pass1_prompt,
-                    config=types.GenerateContentConfig(
-                        tools=[{"google_search": {}}],
-                        response_mime_type="application/json",
-                        response_schema=WWMExecutiveAnalysisBrief,
-                        temperature=0.0,
+                # 4 Grounding Passes across Mainstream, Industry, Journal Altmetric & Reddit
+                for pass_idx in range(num_passes):
+                    pass_prompt = f"""
+                    Today is {current_date}. [PASS {pass_idx+1} OF {num_passes}]
+                    You are {app_title}'s Senior Strategic Intelligence Analyst.
+                    SEARCH TARGET: "{active_q}"
+                    RECENCY WINDOW MANDATE: Respect the selected time window: '{date_window}'.
+                    
+                    STRICT GROUNDING & REDDIT INTEGRATION MANDATE:
+                    1. Ground across global mainstream press, trade journals, peer-reviewed scientific publications, and Reddit discussions (e.g. r/science, r/technology, r/engineering, r/australia).
+                    2. Group results into distinct chronological media release / campaign milestones over time.
+                    3. For peer-reviewed journals, set 'is_peer_reviewed_journal' to TRUE and extract 'altmetric_attention_score'. For standard news/Reddit, write 'N/A'.
+                    4. Summarize Reddit community sentiment and forum discussions in 'reddit_community_sentiment_summary'.
+                    5. Format strictly as JSON matching schema. EXCLUDE support/login utility pages.
+                    """
+                    response = client.models.generate_content(
+                        model="gemini-3.8-flash",
+                        contents=pass_prompt,
+                        config=types.GenerateContentConfig(
+                            tools=[{"google_search": {}}],
+                            response_mime_type="application/json",
+                            response_schema=WWMExecutiveAnalysisBrief,
+                            temperature=0.1 * pass_idx,
+                        )
                     )
-                )
-                pass1_data = json.loads(response1.text)
-                if pass1_data.get("items"):
-                    accumulated_items = merge_and_deduplicate_campaigns(accumulated_items, pass1_data.get("items"), active_q)
-
-                # PASS 2: Tech, Trade & Journal Altmetric Sweep
-                pass2_prompt = f"""
-                Today is {current_date}. [PASS 2: TECH & PEER-REVIEWED JOURNAL ALTMETRIC SWEEP]
-                You are {app_title}'s Senior Strategic Intelligence Analyst.
-                SEARCH TARGET: "{active_q}"
-                
-                GROUNDING MANDATE:
-                1. Analyze the 20-word context window surrounding "{active_q}".
-                2. Ground across trade journals, academic newsrooms, and peer-reviewed journals (e.g. Journal of Cleaner Production, Elsevier, Nature).
-                3. STRICT ALTMETRIC RULE: Set 'is_peer_reviewed_journal' to TRUE ONLY for verified scientific journals. Extract 'altmetric_attention_score' ONLY when is_peer_reviewed_journal is TRUE. Write 'N/A' for news outlets like The Guardian or Reuters.
-                4. Append outlets into the matching campaign milestone date or title. Format strictly as JSON matching schema.
-                """
-                response2 = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=pass2_prompt,
-                    config=types.GenerateContentConfig(
-                        tools=[{"google_search": {}}],
-                        response_mime_type="application/json",
-                        response_schema=WWMExecutiveAnalysisBrief,
-                        temperature=0.1,
-                    )
-                )
-                pass2_data = json.loads(response2.text)
-                if pass2_data.get("items"):
-                    accumulated_items = merge_and_deduplicate_campaigns(accumulated_items, pass2_data.get("items"), active_q)
+                    pass_data = json.loads(response.text)
+                    if pass_data.get("items"):
+                        accumulated_items = merge_and_deduplicate_campaigns(accumulated_items, pass_data.get("items"), active_q)
 
                 metric_str, reach_str = calculate_aligned_header_metrics(accumulated_items)
 
-                st.session_state.cumulative_brief = pass2_data
+                st.session_state.cumulative_brief = pass_data
                 st.session_state.cumulative_brief["items"] = accumulated_items
                 st.session_state.cumulative_brief["verified_coverage_metric"] = metric_str
                 st.session_state.cumulative_brief["total_combined_audience_reach"] = reach_str
@@ -799,7 +781,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 st.session_state.active_cov_scope = social_media_focus
                 st.session_state.active_channels = channels_str
                 
-                st.success(f"2-Pass Campaign Synthesis Complete! {len(accumulated_items)} Chronological Campaign Milestones Clustered.")
+                st.success(f"Synthesis Complete! {len(accumulated_items)} Chronological Campaign Milestones Clustered.")
                 return
             except Exception as e:
                 if "401" in str(e) or "UNAUTHENTICATED" in str(e) or "ACCESS_TOKEN_TYPE" in str(e):
@@ -807,7 +789,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 else:
                     st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
 
-        # ROUTE B: Sandbox Media Search Engine (Strict Chronological Campaign Milestones)
+        # ROUTE B: Sandbox Media Search Engine (Chronological Campaigns + Reddit Forum Digest)
         try:
             campaign_batch_2025 = {
                 "event_title": "Victorian Civil Infrastructure & Footpath Deployment Campaign",
@@ -816,6 +798,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 "prominence_depth": "Lead Feature",
                 "representation_mode": "Pioneering Commercial Translation",
                 "key_message_delivered": "Translation of laboratory coffee-biochar concrete into municipal footpaths across Victorian local councils in partnership with VicRoads and BildGroup.",
+                "reddit_community_sentiment_summary": "Highly positive discussions on r/civilengineering and r/australia praising practical circular economy applications for municipal infrastructure.",
                 "co_represented_entities": "RMIT University, Macedon Ranges Shire Council, BildGroup, VicRoads",
                 "core_event_summary": "Extensive civil engineering coverage detailing broad scale municipal trial footpaths using 15% coffee-biochar sand replacement.",
                 "covering_outlets": [
@@ -841,6 +824,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 "prominence_depth": "Major Broadcast Segment",
                 "representation_mode": "Positive / Circular Economy Leader",
                 "key_message_delivered": "Diverting organic coffee waste from landfills into structural biochar to prevent greenhouse gas emissions.",
+                "reddit_community_sentiment_summary": "Front-page viral thread on r/technology (12.4k upvotes) focusing on sand shortage solutions and low-temperature pyrolysis engineering.",
                 "co_represented_entities": "RMIT Engineering School, Organic Waste Management Authorities",
                 "core_event_summary": "International wire distribution across Reuters and SBS highlighting industrial waste valorization.",
                 "covering_outlets": [
@@ -878,6 +862,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 "prominence_depth": "Front-Page Innovation Feature",
                 "representation_mode": "Positive / Innovation Champion",
                 "key_message_delivered": "Pyrolyzed spent coffee grounds replace 15% of concrete sand, increasing structural strength by 30%.",
+                "reddit_community_sentiment_summary": "Top post on r/science discussing the 350°C oxygen-free pyrolysis process; user commentary highlighted scalability for civil construction.",
                 "co_represented_entities": "RMIT University Research Team",
                 "core_event_summary": "Global media campaign surrounding Dr. Rajeev Roychand's initial research paper published in the Journal of Cleaner Production.",
                 "covering_outlets": [
@@ -922,7 +907,6 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
 
             all_campaign_batches = [campaign_batch_2025, campaign_batch_2024, campaign_batch_2023]
             
-            # Apply Recency Window Filtering to Sandbox Engine
             if "Past 7 days" in date_window or "Past 24 hours" in date_window:
                 all_campaign_batches = [campaign_batch_2025]
                 
@@ -933,7 +917,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 "coverage_found": True,
                 "verified_coverage_metric": metric_str,
                 "total_combined_audience_reach": reach_str,
-                "headline_synthesis": f"Sustained 4-year media and research campaign trajectory for '{active_q}' demonstrates continuous milestone execution from initial lab discovery to Victorian municipal civil trials.",
+                "headline_synthesis": f"Sustained media and research campaign trajectory for '{active_q}' demonstrates continuous milestone execution from initial lab discovery to Victorian municipal civil trials.",
                 "sentiment_framing_read": f"Media framing across all campaign phases is overwhelmingly positive, positioning the RMIT team as global pioneers in green concrete technology.",
                 "subject_quoted_vs_reported": f"Public statements from Dr. Roychand highlight the technical feasibility and commercial scalability of coffee biochar.",
                 "engagement_opportunities": f"Strategic opportunity identified to build on the March 2025 civil footpaths milestone to advocate for Standards Australia biochar aggregate codification.",
@@ -993,14 +977,9 @@ if "Dashboard" in main_mode:
 
     with st.expander("⚡ Launch intelligence synthesis from dashboard", expanded=True):
         dash_search_query = st.text_input("Enter query terms:", placeholder="e.g. Enter brand, individual, or topic...")
-        d_col1, d_col2 = st.columns([2, 2])
-        with d_col1:
-            passes_in = st.slider("Search Passes", 1, 5, search_passes_setting, key="dash_passes")
-        with d_col2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("⚡ Run Multi-Pass Synthesis", type="primary"):
-                st.session_state.executed_query = dash_search_query
-                run_synthesis_engine(dash_search_query, [], False, "", [], "", "", "", "", "", "", "", num_passes=passes_in)
+        if st.button("⚡ Execute Synthesis", type="primary"):
+            st.session_state.executed_query = dash_search_query
+            run_synthesis_engine(dash_search_query, [], False, "", [], "", "", "", "", "", "", "", num_passes=4)
 
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -1022,14 +1001,13 @@ elif "Brief" in main_mode:
     tab_search, tab_custom_urls = st.tabs(["🔍 Live search", "🔗 Added links"])
     with tab_search:
         search_query_input = st.text_input("Search terms (AND/OR/NOT supported):", placeholder="e.g. Enter target terms...")
-        passes_brief = st.slider("Search Passes", 1, 5, search_passes_setting, key="brief_passes")
     with tab_custom_urls:
         raw_urls_text = st.text_area("Paste URLs (Up to 100):", height=100, placeholder="https://www.example.com/article...")
         custom_urls_input = [line.strip() for line in raw_urls_text.split("\n") if line.strip().startswith("http")]
 
     if st.button("Generate executive brief"):
         st.session_state.executed_query = search_query_input
-        run_synthesis_engine(search_query_input, custom_urls_input, False, "", [], "", "", "", "", "", "", "", num_passes=passes_brief)
+        run_synthesis_engine(search_query_input, custom_urls_input, False, "", [], "", "", "", "", "", "", "", num_passes=4)
 
 # --- VIEW 3: REPORT LIBRARY & ADMIN CONSOLE ---
 else:
@@ -1138,6 +1116,12 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
                 st.markdown(f"**Category:** `{item['source_category']}` | **Prominence:** `{item['prominence_depth']}`")
                 st.markdown(f"**Framing:** `{item['representation_mode']}` | **Key messages delivered:** `{item['key_message_delivered']}`")
                 st.write(f"**Campaign Summary:** {item['core_event_summary']}")
+                
+                # Reddit Digest Box
+                reddit_summary = item.get("reddit_community_sentiment_summary", "N/A")
+                if reddit_summary and reddit_summary != "N/A":
+                    st.markdown(f"💬 **Reddit & Forum Community Digest:** *{reddit_summary}*")
+                
                 st.markdown("**Covering outlets and audience reach metrics for this milestone:**")
                 
                 for outlet in item.get("covering_outlets", []):
