@@ -13,7 +13,7 @@ from docx import Document
 from fpdf import FPDF
 from duckduckgo_search import DDGS
 
-# Global Cap: World Adult Population Benchmark (approx. 5.6 Billion Adults in 2026)
+# Global Population Cap: Earth Adult Population Benchmark (~5.6 Billion Adults in 2026)
 GLOBAL_ADULT_POPULATION_CAP = 5_600_000_000
 
 # ============================================================================
@@ -422,8 +422,8 @@ class CoverageOutlet(BaseModel):
     author_byline: str = Field(description="Author or handle. Write 'not stated' if absent.")
     publication_date: str = Field(description="Publication date verbatim.")
     original_language: str = Field(description="Original language.")
-    canonical_source_url: str = Field(description="Direct resolving URL from grounding.")
-    audience_reach_metrics: str = Field(description="Audience reach or follower counts (e.g. '130.0M monthly readers [Australia: 45M, US: 55M, UK: 30M]').")
+    canonical_source_url: str = Field(description="Direct resolving URL from grounding metadata. Pass ONLY exact verbatim URLs returned in grounding.")
+    audience_reach_metrics: str = Field(description="Audience reach or follower counts (e.g. '130.0M monthly unique readers [Australia: 45M, US: 55M, UK: 30M]').")
     country_domain_code: str = Field(default="Global", description="Country of domain where article originated (e.g., 'Australia', 'United States', 'United Kingdom', 'Global').")
     is_peer_reviewed_journal: bool = Field(default=False, description="Set to True ONLY if this outlet is a verified peer-reviewed scientific journal or research publication.")
     altmetric_attention_score: str = Field(default="N/A", description="Altmetric Attention Score ONLY if is_peer_reviewed_journal is True. Otherwise write 'N/A'.")
@@ -630,7 +630,6 @@ def extract_year_month_tuple(date_str):
     return (year, month)
 
 def format_clean_audience_reach(total_num):
-    # Strictly caps against Earth's adult population (~5.6 Billion)
     moderated_num = min(total_num, GLOBAL_ADULT_POPULATION_CAP)
     
     if moderated_num >= 1_000_000_000:
@@ -657,7 +656,7 @@ def calculate_aligned_header_metrics(all_items):
                 if clean_val_str:
                     try:
                         clean_v = float(clean_val_str)
-                        if unit in ['trillion']: clean_v *= 1_000_000_000 # Moderate Trillions down to Billions
+                        if unit in ['trillion']: clean_v *= 1_000_000_000
                         elif unit in ['billion', 'b']: clean_v *= 1_000_000_000
                         elif unit in ['million', 'm']: clean_v *= 1_000_000
                         elif unit == 'k': clean_v *= 1_000
@@ -792,18 +791,19 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                     SEARCH TARGET: "{active_q}"
                     RECENCY WINDOW MANDATE: Respect the selected time window: '{date_window}'. If query is outside window, return zero items.
                     
-                    STRICT GROUNDING, ANCHORING & REACH CAP MANDATE:
+                    STRICT GROUNDING, ANCHORING, URL & REACH CAP MANDATE:
                     1. ANCHOR CAMPAIGNS TO OFFICIAL INSTITUTIONAL PRESS RELEASES (e.g., RMIT University Media Releases, ASX Releases, Government Announcements).
                     2. Ground across global mainstream press, trade journals, peer-reviewed scientific publications, and Reddit discussions.
-                    3. LIST ORDER INSIDE CAMPAIGNS:
+                    3. URL VERIFICATION RULE: For 'canonical_source_url', pass ONLY exact verbatim URLs returned in grounding metadata. IF A DIRECT ARTICLE URL IS NOT PRESENT IN GROUNDING RESULTS, WRITE 'None'. Do NOT fabricate or approximate URLs.
+                    4. LIST ORDER INSIDE CAMPAIGNS:
                        - FIRST: Official University / Primary Institution Press Release.
                        - SECOND: External Mainstream News Mastheads, Wire Services, & Trade Press.
                        - THIRD: Reddit / Social Media Discussions (Synthesized in 'reddit_community_sentiment_summary').
-                    4. AUDIENCE BREAKDOWN & WORLD ADULT POPULATION CAP:
+                    5. AUDIENCE BREAKDOWN & WORLD ADULT POPULATION CAP:
                        - Break down audience reach by country of domain where article originated (e.g., '130.0M monthly unique readers [Australia: 45M, US: 55M, UK: 30M]').
                        - NEVER exceed the global adult population (5.6 Billion).
-                    5. ALTMETRIC SCORE RULE: Set 'is_peer_reviewed_journal' to TRUE ONLY for verified scientific journals. Extract 'altmetric_attention_score' ONLY when is_peer_reviewed_journal is TRUE. Write 'N/A' for news outlets like The Guardian or Reuters.
-                    6. Format strictly as JSON matching schema. EXCLUDE support/login utility pages.
+                    6. ALTMETRIC SCORE RULE: Set 'is_peer_reviewed_journal' to TRUE ONLY for verified scientific journals. Extract 'altmetric_attention_score' ONLY when is_peer_reviewed_journal is TRUE. Write 'N/A' for news outlets like The Guardian or Reuters.
+                    7. Format strictly as JSON matching schema. EXCLUDE support/login utility pages.
                     """
                     response = client.models.generate_content(
                         model="gemini-3.8-flash",
@@ -841,7 +841,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                 else:
                     st.warning(f"⚠️ Gemini Grounding Notice: {str(e)}. Falling back to Sandbox Engine...")
 
-        # ROUTE B: Sandbox Media Search Engine (Strict Chronological Campaigns Anchored to Official Releases)
+        # ROUTE B: Sandbox Media Search Engine (Chronological Campaigns Anchored to Official Releases)
         try:
             campaign_batch_2025 = {
                 "event_title": "Shaping Australia Awards Victory & National Innovation Recognition",
@@ -1123,7 +1123,7 @@ else:
     for idx, q in enumerate(st.session_state.saved_queries, 1):
         st.markdown(f"**{idx}.** `{q}`")
 
-# --- DELIVERABLE RENDER ---
+# --- DELIVERABLE RENDER (CHRONOLOGICAL CAMPAIGN MILESTONES: NEWEST FIRST) ---
 if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in main_mode):
     brief = st.session_state.cumulative_brief
     st.markdown("---")
@@ -1169,7 +1169,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
         if "PDF" in export_format:
             st.download_button("💚 Download PDF report", generate_pdf_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans, export_limit=export_limit_sel), f"{app_title}_Executive_Brief_{active_l}.pdf", "application/pdf", key="dl_pdf_top")
         elif "Word" in export_format:
-            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"{app_title}_Executive_Brief_{active_l}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
+            st.download_button("💚 Download Word document", generate_docx_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans, export_limit=export_limit_sel), f"{app_title}_Executive_Brief_{active_l}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="dl_docx_top")
         else:
             st.download_button("💚 Download Markdown file", generate_markdown_brief(brief, exec_query, active_l, active_purpose, active_tier, active_time, active_cov, active_chans), f"{app_title}_Executive_Brief_{active_l}.md", "text/markdown", key="dl_md_top")
 
@@ -1206,6 +1206,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
                 
                 for outlet in item.get("covering_outlets", []):
                     url = outlet.get('canonical_source_url', '')
+                    # Exact Link Verification Rule: Render hyperlink ONLY if URL starts with http
                     link_html = f"<br>🔗 <a href='{url}' target='_blank'>Review original canonical source link</a>" if is_valid_url(url) else ""
                     conf_tag = f"<br>⚠️ <i>{outlet.get('verification_confidence', '')}</i>" if "Uncorroborated" in outlet.get('verification_confidence', '') else ""
                     
