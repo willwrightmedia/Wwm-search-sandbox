@@ -29,6 +29,7 @@ st.set_page_config(page_title="Kat Intelligence Engine", page_icon="🦦", layou
 # 0. CONSTANTS
 # ============================================================================
 DEFAULT_MODEL = "gemini-3.8-flash"
+FALLBACK_MODEL = "gemini-flash-latest"
 NUM_PASSES = 4
 
 # Each pass searches from a different angle so passes add coverage rather than repeat it.
@@ -544,6 +545,46 @@ def parse_json(text):
 
 
 # ============================================================================
+# 6b. GEMINI CONNECTION HELPERS
+# ============================================================================
+def is_model_not_found(error):
+    low = str(error).lower()
+    return ("404" in low or "not_found" in low or "not found" in low) and "model" in low
+
+
+def explain_gemini_error(error, model):
+    low = str(error).lower()
+    if "api key not valid" in low or "api_key_invalid" in low or "invalid api key" in low or "api key expired" in low:
+        return "The Gemini API key isn't valid. Copy it again from Google AI Studio, making sure there are no spaces before or after it."
+    if is_model_not_found(error):
+        return f"The model '{model}' isn't available to this API key. Try 'gemini-flash-latest' in the sidebar's Gemini model box."
+    if "permission" in low or "403" in low:
+        return "This API key isn't allowed to make the request. Check that the Gemini API is enabled for the key and that any restrictions on the key allow it."
+    if "resource_exhausted" in low or "429" in low or "quota" in low or "rate limit" in low:
+        return "Gemini's usage limit has been reached. Wait a minute and try again, or check your quota and billing in Google AI Studio."
+    if "timed out" in low or "timeout" in low or "deadline" in low or "connection" in low or "unavailable" in low or "503" in low:
+        return "Gemini didn't respond in time or is temporarily unavailable. Try again in a moment."
+    if "validation error" in low or "json" in low or "expecting" in low:
+        return "Gemini replied in an unexpected format. Trying again usually fixes this."
+    return "Gemini returned an unexpected error. The technical detail below shows the exact message."
+
+
+def ping_gemini(client, model):
+    client.models.generate_content(model=model, contents="Reply with the single word OK.")
+
+
+def test_gemini_connection(api_key, model):
+    if not str(api_key or "").strip():
+        return False, "No API key entered."
+    try:
+        client = genai.Client(api_key=str(api_key).strip())
+        ping_gemini(client, model.strip())
+        return True, f"Connected. The model '{model.strip()}' is working."
+    except Exception as e:
+        return False, explain_gemini_error(e, model.strip())
+
+
+# ============================================================================
 # 7. SCHEMAS
 # ============================================================================
 class CoverageOutlet(BaseModel):
@@ -575,7 +616,7 @@ class EventCoverageItem(BaseModel):
 
 
 class CoverageExtraction(BaseModel):
-    coverage_found: bool
+    coverage_found: bool = False
     items: list[EventCoverageItem] = []
 
 
@@ -622,6 +663,9 @@ with st.sidebar:
     if secret("GEMINI_API_KEY"):
         st.caption("Using the API key from secrets.")
     model_name = st.text_input("Gemini model", value=secret("GEMINI_MODEL", DEFAULT_MODEL))
+    if st.button("Test connection", key="test_connection"):
+        ok, message = test_gemini_connection(gemini_key, model_name)
+        (st.success if ok else st.error)(message)
 
     st.divider()
     st.subheader("2. Objective and scope")
@@ -787,7 +831,7 @@ def enrich_altmetric(items):
             o["altmetric_score"] = fetch_altmetric_score(o.get("doi")) if altmetric_allowed(o) and o.get("doi") not in (None, "", "None") else None
 
 
-def summarise(client, query, items):
+def summarise(client, query, items, active_model):
     compact = [
         {k: it.get(k) for k in ("event_title", "campaign_milestone_date", "representation_mode", "key_message_delivered", "core_event_summary")}
         | {"outlets": [o.get("outlet_name") for o in it.get("covering_outlets", [])]}
@@ -798,10 +842,10 @@ Objective: {active_report_purpose}. Report type: {report_format_tier}.
 Base every statement strictly on these campaign milestones; do not add facts, dates or figures that are not present:
 {json.dumps(compact, ensure_ascii=False)}"""
     resp = client.models.generate_content(
-        model=model_name, contents=prompt,
+        model=active_model, contents=prompt,
         config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=BriefSummary, temperature=0.2),
     )
-    return BriefSummary.model_validate(parse_json(resp.text)).model_dump()
+    return BriefSummary.model_validate(parse_json(resp.text) or {}).model_dump()
 
 
 def run_synthesis_engine(query, custom_urls=None):
@@ -811,90 +855,116 @@ def run_synthesis_engine(query, custom_urls=None):
         st.error("Please enter a search query or paste article URLs.")
         return
     if not gemini_key.strip():
-        st.error("No Gemini API key configured. Add GEMINI_API_KEY to secrets or enter one in the sidebar. No results are shown without a live search.")
+        st.error("No Gemini API key found. Enter it in the sidebar under '1. Intelligence engine', or add GEMINI_API_KEY to the app's secrets.")
         return
 
     keep_previous = st.session_state.get("accumulate_results", False) and query == st.session_state.get("brief_query")
     existing = (st.session_state.cumulative_brief or {}).get("items", []) if keep_previous else []
     accumulated = list(existing)
     allowed_keys = {normalize_url(u) for u in custom_urls if is_valid_url(u)}
-    failures = []
+    failures = []      # (pass label, plain-English reason, technical detail)
+    fatal = None       # stops the search before any passes run
+    notice = None
+    active_model = model_name.strip()
 
     with st.status("Grounded search active", expanded=False) as status:
+        # 1. Quick connection check, so a bad key or model name fails once with a clear reason
+        status.update(label="Checking Gemini connection")
+        client, error = None, None
         try:
             client = genai.Client(api_key=gemini_key.strip())
+            ping_gemini(client, active_model)
         except Exception as e:
-            status.update(label="Could not initialise Gemini client", state="error")
-            st.error(f"Gemini client error: {e}")
-            return
-
-        for idx, angle in enumerate(PASS_ANGLES[:NUM_PASSES], 1):
-            status.update(label=f"Pass {idx} of {NUM_PASSES}: {angle}")
+            error = e
+        if error is not None and client is not None and is_model_not_found(error) and active_model != FALLBACK_MODEL:
             try:
-                search_resp = client.models.generate_content(
-                    model=model_name,
-                    contents=build_search_prompt(query or "the supplied URLs", angle, custom_urls),
-                    config=types.GenerateContentConfig(
-                        tools=[types.Tool(google_search=types.GoogleSearch())], temperature=0.3,
-                    ),
-                )
-                research_text = search_resp.text or ""
-                sources = grounded_sources(search_resp)
-                allowed_keys |= {normalize_url(u) for _, u in sources}
-                if not research_text.strip():
-                    continue
+                ping_gemini(client, FALLBACK_MODEL)
+                notice = (f"The model '{active_model}' isn't available to this API key, so this search used "
+                          f"'{FALLBACK_MODEL}' instead. You can change the model name in the sidebar.")
+                active_model, error = FALLBACK_MODEL, None
+            except Exception as e2:
+                error = e2
+        if error is not None:
+            fatal = (explain_gemini_error(error, active_model), str(error))
+            status.update(label="Search could not start", state="error")
 
-                extract_resp = client.models.generate_content(
-                    model=model_name,
-                    contents=build_extraction_prompt(query, research_text, sources, custom_urls, accumulated),
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json", response_schema=CoverageExtraction, temperature=0,
-                    ),
-                )
-                data = CoverageExtraction.model_validate(parse_json(extract_resp.text)).model_dump()
-                new_items = verify_and_filter(data.get("items", []), allowed_keys)
-                accumulated = merge_and_deduplicate_campaigns(accumulated, new_items)
-            except Exception as e:
-                failures.append(f"Pass {idx}: {e}")
+        # 2. The four search passes
+        if fatal is None:
+            for idx, angle in enumerate(PASS_ANGLES[:NUM_PASSES], 1):
+                status.update(label=f"Pass {idx} of {NUM_PASSES}: {angle}")
+                try:
+                    search_resp = client.models.generate_content(
+                        model=active_model,
+                        contents=build_search_prompt(query or "the supplied URLs", angle, custom_urls),
+                        config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())], temperature=0.3),
+                    )
+                    research_text = search_resp.text or ""
+                    sources = grounded_sources(search_resp)
+                    allowed_keys |= {normalize_url(u) for _, u in sources}
+                    if not research_text.strip():
+                        continue
+                    extract_resp = client.models.generate_content(
+                        model=active_model,
+                        contents=build_extraction_prompt(query, research_text, sources, custom_urls, accumulated),
+                        config=types.GenerateContentConfig(response_mime_type="application/json",
+                                                           response_schema=CoverageExtraction, temperature=0),
+                    )
+                    data = CoverageExtraction.model_validate(parse_json(extract_resp.text) or {}).model_dump()
+                    new_items = verify_and_filter(data.get("items", []), allowed_keys)
+                    accumulated = merge_and_deduplicate_campaigns(accumulated, new_items)
+                except Exception as e:
+                    failures.append((f"Pass {idx}", explain_gemini_error(e, active_model), str(e)))
 
-        if failures and len(failures) == NUM_PASSES:
-            status.update(label="Search failed", state="error")
-            st.error("All search passes failed. Nothing is shown rather than substituting unverified data.\n\n" + "\n".join(failures))
-            return
+            if len(failures) == NUM_PASSES:
+                status.update(label="Search failed", state="error")
+            else:
+                summary = {
+                    "headline_synthesis": f"No verified coverage matched '{query}' between {window_label()}.",
+                    "sentiment_framing_read": "N/A", "subject_quoted_vs_reported": "N/A",
+                    "engagement_opportunities": "N/A", "demographic_audience_profile": "N/A",
+                }
+                if accumulated:
+                    status.update(label="Checking Altmetric and writing summary")
+                    enrich_altmetric(accumulated)
+                    try:
+                        summary = summarise(client, query, accumulated, active_model)
+                    except Exception as e:
+                        failures.append(("Summary", explain_gemini_error(e, active_model), str(e)))
+                        summary["headline_synthesis"] = "Summary could not be generated; see campaign milestones below."
 
-        summary = {
-            "headline_synthesis": f"No verified coverage matched '{query}' between {window_label()}.",
-            "sentiment_framing_read": "N/A", "subject_quoted_vs_reported": "N/A",
-            "engagement_opportunities": "N/A", "demographic_audience_profile": "N/A",
-        }
-        if accumulated:
-            status.update(label="Checking Altmetric and writing summary")
-            enrich_altmetric(accumulated)
-            try:
-                summary = summarise(client, query, accumulated)
-            except Exception as e:
-                failures.append(f"Summary: {e}")
-                summary["headline_synthesis"] = "Summary could not be generated; see campaign milestones below."
+                metric_str, reach_str, _ = calculate_header_metrics(accumulated)
+                st.session_state.cumulative_brief = {
+                    "coverage_found": bool(accumulated),
+                    "verified_coverage_metric": metric_str,
+                    "total_combined_audience_reach": reach_str,
+                    **summary,
+                    "items": accumulated,
+                    "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"),
+                }
+                st.session_state.brief_query = query
+                st.session_state.active_settings = {
+                    "purpose": active_report_purpose, "tier": report_format_tier, "lang": output_language,
+                    "time": f"{date_window} ({window_label()})", "cov": social_media_focus,
+                    "channels": ", ".join(selected_sources) if selected_sources else "All channels",
+                }
+                status.update(label=f"Complete: {len(accumulated)} campaign milestones", state="complete")
 
-        metric_str, reach_str, _ = calculate_header_metrics(accumulated)
-        st.session_state.cumulative_brief = {
-            "coverage_found": bool(accumulated),
-            "verified_coverage_metric": metric_str,
-            "total_combined_audience_reach": reach_str,
-            **summary,
-            "items": accumulated,
-            "generated_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"),
-        }
-        st.session_state.brief_query = query
-        st.session_state.active_settings = {
-            "purpose": active_report_purpose, "tier": report_format_tier, "lang": output_language,
-            "time": f"{date_window} ({window_label()})", "cov": social_media_focus,
-            "channels": ", ".join(selected_sources) if selected_sources else "All channels",
-        }
-        status.update(label=f"Complete: {len(accumulated)} campaign milestones", state="complete")
-
+    # Messages are shown outside the collapsed status box so they're always visible.
+    if notice:
+        st.info(notice)
+    if fatal:
+        st.error(f"**Search couldn't start.** {fatal[0]}")
+        with st.expander("Technical detail"):
+            st.code(fatal[1])
+        return
     if failures:
-        st.warning("Some passes had problems; results may be incomplete.\n\n" + "\n".join(failures))
+        all_failed = len([f for f in failures if f[0].startswith("Pass")]) == NUM_PASSES
+        reasons = list(dict.fromkeys(f[1] for f in failures))
+        heading = ("**All search passes failed.** Nothing is shown rather than substituting unverified data."
+                   if all_failed else "**Some passes had problems, so results may be incomplete.**")
+        (st.error if all_failed else st.warning)(heading + "\n\n" + "\n\n".join(reasons))
+        with st.expander("Technical detail"):
+            st.code("\n\n".join(f"{label}: {detail}" for label, _, detail in failures))
 
 
 # ============================================================================
