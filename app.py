@@ -1,26 +1,19 @@
 """
 Kat Intelligence Engine — Medierkat & Markat
-Patched build: guest + self-service admin auth with email reset, grounded-URL verification, no fabricated fallback,
+Patched build: one-click guest entry, grounded-URL verification, no fabricated fallback,
 per-campaign domain dedup, corrected reach maths, real dashboard data.
 """
 
 import copy
 import datetime
-import hmac
 import html
 import io
 import json
 import re
-import secrets as pysecrets
-import smtplib
-import ssl
 from collections import Counter
-from email.message import EmailMessage
-from pathlib import Path
 from urllib.parse import urlparse
 
 import altair as alt
-import bcrypt
 import pandas as pd
 import requests
 import streamlit as st
@@ -80,199 +73,7 @@ def secret(name, default=None):
         return default
 
 
-# --- Account settings ---------------------------------------------------------
-GUEST_ENABLED = str(secret("GUEST_ENABLED", "true")).strip().lower() not in ("false", "0", "no", "off")
-GUEST_USERNAME = "guest"
-GUEST_PASSWORD = "password"
-ADMIN_USERNAME = "admin"
-AUTH_STORE_PATH = Path(str(secret("AUTH_STORE_PATH", "data/auth_store.json")))
-MIN_PASSWORD_LENGTH = 10
-RESET_CODE_TTL_MINUTES = 15
-RESET_MAX_ATTEMPTS = 5
-RESET_COOLDOWN_SECONDS = 60
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-def utc_now():
-    return datetime.datetime.now(datetime.timezone.utc)
-
-
-def hash_password(plain):
-    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def check_password(plain, hashed):
-    try:
-        return bcrypt.checkpw(str(plain).encode("utf-8"), str(hashed).encode("utf-8"))
-    except (ValueError, TypeError):
-        return False
-
-
-def same_text(a, b):
-    return hmac.compare_digest(str(a).encode("utf-8"), str(b).encode("utf-8"))
-
-
-# --- Small JSON store for the admin account and reset codes --------------------
-def load_store():
-    try:
-        return json.loads(AUTH_STORE_PATH.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
-
-
-def save_store(data):
-    AUTH_STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = AUTH_STORE_PATH.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    tmp.replace(AUTH_STORE_PATH)
-
-
-def get_admin():
-    """Admin set in the app takes priority; a hash pinned in secrets is the fallback after restarts."""
-    admin = load_store().get("admin")
-    if admin and admin.get("password_hash") and admin.get("email"):
-        return {**admin, "source": "app"}
-    email, pw_hash = secret("ADMIN_EMAIL"), secret("ADMIN_PASSWORD_HASH")
-    if email and pw_hash:
-        return {"email": str(email), "full_name": str(secret("ADMIN_NAME", "Administrator")),
-                "password_hash": str(pw_hash), "source": "secrets"}
-    return None
-
-
-def set_admin_account(email, full_name, password):
-    store = load_store()
-    store["admin"] = {
-        "email": email.strip(),
-        "full_name": (full_name or "").strip() or "Administrator",
-        "password_hash": hash_password(password),
-        "updated_at": utc_now().isoformat(),
-    }
-    store.pop("reset", None)
-    save_store(store)
-    return store["admin"]["password_hash"]
-
-
-def load_extra_users():
-    """Optional additional accounts pinned in secrets under [users]."""
-    raw = secret("users", {}) or {}
-    users = {}
-    for email, cfg in raw.items():
-        if "password_hash" in cfg:
-            users[str(email).strip().lower()] = {
-                "email": str(email), "full_name": cfg.get("full_name", email), "password_hash": cfg["password_hash"],
-                "is_admin": bool(cfg.get("is_admin", False)), "current_plan": cfg.get("plan", "Standard"),
-            }
-    return users
-
-
-def session_user(username, email, full_name, is_admin, plan):
-    return {"username": username, "email": email, "full_name": full_name, "is_admin": is_admin, "current_plan": plan}
-
-
-def authenticate(identifier, password):
-    ident = (identifier or "").strip().lower()
-    if not ident or not password:
-        return None
-    if ident == GUEST_USERNAME:
-        if GUEST_ENABLED and same_text(password, GUEST_PASSWORD):
-            return session_user(GUEST_USERNAME, "guest", "Guest tester", False, "Sandbox tester")
-        return None
-    admin = get_admin()
-    if admin and ident in (ADMIN_USERNAME, admin["email"].strip().lower()):
-        if check_password(password, admin["password_hash"]):
-            return session_user(ADMIN_USERNAME, admin["email"], admin.get("full_name", "Administrator"), True, "Founder / Admin")
-        return None
-    user = load_extra_users().get(ident)
-    if user and check_password(password, user["password_hash"]):
-        return session_user(user["email"], user["email"], user["full_name"], user["is_admin"], user["current_plan"])
-    return None
-
-
-def password_problem(password, confirm):
-    if len(password) < MIN_PASSWORD_LENGTH:
-        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
-    if password != confirm:
-        return "The passwords don't match."
-    if password.strip().lower() in (GUEST_PASSWORD, ADMIN_USERNAME):
-        return "Please choose a less guessable password."
-    return None
-
-
-# --- Password reset by email ---------------------------------------------------
-def smtp_configured():
-    return all(secret(k) for k in ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"))
-
-
-def send_reset_email(to_addr, code):
-    msg = EmailMessage()
-    msg["Subject"] = "Kat Intelligence Engine: admin password reset code"
-    msg["From"] = str(secret("SMTP_FROM", secret("SMTP_USER")))
-    msg["To"] = to_addr
-    msg.set_content(
-        f"Your admin password reset code is: {code}\n\n"
-        f"It expires in {RESET_CODE_TTL_MINUTES} minutes. If you didn't request this, you can ignore this email."
-    )
-    host, port = str(secret("SMTP_HOST")), int(secret("SMTP_PORT", 587))
-    ctx = ssl.create_default_context()
-    if port == 465:
-        with smtplib.SMTP_SSL(host, port, context=ctx, timeout=20) as server:
-            server.login(str(secret("SMTP_USER")), str(secret("SMTP_PASSWORD")))
-            server.send_message(msg)
-    else:
-        with smtplib.SMTP(host, port, timeout=20) as server:
-            server.starttls(context=ctx)
-            server.login(str(secret("SMTP_USER")), str(secret("SMTP_PASSWORD")))
-            server.send_message(msg)
-
-
-def request_password_reset(identifier):
-    """Emails a 6-digit code if the identifier matches the admin. Silent otherwise."""
-    admin = get_admin()
-    ident = (identifier or "").strip().lower()
-    if not admin or ident not in (ADMIN_USERNAME, admin["email"].strip().lower()):
-        return
-    store = load_store()
-    existing = store.get("reset")
-    now = utc_now()
-    if existing:
-        created = datetime.datetime.fromisoformat(existing["created_at"])
-        if (now - created).total_seconds() < RESET_COOLDOWN_SECONDS:
-            return
-    code = f"{pysecrets.randbelow(1_000_000):06d}"
-    store["reset"] = {
-        "code_hash": hash_password(code),
-        "created_at": now.isoformat(),
-        "expires_at": (now + datetime.timedelta(minutes=RESET_CODE_TTL_MINUTES)).isoformat(),
-        "attempts": 0,
-    }
-    save_store(store)
-    send_reset_email(admin["email"], code)
-
-
-def complete_password_reset(code, new_password):
-    store = load_store()
-    reset, admin = store.get("reset"), get_admin()
-    if not reset or not admin:
-        return False, "There's no active reset request. Please request a new code."
-    if utc_now() > datetime.datetime.fromisoformat(reset["expires_at"]):
-        store.pop("reset", None)
-        save_store(store)
-        return False, "That code has expired. Please request a new one."
-    if reset.get("attempts", 0) >= RESET_MAX_ATTEMPTS:
-        store.pop("reset", None)
-        save_store(store)
-        return False, "Too many incorrect attempts. Please request a new code."
-    if not check_password(str(code).strip(), reset["code_hash"]):
-        reset["attempts"] = reset.get("attempts", 0) + 1
-        store["reset"] = reset
-        save_store(store)
-        return False, "That code isn't correct."
-    return True, set_admin_account(admin["email"], admin.get("full_name", ""), new_password)
-
-
 SESSION_DEFAULTS = {
-    "auth_notice": None,
-    "reset_requested": False,
     "authenticated_user": None,
     "active_app": "Medierkat (PR & Media)",
     "main_mode": "📊 Dashboard",
@@ -356,151 +157,20 @@ def render_brand_meerkat_svg(width=45, height=75, fill_color="#F2EDE3"):
 # ============================================================================
 # 3. LOGIN WALL
 # ============================================================================
-def render_pin_hint(email, pw_hash):
-    with st.expander("Keep this password after the app restarts"):
-        st.markdown(
-            "Streamlit Community Cloud clears the app's saved files when it restarts, redeploys or wakes from sleep. "
-            "To make this password permanent, add these two lines to your app's secrets:"
-        )
-        st.code(f'ADMIN_EMAIL = "{email}"\nADMIN_PASSWORD_HASH = "{pw_hash}"', language="toml")
-        st.caption("This is a one-way hash, not your password, but still keep it private.")
-
-
-def render_secrets_diagnostics():
-    """Shown only before the admin account exists, to explain why a secret can't be read. Names only, never values."""
-    with st.expander("🔍 Why can't the app see it? (diagnostics)", expanded=True):
-        local_file = Path.cwd() / ".streamlit" / "secrets.toml"
-        st.markdown(f"**App is running from:** `{Path.cwd()}`")
-        st.markdown(f"**Local secrets file at** `{local_file}`**:** {'found' if local_file.exists() else 'not found'}")
-        try:
-            names = sorted(st.secrets.keys())
-        except Exception as e:
-            st.error(f"Secrets could not be loaded: {type(e).__name__}: {e}")
-            st.caption("A load error usually means the file is in the wrong place, or has a formatting problem "
-                       "such as curly quotes, a missing quote, or leftover ``` marks from copying.")
-            return
-        if not names:
-            st.warning("Secrets loaded, but they are empty.")
-            return
-        st.markdown("**Secret names the app can see:** " + ", ".join(f"`{n}`" for n in names))
-        nested = [n for n in names if not isinstance(secret(n), (str, int, float, bool))]
-        if nested:
-            st.caption("These names are sections. Any line placed below a [section] header belongs to that section: "
-                       + ", ".join(nested))
-        near = [n for n in names if n.strip().upper().replace(" ", "_") == "ADMIN_SETUP_CODE" and n != "ADMIN_SETUP_CODE"]
-        if near:
-            st.caption(f"Found a similar name with different spelling or case: {near[0]}. It must be exactly ADMIN_SETUP_CODE.")
-
-
-def render_admin_setup():
-    setup_code = secret("ADMIN_SETUP_CODE")
-    if not setup_code:
-        st.info(
-            "To create the admin account, first add an ADMIN_SETUP_CODE to your secrets (any phrase only you know). "
-            "This stops anyone else who finds the site from claiming the admin account."
-        )
-        render_secrets_diagnostics()
-        return
-    st.caption("Your username will be **admin**. You can also log in with the email below, which is where reset codes are sent.")
-    with st.form("admin_setup_form"):
-        full_name = st.text_input("Your name")
-        email = st.text_input("Admin email (for password resets)")
-        pw = st.text_input("Choose a password", type="password")
-        confirm = st.text_input("Confirm password", type="password")
-        code = st.text_input("Setup code (from your secrets)", type="password")
-        submitted = st.form_submit_button("Create admin account", width="stretch")
-    if submitted:
-        problem = password_problem(pw, confirm)
-        if get_admin():
-            st.error("An admin account already exists.")
-        elif not same_text(code.strip(), str(setup_code).strip()):
-            st.error("That setup code isn't correct.")
-        elif not EMAIL_RE.match(email.strip()):
-            st.error("Please enter a valid email address.")
-        elif problem:
-            st.error(problem)
-        else:
-            pw_hash = set_admin_account(email, full_name, pw)
-            st.session_state.auth_notice = {"message": "Admin account created. Log in with username **admin** and your new password.",
-                                            "email": email.strip(), "hash": pw_hash}
-            st.rerun()
-
-
-def render_forgot_password():
-    st.caption("Password reset is for the admin account. A 6-digit code will be emailed to the registered address.")
-    if not smtp_configured():
-        st.info("Reset emails aren't set up yet. Add the SMTP settings to your secrets (see secrets.toml.example).")
-        return
-    with st.form("reset_request_form"):
-        ident = st.text_input("Admin username or email")
-        send = st.form_submit_button("Email me a reset code", width="stretch")
-    if send:
-        try:
-            request_password_reset(ident)
-        except Exception:
-            st.error("The email couldn't be sent. Check the SMTP settings in your secrets.")
-        else:
-            st.session_state.reset_requested = True
-            st.success(f"If that matches the admin account, a code is on its way. It expires in {RESET_CODE_TTL_MINUTES} minutes.")
-
-    if st.session_state.reset_requested:
-        with st.form("reset_complete_form"):
-            code = st.text_input("6-digit code from the email")
-            new_pw = st.text_input("New password", type="password")
-            confirm = st.text_input("Confirm new password", type="password")
-            done = st.form_submit_button("Reset password", width="stretch")
-        if done:
-            problem = password_problem(new_pw, confirm)
-            if problem:
-                st.error(problem)
-            else:
-                ok, result = complete_password_reset(code, new_pw)
-                if ok:
-                    admin = get_admin()
-                    st.session_state.reset_requested = False
-                    st.session_state.auth_notice = {"message": "Password reset. You can now log in with your new password.",
-                                                    "email": admin["email"], "hash": result}
-                    st.rerun()
-                else:
-                    st.error(result)
-
-
 def render_login_wall():
     svg = render_brand_meerkat_svg(60, 100)
     st.markdown(
-        f'<div style="text-align:center;padding:40px 0;">{svg}'
+        f'<div style="text-align:center;padding:40px 0 24px 0;">{svg}'
         '<div style="font-family:\'Cormorant Garamond\',serif;font-size:3rem;color:#F2EDE3;margin-top:10px;">Kat Intelligence Engine</div>'
-        '<div style="font-size:0.8rem;letter-spacing:0.25em;text-transform:uppercase;color:#8A8275;">MEDIERKAT &amp; MARKAT</div></div>',
+        '<div style="font-size:0.8rem;letter-spacing:0.25em;text-transform:uppercase;color:#8A8275;">MEDIERKAT &amp; MARKAT · TESTER SANDBOX</div></div>',
         unsafe_allow_html=True,
     )
-    _, col, _ = st.columns([1, 2, 1])
+    _, col, _ = st.columns([1, 1, 1])
     with col:
-        notice = st.session_state.auth_notice
-        if notice:
-            st.success(notice["message"])
-            if notice.get("hash"):
-                render_pin_hint(notice["email"], notice["hash"])
-
-        admin_exists = get_admin() is not None
-        tab_login, tab_other = st.tabs(["🔒 Log in", "🔑 Forgot password" if admin_exists else "🛠 Set up admin account"])
-        with tab_login:
-            with st.form("login_form"):
-                ident = st.text_input("Username or email")
-                pw = st.text_input("Password", type="password")
-                submitted = st.form_submit_button("Log in", width="stretch")
-            if submitted:
-                user = authenticate(ident, pw)
-                if user:
-                    st.session_state.authenticated_user = user
-                    st.session_state.auth_notice = None
-                    st.rerun()
-                else:
-                    st.error("Invalid username or password.")
-        with tab_other:
-            if admin_exists:
-                render_forgot_password()
-            else:
-                render_admin_setup()
+        if st.button("Enter as guest", width="stretch"):
+            st.session_state.authenticated_user = {"username": "guest", "email": "guest", "full_name": "Guest tester"}
+            st.rerun()
+        st.caption("Prototype for invited testers. Please share feedback on anything confusing or incorrect.")
 
 
 if st.session_state.authenticated_user is None:
@@ -1314,39 +984,6 @@ elif "Brief" in main_mode:
 
 else:
     st.subheader("📚 Library")
-    if current_user.get("is_admin"):
-        with st.expander("⚙️ Admin console"):
-            admin = get_admin()
-            rows = []
-            if GUEST_ENABLED:
-                rows.append({"Username": GUEST_USERNAME, "Email": "—", "Role": "Tester", "Password": "Fixed sandbox password"})
-            if admin:
-                rows.append({"Username": ADMIN_USERNAME, "Email": admin["email"], "Role": "Admin",
-                             "Password": "Set in app" if admin["source"] == "app" else "Pinned in secrets"})
-            for u in load_extra_users().values():
-                rows.append({"Username": u["email"], "Email": u["email"], "Role": "Admin" if u["is_admin"] else "User",
-                             "Password": "Pinned in secrets"})
-            st.table(rows)
-            if admin and admin["source"] == "app" and not secret("ADMIN_PASSWORD_HASH"):
-                st.warning("Your admin password is only saved in the app's files. Pin it in secrets so it survives restarts (see below after changing it, or the hint shown at setup).")
-
-            st.markdown("**Change admin password**")
-            with st.form("change_pw_form"):
-                current_pw = st.text_input("Current password", type="password")
-                new_pw = st.text_input("New password", type="password")
-                confirm_pw = st.text_input("Confirm new password", type="password")
-                change = st.form_submit_button("Update password")
-            if change:
-                problem = password_problem(new_pw, confirm_pw)
-                if not admin or not check_password(current_pw, admin["password_hash"]):
-                    st.error("Your current password isn't correct.")
-                elif problem:
-                    st.error(problem)
-                else:
-                    new_hash = set_admin_account(admin["email"], admin.get("full_name", ""), new_pw)
-                    st.success("Password updated.")
-                    render_pin_hint(admin["email"], new_hash)
-
     st.markdown("#### Saved query deck (this session, max 50)")
     new_q = st.text_input("Add a topic:", placeholder="Brand, topic or keyword...")
     if st.button("➕ Add topic") and new_q.strip():
