@@ -1,6 +1,6 @@
-streamlit>=1.40
+streamlit>=1.40.0
 google-genai>=2.25.0
-pydantic>=2
+pydantic>=2.0.0
 pandas
 altair
 requests
