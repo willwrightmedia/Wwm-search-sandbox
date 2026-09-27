@@ -52,7 +52,7 @@ if "users_db" not in st.session_state:
 if "authenticated_user" not in st.session_state:
     st.session_state.authenticated_user = None
 
-# Custom CSS - HIGH-CONTRAST BONE INPUT FIELDS, TIDY DASHBOARD CARDS & DARK INK PALETTE
+# Custom CSS - PROMINENT 1.5X SEARCH BOX, HIGH-CONTRAST BONE INPUTS & TIDY DASHBOARD CARDS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -72,6 +72,23 @@ st.markdown("""
         color: #777777 !important; opacity: 0.8 !important;
     }
     div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
+
+    /* PROMINENT 1.5X SEARCH BOX STYLING */
+    .prominent-search-box input {
+        font-size: 1.35rem !important;
+        padding: 14px 18px !important;
+        height: 56px !important;
+        font-weight: 600 !important;
+    }
+    .prominent-search-btn button {
+        height: 56px !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.15em !important;
+        background-color: #C6BCA9 !important;
+        color: #14120F !important;
+        border: none !important;
+    }
 
     /* TIDY RESPONSIVE METRIC CARDS (FIXES OVERLAPPING TEXT) */
     .metric-card {
@@ -377,16 +394,24 @@ app_tagline = "COMPETITOR & CAMPAIGN INTELLIGENCE" if is_markat else "GLOBAL MED
 tooltip_text = "Build reports step by step: Grounded searches are strictly anchored to official primary releases and recency scope."
 
 header_svg = render_brand_meerkat_svg(45, 75)
-header_html = f'<div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 24px;"><div style="margin-right: 24px; flex-shrink: 0;">{header_svg}</div><div><div style="font-family: \'Inter\', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">{app_tagline}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 2.6rem; font-weight: 400; color: #F2EDE3; line-height: 1;">{app_title}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 1.1rem; font-style: italic; color: #C6BCA9; margin-top: 6px;">{app_subtitle}</div></div></div>'
+header_html = f'<div style="display: flex; align-items: center; background-color: #1A1814; border: 1px solid #2C2822; padding: 24px 30px; border-radius: 2px; margin-bottom: 18px;"><div style="margin-right: 24px; flex-shrink: 0;">{header_svg}</div><div><div style="font-family: \'Inter\', sans-serif; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">{app_tagline}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 2.6rem; font-weight: 400; color: #F2EDE3; line-height: 1;">{app_title}</div><div style="font-family: \'Cormorant Garamond\', serif; font-size: 1.1rem; font-style: italic; color: #C6BCA9; margin-top: 6px;">{app_subtitle}</div></div></div>'
 st.markdown(header_html, unsafe_allow_html=True)
 
-control_col1, control_col2 = st.columns([3, 1])
-with control_col1:
-    st.markdown(f"##### Active Workspace <span title='{tooltip_text}' style='cursor: pointer; color: #C6BCA9; font-size: 1rem;'>ℹ️</span>", unsafe_allow_html=True)
-with control_col2:
-    st.markdown("<div class='reset-btn'>", unsafe_allow_html=True)
-    st.button("🔄 Reset", on_click=clear_all_searches, key="header_reset", use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+# ============================================================================
+# 4. PROMINENT TOP SEARCH BAR (FIRST THING USERS SEE)
+# ============================================================================
+search_col1, search_col2 = st.columns([3.5, 1])
+with search_col1:
+    st.markdown('<div class="prominent-search-box">', unsafe_allow_html=True)
+    top_search_query = st.text_input("Enter target terms:", value=st.session_state.executed_query, placeholder="e.g., Rajeev Roychand or Telstra", label_visibility="collapsed", key="top_search_input")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with search_col2:
+    st.markdown('<div class="prominent-search-btn">', unsafe_allow_html=True)
+    trigger_top_search = st.button("🔍 Search", use_container_width=True, key="top_search_btn")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # --- SCHEMAS ---
 class CoverageOutlet(BaseModel):
@@ -538,7 +563,7 @@ def generate_markdown_brief(brief, query, lang, purpose_text, tier_type, time_sc
         md += f"- **Category:** {item['source_category']} | **Prominence:** {item['prominence_depth']}\n"
         md += f"- **Framing:** {item['representation_mode']} | **Key messages delivered:** {item['key_message_delivered']}\n"
         md += f"- **Summary:** {item['core_event_summary']}\n"
-        if item.get("reddit_community_sentiment_summary") and item.get("reddit_community_sentiment_summary") != "N/A":
+        if is_markat and item.get("reddit_community_sentiment_summary") and item.get("reddit_community_sentiment_summary") != "N/A":
             md += f"- **Reddit Forum Sentiment:** {item['reddit_community_sentiment_summary']}\n"
         for outlet in item.get("covering_outlets", []):
             url = outlet.get('canonical_source_url', '')
@@ -602,7 +627,7 @@ def extract_year_month_tuple(date_str):
     return (year, month)
 
 def format_clean_audience_reach(total_num):
-    if total_outlets_count := 0: pass
+    # Strictly caps and scales numbers cleanly
     if total_num >= 1_000_000_000_000:
         return f"{total_num / 1_000_000_000_000:.2f} Trillion Audience"
     elif total_num >= 1_000_000_000:
@@ -637,7 +662,6 @@ def calculate_aligned_header_metrics(all_items):
                     except ValueError:
                         pass
                 
-    # Realistic Cap & Clean Scale Labeling
     reach_label = format_clean_audience_reach(total_audience_sum)
     reach_display = f"Total Combined Reach: {reach_label}"
     metric_display = f"Media Index: {total_outlets_count} unique verified media records across campaign milestones"
@@ -662,7 +686,6 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
         new_date_norm = normalize_str(new_item.get("campaign_milestone_date", ""))
         found_existing_item = None
         
-        # Match campaign milestones by topic or milestone date
         for ex_item in merged:
             ex_title_norm = normalize_str(ex_item.get("event_title", ""))
             ex_date_norm = normalize_str(ex_item.get("campaign_milestone_date", ""))
@@ -699,7 +722,6 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
                     if is_valid_url(new_url): existing_urls.add(new_url)
                     if new_out_name: existing_outlet_names.add(new_out_name)
                     
-                    # Sort Outlets: Primary Institution Releases First, External Media Second
                     if "rmit" in new_out_name or "official" in new_out.get("medium_type", "").lower():
                         ex_outlets.insert(0, new_out)
                     else:
@@ -724,7 +746,6 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
                     clean_new_outlets.append(new_out)
             
             if clean_new_outlets:
-                # Sort: Primary releases first
                 clean_new_outlets.sort(key=lambda x: 0 if "rmit" in normalize_str(x.get("outlet_name", "")) else 1)
                 new_item["covering_outlets"] = clean_new_outlets
                 merged.append(new_item)
@@ -733,7 +754,7 @@ def merge_and_deduplicate_campaigns(existing_items, new_incoming_items, active_q
     merged.sort(key=lambda x: extract_year_month_tuple(x.get("campaign_milestone_date", "2026")), reverse=True)
     return merged
 
-# --- REUSABLE EXECUTION ENGINE (4-PASS GROUNDING SWEEP) ---
+# --- REUSABLE EXECUTION ENGINE (4-PASS DEFAULT GROUNDING SWEEP) ---
 def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, raw_outlets_batch, man_mediums, man_topic, man_framing, man_depth, man_co_represented, man_reach, man_byline, man_summary, num_passes=4):
     active_q = search_query_input if search_query_input else st.session_state.executed_query
     
@@ -741,7 +762,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         st.error("Please enter a search query, paste article URLs, or complete the direct input form.")
         return
 
-    with st.status("Executing 4-Pass Grounded Synthesis... Mainstream • Tech/Journal • Reddit & Social Forums", expanded=False):
+    with st.status("Grounded Search Active", expanded=False):
         current_date = datetime.datetime.now().strftime("%B %d, %Y")
         channels_str = ", ".join(selected_sources) if selected_sources else "All Global Channels"
         clean_key = gemini_key.strip()
@@ -765,7 +786,7 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
                     
                     STRICT GROUNDING & ANCHORING MANDATE:
                     1. ANCHOR CAMPAIGNS TO OFFICIAL INSTITUTIONAL PRESS RELEASES (e.g., RMIT University Media Releases, ASX Releases, Government Announcements).
-                    2. Ground across global mainstream press, trade journals, peer-reviewed scientific publications, and Reddit discussions (e.g. r/science, r/technology, r/engineering, r/australia).
+                    2. Ground across global mainstream press, trade journals, peer-reviewed scientific publications, and Reddit discussions.
                     3. LIST ORDER INSIDE CAMPAIGNS:
                        - FIRST: Official University / Primary Institution Press Release.
                        - SECOND: External Mainstream News Mastheads, Wire Services, & Trade Press.
@@ -979,6 +1000,11 @@ def run_synthesis_engine(search_query_input, custom_urls_input, submit_manual, r
         except Exception as e:
             st.error(f"Search Execution Error: {str(e)}")
 
+# Trigger Search on Top Search Bar Input or Button Click
+if trigger_top_search or (top_search_query and top_search_query != st.session_state.executed_query):
+    st.session_state.executed_query = top_search_query
+    run_synthesis_engine(top_search_query, [], False, "", [], "", "", "", "", "", "", "", num_passes=4)
+
 # --- VIEW 1: LIVE DASHBOARD ---
 if "Dashboard" in main_mode:
     st.subheader(f"📊 {app_title} tracking dashboard")
@@ -1019,12 +1045,6 @@ if "Dashboard" in main_mode:
     )
     st.altair_chart(chart, use_container_width=True)
 
-    with st.expander("⚡ Launch intelligence synthesis from dashboard", expanded=True):
-        dash_search_query = st.text_input("Enter query terms:", placeholder="e.g. Enter brand, individual, or topic...")
-        if st.button("⚡ Execute Synthesis", type="primary"):
-            st.session_state.executed_query = dash_search_query
-            run_synthesis_engine(dash_search_query, [], False, "", [], "", "", "", "", "", "", "", num_passes=4)
-
     st.markdown("<br>", unsafe_allow_html=True)
     
     if st.session_state.cumulative_brief:
@@ -1032,9 +1052,10 @@ if "Dashboard" in main_mode:
         item_count = len(cb.get('items', []))
         dash_col1, dash_col2, dash_col3, dash_col4 = st.columns(4)
         with dash_col1:
-            st.markdown(f"<div class='metric-card'><h4>CAMPAIGN MILESTONES</h4><h2>{item_count} Batches</h2><caption>{date_window}</caption></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card'><h4>CAMPAIGN MILESTONES</h4><h2>{item_count} Campaigns</h2><caption>{date_window}</caption></div>", unsafe_allow_html=True)
         with dash_col2:
-            st.markdown(f"<div class='metric-card'><h4>AUDIENCE REACH</h4><h2>{cb.get('total_combined_audience_reach', '--').replace('Total Combined Reach: ', '')}</h2><caption>Verified press & social</caption></div>", unsafe_allow_html=True)
+            reach_clean_val = cb.get('total_combined_audience_reach', '--').replace('Total Combined Reach: ', '')
+            st.markdown(f"<div class='metric-card'><h4>AUDIENCE REACH</h4><h2>{reach_clean_val}</h2><caption>Verified press & social</caption></div>", unsafe_allow_html=True)
         with dash_col3:
             st.markdown("<div class='metric-card'><h4>CHANNEL SHARE</h4><h2>Online Press</h2><caption>Dominant channel</caption></div>", unsafe_allow_html=True)
         with dash_col4:
@@ -1152,7 +1173,7 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
             st.warning(brief["engagement_opportunities"])
             
         st.divider()
-        st.subheader(f"5. Chronological Campaign Milestones ({len(all_campaign_items)} Milestone Batches — Newest to Oldest)")
+        st.subheader(f"5. Chronological Campaign Milestones ({len(all_campaign_items)} Official Campaigns — Newest to Oldest)")
         
         for item_idx, item in enumerate(all_campaign_items, 1):
             milestone_date = item.get("campaign_milestone_date", "Timeline")
@@ -1182,11 +1203,12 @@ if st.session_state.cumulative_brief and ("Dashboard" in main_mode or "Brief" in
                         unsafe_allow_html=True
                     )
 
-                # Reddit Digest Box placed strictly AFTER verified media outlets
-                reddit_summary = item.get("reddit_community_sentiment_summary", "N/A")
-                if reddit_summary and reddit_summary != "N/A":
-                    st.markdown("---")
-                    st.markdown(f"💬 **Reddit & Community Forum Digest:** *{reddit_summary}*")
+                # Reddit Digest Box shown ONLY on MARKAT sub-site, placed strictly AFTER verified media outlets
+                if is_markat:
+                    reddit_summary = item.get("reddit_community_sentiment_summary", "N/A")
+                    if reddit_summary and reddit_summary != "N/A":
+                        st.markdown("---")
+                        st.markdown(f"💬 **Markat Community & Forum Sentiment Digest:** *{reddit_summary}*")
 
     st.markdown(f"""
         <div class="disclaimer-box">
