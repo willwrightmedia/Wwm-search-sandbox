@@ -366,6 +366,32 @@ def render_pin_hint(email, pw_hash):
         st.caption("This is a one-way hash, not your password, but still keep it private.")
 
 
+def render_secrets_diagnostics():
+    """Shown only before the admin account exists, to explain why a secret can't be read. Names only, never values."""
+    with st.expander("🔍 Why can't the app see it? (diagnostics)", expanded=True):
+        local_file = Path.cwd() / ".streamlit" / "secrets.toml"
+        st.markdown(f"**App is running from:** `{Path.cwd()}`")
+        st.markdown(f"**Local secrets file at** `{local_file}`**:** {'found' if local_file.exists() else 'not found'}")
+        try:
+            names = sorted(st.secrets.keys())
+        except Exception as e:
+            st.error(f"Secrets could not be loaded: {type(e).__name__}: {e}")
+            st.caption("A load error usually means the file is in the wrong place, or has a formatting problem "
+                       "such as curly quotes, a missing quote, or leftover ``` marks from copying.")
+            return
+        if not names:
+            st.warning("Secrets loaded, but they are empty.")
+            return
+        st.markdown("**Secret names the app can see:** " + ", ".join(f"`{n}`" for n in names))
+        nested = [n for n in names if not isinstance(secret(n), (str, int, float, bool))]
+        if nested:
+            st.caption("These names are sections. Any line placed below a [section] header belongs to that section: "
+                       + ", ".join(nested))
+        near = [n for n in names if n.strip().upper().replace(" ", "_") == "ADMIN_SETUP_CODE" and n != "ADMIN_SETUP_CODE"]
+        if near:
+            st.caption(f"Found a similar name with different spelling or case: {near[0]}. It must be exactly ADMIN_SETUP_CODE.")
+
+
 def render_admin_setup():
     setup_code = secret("ADMIN_SETUP_CODE")
     if not setup_code:
@@ -373,6 +399,7 @@ def render_admin_setup():
             "To create the admin account, first add an ADMIN_SETUP_CODE to your secrets (any phrase only you know). "
             "This stops anyone else who finds the site from claiming the admin account."
         )
+        render_secrets_diagnostics()
         return
     st.caption("Your username will be **admin**. You can also log in with the email below, which is where reset codes are sent.")
     with st.form("admin_setup_form"):
