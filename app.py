@@ -109,50 +109,55 @@ for _k, _v in SESSION_DEFAULTS.items():
 # ============================================================================
 # 2. STYLES
 # ============================================================================
-custom_css = (
-    "<style>\n"
-    "@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');\n"
-    ".stApp { background-color: #14120F !important; color: #F2EDE3 !important; font-family: 'Inter', sans-serif !important; }\n"
-    "[data-testid=\"stSidebar\"] { background-color: #1A1814 !important; border-right: 1px solid #2C2822 !important; }\n"
-    "[data-testid=\"stSidebar\"] * { color: #C6BCA9 !important; }\n"
-    "div[data-baseweb=\"input\"], div[data-baseweb=\"base-input\"], div[data-baseweb=\"select\"] > div, div[data-baseweb=\"textarea\"] {\n"
-    "    background-color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important; border-radius: 2px !important;\n"
-    "}\n"
-    "div[data-baseweb=\"input\"] input, div[data-baseweb=\"base-input\"] input, div[data-baseweb=\"textarea\"] textarea, textarea {\n"
-    "    background-color: #F2EDE3 !important; color: #14120F !important; font-weight: 600 !important; font-size: 0.95rem !important; opacity: 1 !important;\n"
-    "}\n"
-    "div[data-baseweb=\"input\"] input::placeholder, textarea::placeholder { color: #777777 !important; opacity: 0.8 !important; }\n"
-    "div[data-baseweb=\"select\"] * { color: #14120F !important; font-weight: 600 !important; }\n"
-    ".st-key-prominent_search input {\n"
-    "    font-size: 1.35rem !important; padding: 14px 18px !important; height: 56px !important; font-weight: 600 !important;\n"
-    "}\n"
-    ".st-key-prominent_search button {\n"
-    "    height: 56px !important; font-size: 1.1rem !important; font-weight: 700 !important; letter-spacing: 0.15em !important;\n"
-    "    background-color: #C6BCA9 !important; color: #14120F !important; border: none !important; border-radius: 2px !important;\n"
-    "}\n"
-    ".metric-card {\n"
-    "    background-color: #1A1814; border: 1px solid #2C2822; padding: 18px 12px; border-radius: 2px; text-align: center;\n"
-    "    height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;\n"
-    "    min-height: 125px; box-sizing: border-box; overflow: hidden;\n"
-    "}\n"
-    ".metric-card h4 { font-size: clamp(0.65rem, 0.9vw, 0.75rem); letter-spacing: 0.12em; text-transform: uppercase; color: #C6BCA9; margin: 0 0 6px 0; }\n"
-    ".metric-card h2 { font-size: clamp(0.95rem, 1.4vw, 1.25rem); font-weight: 600; color: #F2EDE3; line-height: 1.2; margin: 0 0 6px 0; word-break: break-word; }\n"
-    ".metric-card .cap { font-size: clamp(0.6rem, 0.8vw, 0.7rem); color: #8A8275; margin: 0; }\n"
-    ".stButton>button {\n"
-    "    background-color: transparent !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;\n"
-    "    border-radius: 2px !important; padding: 0.65rem 1.4rem !important; font-size: 0.75rem !important;\n"
-    "    letter-spacing: 0.15em !important; text-transform: uppercase !important;\n"
-    "}\n"
-    ".stDownloadButton>button {\n"
-    "    background-color: #C6BCA9 !important; color: #14120F !important; font-weight: 600 !important;\n"
-    "    padding: 0.75rem 1.4rem !important; border-radius: 2px !important; border: none !important;\n"
-    "}\n"
-    ".disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #8A8275; margin-top: 20px; }\n"
-    "[data-testid=\"stStatusWidget\"] svg { display: none !important; }\n"
-    "[data-testid=\"stStatusWidget\"]::before { content: \"🦦\"; font-size: 1.2rem; }\n"
-    "</style>"
-)
-st.markdown(custom_css, unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+    .stApp { background-color: #14120F !important; color: #F2EDE3 !important; font-family: 'Inter', sans-serif !important; }
+    [data-testid="stSidebar"] { background-color: #1A1814 !important; border-right: 1px solid #2C2822 !important; }
+    [data-testid="stSidebar"] * { color: #C6BCA9 !important; }
+
+    div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] > div, div[data-baseweb="textarea"] {
+        background-color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important; border-radius: 2px !important;
+    }
+    div[data-baseweb="input"] input, div[data-baseweb="base-input"] input, div[data-baseweb="textarea"] textarea, textarea {
+        background-color: #F2EDE3 !important; color: #14120F !important; font-weight: 600 !important; font-size: 0.95rem !important; opacity: 1 !important;
+    }
+    div[data-baseweb="input"] input::placeholder, textarea::placeholder { color: #777777 !important; opacity: 0.8 !important; }
+    div[data-baseweb="select"] * { color: #14120F !important; font-weight: 600 !important; }
+
+    .st-key-prominent_search input {
+        font-size: 1.35rem !important; padding: 14px 18px !important; height: 56px !important; font-weight: 600 !important;
+    }
+    .st-key-prominent_search button {
+        height: 56px !important; font-size: 1.1rem !important; font-weight: 700 !important; letter-spacing: 0.15em !important;
+        background-color: #C6BCA9 !important; color: #14120F !important; border: none !important; border-radius: 2px !important;
+    }
+
+    .metric-card {
+        background-color: #1A1814; border: 1px solid #2C2822; padding: 18px 12px; border-radius: 2px; text-align: center;
+        height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;
+        min-height: 125px; box-sizing: border-box; overflow: hidden;
+    }
+    .metric-card h4 { font-size: clamp(0.65rem, 0.9vw, 0.75rem); letter-spacing: 0.12em; text-transform: uppercase; color: #C6BCA9; margin: 0 0 6px 0; }
+    .metric-card h2 { font-size: clamp(0.95rem, 1.4vw, 1.25rem); font-weight: 600; color: #F2EDE3; line-height: 1.2; margin: 0 0 6px 0; word-break: break-word; }
+    .metric-card .cap { font-size: clamp(0.6rem, 0.8vw, 0.7rem); color: #8A8275; margin: 0; }
+
+    .stButton>button {
+        background-color: transparent !important; color: #F2EDE3 !important; border: 1px solid #C6BCA9 !important;
+        border-radius: 2px !important; padding: 0.65rem 1.4rem !important; font-size: 0.75rem !important;
+        letter-spacing: 0.15em !important; text-transform: uppercase !important;
+    }
+    .stDownloadButton>button {
+        background-color: #C6BCA9 !important; color: #14120F !important; font-weight: 600 !important;
+        padding: 0.75rem 1.4rem !important; border-radius: 2px !important; border: none !important;
+    }
+    .disclaimer-box { background-color: #1A1814; border-left: 2px solid #C6BCA9; padding: 10px 14px; font-size: 0.8rem; color: #8A8275; margin-top: 20px; }
+
+    [data-testid="stStatusWidget"] svg { display: none !important; }
+    [data-testid="stStatusWidget"]::before { content: "🦦"; font-size: 1.2rem; }
+    </style>
+""", unsafe_allow_html=True)
 
 
 def render_brand_meerkat_svg(width=45, height=75, fill_color="#F2EDE3"):
@@ -705,4 +710,17 @@ with st.sidebar:
         "Comprehensive media operations report (up to 4 pages — PR and Media teams)",
         "Digital intelligence digest (up to 2 pages — Digital teams)",
     ])
-    output_language = st.selectbox("Report output language",
+    output_language = st.selectbox("Report output language", [
+        "English", "French (Français)", "Spanish (Español)", "German (Deutsch)", "Mandarin Chinese (中文)",
+        "Japanese (日本語)", "Indonesian (Bahasa Indonesia)", "Vietnamese (Tiếng Việt)", "Hindi (हिंदी)", "Arabic (العربية)",
+    ])
+
+    st.divider()
+    st.subheader("3. Media channels and horizon")
+    date_window = st.selectbox("Recency scope", list(RECENCY_OPTIONS.keys()), index=1)
+    custom_range = None
+    if RECENCY_OPTIONS[date_window] is None:
+        today = datetime.date.today()
+        custom_range = st.date_input("Custom range", value=(today - datetime.timedelta(days=90), today))
+
+    social_media_focus = st.selectbox("
