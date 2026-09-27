@@ -554,7 +554,7 @@ def parse_json(text):
     clean = text.strip()
     if clean.startswith("```"):
         lines = clean.splitlines()
-        if lines[0].startswith("```"):
+        if lines and lines[0].startswith("```"):
             lines = lines[1:]
         if lines and lines[-1].startswith("```"):
             lines = lines[:-1]
@@ -611,116 +611,4 @@ def test_gemini_connection(api_key, model):
 class CoverageOutlet(BaseModel):
     outlet_name: str = Field(description="Publisher, broadcaster, social channel or institution, verbatim.")
     medium_type: str = Field(description="Media format, e.g. 'Official Primary Release', 'Online Press', 'Broadcast', 'Peer-Reviewed Journal', 'Reddit'.")
-    author_byline: str = Field(default="not stated", description="Author or handle, or 'not stated'.")
-    publication_date: str = Field(default="not stated", description="Publication date as stated in the source, e.g. '22 August 2023'.")
-    original_language: str = Field(default="English")
-    canonical_source_url: str = Field(default="None", description="MUST be copied exactly from the verified source list, otherwise 'None'.")
-    audience_reach_metrics: str = Field(default="Not available", description="Published masthead audience figure, or 'Not available'. Never estimate.")
-    country_domain_code: str = Field(default="Global")
-    is_peer_reviewed_journal: bool = Field(default=False)
-    doi: str = Field(default="None", description="DOI of the paper if this is a peer-reviewed journal article, else 'None'.")
-    verification_confidence: str = Field(default="[Uncorroborated]", description="'[Verified Source]' only if the URL is in the verified list, else '[Uncorroborated]'.")
-
-
-class EventCoverageItem(BaseModel):
-    existing_campaign_id: str = Field(default="NEW", description="ID of the existing campaign this is the same news event as (e.g. 'C2'), or 'NEW'.")
-    event_title: str
-    campaign_milestone_date: str = Field(description="Month and year of the milestone, e.g. 'August 2023'.")
-    source_category: str = ""
-    prominence_depth: str = Field(default="Mention", description="Feature, Segment or Mention.")
-    representation_mode: str = Field(default="Neutral", description="One or two words: Positive, Neutral, Negative, Mixed.")
-    key_message_delivered: str = ""
-    reddit_community_sentiment_summary: str = "N/A"
-    co_represented_entities: str = ""
-    core_event_summary: str = ""
-    covering_outlets: list[CoverageOutlet] = []
-
-
-class CoverageExtraction(BaseModel):
-    coverage_found: bool = False
-    items: list[EventCoverageItem] = []
-
-
-class BriefSummary(BaseModel):
-    headline_synthesis: str = Field(description="1-2 sentence executive overview.")
-    sentiment_framing_read: str = Field(description="1-2 sentences on framing and positioning.")
-    subject_quoted_vs_reported: str = Field(description="Direct quotes vs reported speech, only as evidenced in the items.")
-    engagement_opportunities: str = Field(description="Strategic opportunities grounded in the items.")
-    demographic_audience_profile: str = Field(description="Likely audience profile of the covering outlets.")
-
-
-# ============================================================================
-# 8. TOP BAR, SIDEBAR & HEADER
-# ============================================================================
-def clear_all_searches():
-    st.session_state.cumulative_brief = None
-    st.session_state.executed_query = ""
-
-
-p_col1, p_col2, p_col3 = st.columns([2, 2, 1])
-with p_col1:
-    st.markdown(f"**Active session:** `{current_user['full_name']}` ({current_user['email']})")
-with p_col2:
-    st.selectbox("Platform app layer:", ["Medierkat (PR & Media)", "Markat (Marketing & Competitors)"], key="active_app")
-with p_col3:
-    if st.button("🔒 Log out", width="stretch"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
-        st.rerun()
-
-st.divider()
-st.radio("Select mode:", ["📊 Dashboard", "📄 Brief", "📚 Library"], horizontal=True, key="main_mode")
-main_mode = st.session_state.main_mode
-is_markat = "Markat" in st.session_state.active_app
-app_title = "Markat" if is_markat else "Medierkat"
-
-with st.sidebar:
-    st.markdown(f"### {app_title.upper()}")
-    st.caption("COMPETITOR & CAMPAIGN INTELLIGENCE" if is_markat else "GLOBAL MEDIA INSIGHTS")
-    st.divider()
-
-    st.subheader("1. Intelligence engine")
-    gemini_key = secret("GEMINI_API_KEY", "") or st.text_input("Gemini API key", type="password", placeholder="AQ...")
-    if secret("GEMINI_API_KEY"):
-        st.caption("Using the API key from secrets.")
-    model_name = st.text_input("Gemini model", value=secret("GEMINI_MODEL", DEFAULT_MODEL))
-    st.caption(f"Gemini library version: {GENAI_VERSION}")
-    if st.button("Test connection", key="test_connection"):
-        ok, message = test_gemini_connection(gemini_key, model_name)
-        (st.success if ok else st.error)(message)
-
-    st.divider()
-    st.subheader("2. Objective and scope")
-    purposes = (
-        ["Benchmark campaign impact vs key competitors", "Audit competitor share of voice & customer feedback",
-         "Evaluate narrative positioning for upcoming launch", "CMO strategic performance briefing", "Custom strategic objective"]
-        if is_markat else
-        ["Demonstrate long-term impact & track record", "Identify emerging issue / early warning radar",
-         "Track ongoing issue / crisis management", "Institutional board briefing / executive reporting", "Custom strategic objective"]
-    )
-    report_purpose_selected = st.selectbox("Primary objective", purposes)
-    custom_purpose_input = ""
-    if "Custom" in report_purpose_selected:
-        custom_purpose_input = st.text_input("Specify custom objective:")
-    active_report_purpose = custom_purpose_input.strip() or report_purpose_selected
-
-    report_format_tier = st.selectbox("Report type", [
-        "Executive leadership brief (1 page — C-Suite and Board)",
-        "Strategic advisory report (2 pages — Subject experts)",
-        "Comprehensive media operations report (up to 4 pages — PR and Media teams)",
-        "Digital intelligence digest (up to 2 pages — Digital teams)",
-    ])
-    output_language = st.selectbox("Report output language", [
-        "English", "French (Français)", "Spanish (Español)", "German (Deutsch)", "Mandarin Chinese (中文)",
-        "Japanese (日本語)", "Indonesian (Bahasa Indonesia)", "Vietnamese (Tiếng Việt)", "Hindi (हिंदी)", "Arabic (العربية)",
-    ])
-
-    st.divider()
-    st.subheader("3. Media channels and horizon")
-    date_window = st.selectbox("Recency scope", list(RECENCY_OPTIONS.keys()), index=1)
-    custom_range = None
-    if RECENCY_OPTIONS[date_window] is None:
-        today = datetime.date.today()
-        custom_range = st.date_input("Custom range", value=(today - datetime.timedelta(days=90), today))
-
-    social_media_focus = st.selectbox("
+    author_byline: str = Field(default="not stated
