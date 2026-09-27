@@ -34,7 +34,7 @@ st.set_page_config(page_title="Kat Intelligence Engine", page_icon="🦦", layou
 # ============================================================================
 # 0. CONSTANTS
 # ============================================================================
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.8-flash"
 FALLBACK_MODEL = "gemini-flash-latest"
 NUM_PASSES = 4
 
@@ -179,7 +179,7 @@ def render_login_wall():
     svg = render_brand_meerkat_svg(60, 100)
     st.markdown(
         f'<div style="text-align:center;padding:40px 0 24px 0;">{svg}'
-        '<div style="font-family:\'Cormorant Garamond\',serif;font-size:3rem;color:#F2EDE3;margin-top:10px;">Kat Intelligence Engine</div>'
+        '<div style="font-family:\ me\'Cormorant Garamond\',serif;font-size:3rem;color:#F2EDE3;margin-top:10px;">Kat Intelligence Engine</div>'
         '<div style="font-size:0.8rem;letter-spacing:0.25em;text-transform:uppercase;color:#8A8275;">MEDIERKAT &amp; MARKAT · TESTER SANDBOX</div></div>',
         unsafe_allow_html=True,
     )
