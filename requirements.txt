@@ -1,4 +1,4 @@
-streamlit>=1.40
+streamlit>=1.64
 google-genai>=2.25.0
 pydantic>=2
 pandas
@@ -8,3 +8,6 @@ python-docx
 fpdf2
 bcrypt
 matplotlib
+pypdf
+openpyxl
+xlrd
