@@ -1,4 +1,5 @@
 streamlit>=1.64
+anthropic>=1.11
 google-genai>=2.25.0
 pydantic>=2
 pandas
